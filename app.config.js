@@ -1,0 +1,17 @@
+// Load .env into process.env when present (e.g. copy .env.example to .env)
+require('dotenv').config();
+
+const appJson = require('./app.json');
+
+module.exports = {
+  ...appJson,
+  expo: {
+    ...appJson.expo,
+    extra: {
+      APP_API_URL: process.env.APP_API_URL ?? 'https://api.tolatola.co',
+      SUPABASE_URL: process.env.SUPABASE_URL ?? '',
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ?? '',
+      APP_URL: process.env.APP_URL ?? 'tolatolamobile://',
+    },
+  },
+};
