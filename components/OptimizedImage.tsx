@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
 
@@ -16,11 +17,7 @@ type OptimizedImageProps = {
 };
 
 /**
- * Product/card image with placeholder and optional optimized loading.
- * Use source when you have an image URL; otherwise placeholder is shown.
- * For best load speed with remote URLs, use expo-image when installed:
- *   import { Image } from 'expo-image';
- *   <Image source={{ uri }} contentFit="cover" recyclingKey={id} />
+ * Product/card image with placeholder and high-performance loading using expo-image.
  */
 export function OptimizedImage({
   source,
@@ -32,32 +29,28 @@ export function OptimizedImage({
 }: OptimizedImageProps) {
   const hasUri = typeof source === 'string' && source.length > 0;
 
+  const imageStyles = [
+    styles.image,
+    typeof width === 'number' ? { width, height: height ?? width / aspectRatio } : { width },
+    height != null && typeof height === 'number' ? { height } : undefined,
+    aspectRatio && height == null ? { aspectRatio } : undefined,
+    style,
+  ];
+
   if (hasUri) {
     return (
       <Image
         source={{ uri: source }}
-        style={[
-          styles.image,
-          typeof width === 'number' ? { width, height: height ?? width / aspectRatio } : { width },
-          height != null && typeof height === 'number' ? { height } : undefined,
-          aspectRatio && height == null ? { aspectRatio } : undefined,
-          style,
-        ]}
-        resizeMode={resizeMode}
+        style={imageStyles}
+        contentFit={resizeMode === 'stretch' ? 'fill' : resizeMode}
+        transition={200}
+        cachePolicy="disk"
       />
     );
   }
 
   return (
-    <View
-      style={[
-        styles.placeholder,
-        typeof width === 'number' ? { width, height: height ?? width / aspectRatio } : { width },
-        height != null && typeof height === 'number' ? { height } : undefined,
-        aspectRatio && height == null ? { aspectRatio } : undefined,
-        style,
-      ]}
-    >
+    <View style={[styles.placeholder, ...imageStyles]}>
       <FontAwesome name="image" size={32} color={Theme.inputBorder} />
     </View>
   );

@@ -42,7 +42,13 @@ export async function apiGet<T = unknown>(
   accessToken?: string | null
 ): Promise<T> {
   const res = await apiFetch(path, { method: 'GET', accessToken });
-  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    const message = errorBody.message || errorBody.error || res.statusText;
+    const error = new Error(message);
+    (error as any).status = res.status;
+    throw error;
+  }
   return res.json() as Promise<T>;
 }
 
@@ -59,7 +65,13 @@ export async function apiPost<T = unknown>(
     body: body ? JSON.stringify(body) : undefined,
     accessToken,
   });
-  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    const message = errorBody.message || errorBody.error || res.statusText;
+    const error = new Error(message);
+    (error as any).status = res.status;
+    throw error;
+  }
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
@@ -77,7 +89,13 @@ export async function apiPatch<T = unknown>(
     body: body ? JSON.stringify(body) : undefined,
     accessToken,
   });
-  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    const message = errorBody.message || errorBody.error || res.statusText;
+    const error = new Error(message);
+    (error as any).status = res.status;
+    throw error;
+  }
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
@@ -95,7 +113,13 @@ export async function apiPut<T = unknown>(
     body: body ? JSON.stringify(body) : undefined,
     accessToken,
   });
-  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    const message = errorBody.message || errorBody.error || res.statusText;
+    const error = new Error(message);
+    (error as any).status = res.status;
+    throw error;
+  }
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }

@@ -8,10 +8,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { GradientButton } from '@/components/GradientButton';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
@@ -28,6 +30,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setError(null);
     if (!email.trim() || !password) {
       setError('Please enter email and password');
@@ -54,6 +57,9 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <BackToHomeButton />
+          <View style={styles.logoWrap}>
+            <Image source={require('@/assets/images/icon.png')} style={styles.logo} />
+          </View>
         <Text style={styles.title}>Login</Text>
 
         <View style={styles.inputWrap}>
@@ -199,4 +205,6 @@ const styles = StyleSheet.create({
   signupWrap: { alignItems: 'center' },
   signupText: { fontSize: 15, color: Theme.textSecondary },
   signupLink: { color: Theme.link, fontWeight: '600' },
+  logoWrap: { alignItems: 'center', marginBottom: 20 },
+  logo: { width: scaleByWidth(80), height: scaleByWidth(80), borderRadius: 16 },
 });

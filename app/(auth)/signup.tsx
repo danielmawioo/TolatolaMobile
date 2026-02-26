@@ -8,10 +8,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { GradientButton } from '@/components/GradientButton';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
@@ -25,10 +27,15 @@ export default function SignupScreen() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [userType, setUserType] = useState<'customer' | 'vendor' | 'transporter'>('customer');
+  const [vendorType, setVendorType] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const VENDOR_TYPES = ['Producer', 'Manufacturer', 'Supplier', 'Wholesaler', 'Retail trader'];
+
   const handleSignup = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setError(null);
     if (!fullName.trim() || !email.trim() || !password) {
       setError('Please fill in all required fields');
@@ -47,7 +54,8 @@ export default function SignupScreen() {
         email: email.trim(),
         password,
         fullName: fullName.trim(),
-        userType: 'customer',
+        userType,
+        vendorType: userType === 'vendor' ? vendorType : undefined,
       });
       router.replace('/(auth)/sign-up-success');
     } catch (e) {
@@ -68,6 +76,9 @@ export default function SignupScreen() {
           showsVerticalScrollIndicator={false}
         >
           <BackToHomeButton />
+          <View style={styles.logoWrap}>
+            <Image source={require('@/assets/images/icon.png')} style={styles.logo} />
+          </View>
         <Text style={styles.title}>Sign up</Text>
 
         <View style={styles.inputWrap}>
@@ -123,6 +134,42 @@ export default function SignupScreen() {
             editable={!isLoading}
           />
         </View>
+
+        <Text style={styles.sectionLabel}>I want to:</Text>
+        <View style={styles.roleRow}>
+          {(['customer', 'vendor', 'transporter'] as const).map((type) => (
+            <Pressable
+              key={type}
+              style={[styles.roleBtn, userType === type && styles.roleBtnActive]}
+              onPress={() => setUserType(type)}
+              disabled={isLoading}
+            >
+              <Text style={[styles.roleLabel, userType === type && styles.roleLabelActive]}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {userType === 'vendor' && (
+          <View>
+            <Text style={styles.sectionLabel}>Vendor Category:</Text>
+            <View style={styles.vendorTypeRow}>
+              {VENDOR_TYPES.map((type) => (
+                <Pressable
+                  key={type}
+                  style={[styles.vendorTypeBtn, vendorType === type && styles.vendorTypeBtnActive]}
+                  onPress={() => setVendorType(type)}
+                  disabled={isLoading}
+                >
+                  <Text style={[styles.vendorTypeLabel, vendorType === type && styles.vendorTypeLabelActive]}>
+                    {type}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
 
         <Pressable
           style={styles.termsRow}
@@ -248,4 +295,32 @@ const styles = StyleSheet.create({
   loginWrap: { alignItems: 'center' },
   loginText: { fontSize: 15, color: Theme.textSecondary },
   loginLink: { color: Theme.link, fontWeight: '600' },
+  sectionLabel: { fontSize: 16, fontWeight: '600', color: Theme.text, marginTop: 8, marginBottom: 12 },
+  roleRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  roleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    alignItems: 'center',
+    backgroundColor: Theme.inputBg,
+  },
+  roleBtnActive: { backgroundColor: Theme.primary, borderColor: Theme.primary },
+  roleLabel: { fontSize: 14, color: Theme.textSecondary },
+  roleLabelActive: { color: '#fff', fontWeight: '600' },
+  vendorTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  vendorTypeBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    backgroundColor: Theme.inputBg,
+  },
+  vendorTypeBtnActive: { backgroundColor: Theme.primary, borderColor: Theme.primary },
+  vendorTypeLabel: { fontSize: 12, color: Theme.textSecondary },
+  vendorTypeLabelActive: { color: '#fff', fontWeight: '600' },
+  logoWrap: { alignItems: 'center', marginBottom: 20 },
+  logo: { width: scaleByWidth(80), height: scaleByWidth(80), borderRadius: 16 },
 });
