@@ -24,7 +24,7 @@ const GRID_COLUMNS_WIDE = 3;
 const GRID_COLUMNS_NARROW = 2;
 const MIN_TOUCH_TARGET = 44;
 
-/** Main category ids – must match keys in CATEGORY_SECTIONS (tolatola.co) */
+/** Main category ids – must match keys in CATEGORY_SECTIONS (tola.co) */
 const MAIN_CATEGORIES = [
   { id: 'all', label: 'All Categories' },
   { id: 'fmcg', label: 'Fast Moving Consumer Goods' },
@@ -35,11 +35,11 @@ const MAIN_CATEGORIES = [
   { id: 'food', label: 'Food & Beverages' },
 ];
 
-/** TolaTola-style product for category rows */
+/** TOLA-style product for category rows */
 type CategoryProduct = { id: string; name: string; price: number; image?: string | null };
 type Section = { title: string; products: CategoryProduct[] };
 
-/** Sub-sections and products per main category (TolaTola – tolatola.co) */
+/** Sub-sections and products per main category (TOLA – tola.co) */
 const CATEGORY_SECTIONS: Record<string, Section[]> = {
   all: [
     {
@@ -157,7 +157,7 @@ export default function CategoriesScreen() {
         <FontAwesome name="search" size={scaleByWidth(18)} color={Theme.textMuted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search on TolaTola"
+          placeholder="Search on TOLA"
           placeholderTextColor={Theme.textMuted}
           value={search}
           onChangeText={setSearch}

@@ -9,6 +9,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider } from '@/src/contexts/AuthContext';
+import { CartProvider } from '@/src/contexts/CartContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -52,19 +53,21 @@ function RootLayoutNav() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(guest)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(vendor)" />
-          <Stack.Screen name="(transporter)" />
-          <Stack.Screen name="(admin)" />
-          <Stack.Screen name="payment-success" />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          </Stack>
-        </ThemeProvider>
+        <CartProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(guest)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(vendor)" />
+            <Stack.Screen name="(transporter)" />
+            <Stack.Screen name="(admin)" />
+            <Stack.Screen name="payment-success" />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            </Stack>
+          </ThemeProvider>
+        </CartProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

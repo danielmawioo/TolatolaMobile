@@ -90,22 +90,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const body = {
         email: params.email,
         password: params.password,
-        fullName: params.fullName,
-        userType: params.userType,
-        vendorType: params.vendorType,
-        acceptedPolicies: true,
+        full_name: params.fullName,
+        user_type: params.userType,
+        vendor_type: params.vendorType,
+        accepted_policies: true,
       };
       const data = await apiPost<{ user: User; session: { access_token: string; refresh_token?: string; expires_at?: number } }>(
         '/auth/signup',
         body
       );
-      const session: Session = {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-        expires_at: data.session.expires_at,
-        user: data.user,
-      };
-      await setSession(session);
+      
+      // If email verification is mandatory, session might be null/missing
+      if (data.session && data.session.access_token) {
+        const session: Session = {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_at: data.session.expires_at,
+          user: data.user,
+        };
+        await setSession(session);
+      } else {
+        // Just set the user if no session returned (verification pending)
+        setState(s => ({ ...s, session: null, isAuthenticated: false, isLoading: false }));
+      }
     },
     [setSession]
   );

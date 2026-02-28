@@ -123,3 +123,25 @@ export async function apiPut<T = unknown>(
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
+
+/**
+ * Convenience: DELETE from API.
+ */
+export async function apiDelete<T = unknown>(
+  path: string,
+  accessToken?: string | null
+): Promise<T> {
+  const res = await apiFetch(path, {
+    method: 'DELETE',
+    accessToken,
+  });
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    const message = errorBody.message || errorBody.error || res.statusText;
+    const error = new Error(message);
+    (error as any).status = res.status;
+    throw error;
+  }
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}

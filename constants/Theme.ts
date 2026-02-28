@@ -1,5 +1,5 @@
 /**
- * TolaTola app theme — matches tolatola.co (primary blue, red accent, green for sold/verified).
+ * TOLA app theme — matches tola.co (primary blue, red accent, green for sold/verified).
  * Website uses a prominent medium-dark blue for banner, ALL CATEGORIES, Cart, logo, active states.
  */
 export const Theme = {
@@ -20,7 +20,7 @@ export const Theme = {
   // Inputs
   inputBg: '#f1f5f9',
   inputBorder: '#e2e8f0',
-  // TolaTola accent red — SOLD OUT, TOLA Pay “Pay”
+  // TOLA accent red — SOLD OUT, TOLA Pay “Pay”
   accentRed: '#dc2626',
   // Green — “X SOLD” badges, VERIFIED BY TOLA
   soldBadge: '#22c55e',

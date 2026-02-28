@@ -12,7 +12,16 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "credentialsSource": "remote"
+      }
+    },
+    "production-local": {
+      "extends": "production",
+      "android": {
+        "credentialsSource": "local"
+      }
     }
   },
   "submit": {

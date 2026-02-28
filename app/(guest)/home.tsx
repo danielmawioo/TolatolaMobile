@@ -23,7 +23,7 @@ export default function GuestHomeScreen() {
       ]}
     >
       <View style={styles.header}>
-        <Text style={styles.logo}>TolaTola</Text>
+        <Text style={styles.logo}>TOLA</Text>
         <Text style={styles.tagline}>Secure marketplace. Track every order.</Text>
       </View>
 

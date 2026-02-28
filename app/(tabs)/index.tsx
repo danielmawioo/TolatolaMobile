@@ -166,7 +166,7 @@ export default function HomeScreen() {
               <View key={banner.id || index} style={[styles.banner, { width: bannerWidth }]}>
                 <View style={styles.bannerInner}>
                   <Text style={styles.bannerTitle}>{banner.title || 'Special Offer'}</Text>
-                  <Text style={styles.bannerProduct}>{banner.description || 'TolaTola Fresh — Best prices'}</Text>
+                  <Text style={styles.bannerProduct}>{banner.description || 'TOLA Fresh — Best prices'}</Text>
                   {banner.price && <Text style={styles.bannerPrice}>TSh {banner.price.toLocaleString()}</Text>}
                 </View>
                 {banner.image_url ? (

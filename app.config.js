@@ -14,7 +14,7 @@ module.exports = {
       APP_API_URL: process.env.APP_API_URL ?? 'https://api.tolatola.co',
       SUPABASE_URL: process.env.SUPABASE_URL ?? '',
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ?? '',
-      APP_URL: process.env.APP_URL ?? 'tolatolamobile://',
+      APP_URL: process.env.APP_URL ?? 'tola://',
     },
   },
 };

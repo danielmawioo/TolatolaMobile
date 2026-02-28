@@ -14,9 +14,9 @@ export default function WelcomeScreen() {
         <BackToHomeButton />
       <View style={styles.content}>
         <View style={styles.logoWrap}>
-          <Text style={styles.logo}>TolaTola</Text>
+          <Text style={styles.logo}>TOLA</Text>
         </View>
-        <Text style={styles.title}>Welcome to{'\n'}TolaTola</Text>
+        <Text style={styles.title}>Welcome to{'\n'}TOLA</Text>
         <Text style={styles.tagline}>
           Secure marketplace.{'\n'}Track every order.
         </Text>

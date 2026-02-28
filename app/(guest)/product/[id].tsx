@@ -7,6 +7,7 @@ import { Theme } from '@/constants/Theme';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
+import { useCart } from '@/src/contexts/CartContext';
 
 export default function GuestProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,6 +25,9 @@ export default function GuestProductDetailScreen() {
     currency?: string;
   } | null>(null);
   const [loading, setLoading] = useState(!!id);
+  const insets = useSafeAreaInsets();
+  const { addItem } = useCart();
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -39,7 +43,15 @@ export default function GuestProductDetailScreen() {
     })();
   }, [id]);
 
-  const insets = useSafeAreaInsets();
+  const handleAddToCart = async () => {
+    if (!product) return;
+    setAdding(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await addItem(product);
+    setAdding(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.push('/(tabs)/cart');
+  };
 
   if (loading || !product) {
     return (
@@ -124,10 +136,11 @@ export default function GuestProductDetailScreen() {
         ) : null}
 
         <Pressable 
-          style={styles.addBtn}
-          onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)}
+          style={[styles.addBtn, adding && { opacity: 0.7 }]}
+          onPress={handleAddToCart}
+          disabled={adding}
         >
-          <Text style={styles.addBtnText}>Add to cart (login required)</Text>
+          <Text style={styles.addBtnText}>{adding ? 'Adding...' : 'Add to Cart'}</Text>
         </Pressable>
       </View>
     </ScrollView>
