@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 import { apiGet, apiPatch } from '@/src/services/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
@@ -64,11 +65,12 @@ export default function ProfileScreen() {
           {
             paddingTop: insets.top + 16,
             paddingBottom: 100 + insets.bottom,
+            paddingHorizontal: gap.md,
           },
         ]}
       >
         <Text style={styles.title}>Account</Text>
-        <Text style={styles.subtitle}>Sign in to save items, track orders, and manage your profile.</Text>
+        <Text style={styles.subtitle}>Sign in to save items, track orders, and manage your profile. Part of TOLA Tanzania — trade smarter.</Text>
         <Pressable
           style={styles.primaryBtn}
           onPress={() => router.push('/(auth)/login')}
@@ -99,6 +101,7 @@ export default function ProfileScreen() {
         {
           paddingTop: insets.top + 16,
           paddingBottom: 100 + insets.bottom,
+          paddingHorizontal: gap.md,
         },
       ]}
     >
@@ -125,7 +128,14 @@ export default function ProfileScreen() {
               placeholder="Your full name"
             />
           ) : (
-            <Text style={styles.value}>{session.user?.full_name || '—'}</Text>
+            <Text style={styles.value}>
+              {(session.user?.full_name as string) ||
+                ((session.user as any)?.name as string) ||
+                [((session.user as any)?.first_name as string) || '', ((session.user as any)?.last_name as string) || '']
+                  .join(' ')
+                  .trim() ||
+                '—'}
+            </Text>
           )}
         </View>
 
@@ -151,7 +161,12 @@ export default function ProfileScreen() {
 
         <View style={styles.row}>
           <Text style={styles.label}>Account type</Text>
-          <Text style={styles.value}>{(session.user?.user_type as string) || '—'}</Text>
+          <Text style={styles.value}>
+            {(session.user?.user_type as string) ||
+              ((session.user as any)?.role as string) ||
+              ((session.user as any)?.account_type as string) ||
+              '—'}
+          </Text>
         </View>
 
         {editing && (
@@ -204,20 +219,20 @@ const styles = StyleSheet.create({
   editLink: { color: Theme.link, fontWeight: '600' },
   cancelLink: { color: Theme.textMuted },
   subtitle: { fontSize: 15, color: Theme.textSecondary, marginBottom: 24 },
-  primaryBtn: { backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginBottom: 12 },
+  primaryBtn: { backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: Theme.radiusMd, alignItems: 'center', marginBottom: 12, ...Theme.shadowSm },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  secondaryBtn: { backgroundColor: Theme.background, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: Theme.inputBorder },
+  secondaryBtn: { backgroundColor: Theme.background, paddingVertical: 14, borderRadius: Theme.radiusMd, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: Theme.inputBorder },
   secondaryBtnText: { fontSize: 16, color: Theme.text },
   linkBtn: { alignItems: 'center', paddingVertical: 12 },
   linkBtnText: { fontSize: 15, color: Theme.link },
-  card: { backgroundColor: Theme.background, borderRadius: 12, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: Theme.inputBorder },
+  card: { backgroundColor: Theme.background, borderRadius: Theme.radiusLg, padding: 18, marginBottom: 20, ...Theme.shadowMd },
   row: { marginBottom: 16 },
   label: { fontSize: 12, color: Theme.textSecondary, marginBottom: 4 },
   value: { fontSize: 16, color: Theme.text, fontWeight: '500' },
   input: { backgroundColor: Theme.backgroundSecondary, borderRadius: 8, padding: 12, fontSize: 16, color: Theme.text, borderWidth: 1, borderColor: Theme.inputBorder },
   saveBtn: { backgroundColor: Theme.primary, paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginTop: 8 },
   saveBtnText: { color: '#fff', fontWeight: '600' },
-  menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Theme.background, padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: Theme.inputBorder },
+  menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Theme.background, padding: 16, borderRadius: Theme.radiusMd, marginBottom: 12, ...Theme.shadowSm },
   menuItemInner: { flexDirection: 'row', alignItems: 'center' },
   menuIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: Theme.backgroundSecondary, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   menuLabel: { fontSize: 16, color: Theme.text, fontWeight: '500' },

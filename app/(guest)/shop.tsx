@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { apiGet } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
 import { Skeleton } from '@/components/Skeleton';
 import { OptimizedImage } from '@/components/OptimizedImage';
+import { EmptyState } from '@/components/EmptyState';
 import { gap } from '@/constants/layout';
+import type { Product } from '@/src/types';
+import { COPY } from '@/constants/copy';
 
 /**
  * Guest/browse shop: product listing, category filter, search.
@@ -16,19 +18,19 @@ import { gap } from '@/constants/layout';
 export default function GuestShopScreen() {
   const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [catRes, prodRes] = await Promise.all([
         apiGet<{ categories?: { id: string; name: string }[] }>('/categories').catch(() => ({ categories: [] })),
-        apiGet<{ products?: { id: string; name: string; price?: number; shop_id?: string; image_url?: string }[] }>('/products').catch(() => ({ products: [] })),
+        apiGet<{ products?: Product[] } | Product[]>('/products').catch(() => []),
       ]);
       setCategories(catRes?.categories || []);
-      const receivedProducts = prodRes?.products || (Array.isArray(prodRes) ? prodRes : []);
+      const receivedProducts = (prodRes as { products?: Product[] })?.products ?? (Array.isArray(prodRes) ? prodRes : []);
       setProducts(receivedProducts);
     } catch {
       setProducts([]);
@@ -36,13 +38,13 @@ export default function GuestShopScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory]);
 
   useEffect(() => {
     fetchData();
-  }, [selectedCategory]);
+  }, [fetchData]);
 
-  const onRefresh = React.useCallback(async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
@@ -107,7 +109,7 @@ export default function GuestShopScreen() {
             },
           ]}
           ListHeaderComponent={renderHeader}
-          renderItem={({ item: p }) => (
+          renderItem={({ item: p }: { item: Product }) => (
             <Pressable
               style={styles.card}
               onPress={() => router.push(`/(guest)/product/${p.id}`)}
@@ -117,7 +119,16 @@ export default function GuestShopScreen() {
               <Text style={styles.cardPrice}>TSh {p.price?.toLocaleString() || '—'}</Text>
             </Pressable>
           )}
-          ListEmptyComponent={<Text style={styles.muted}>No products yet.</Text>}
+          ListEmptyComponent={
+            <EmptyState
+              icon="search"
+              title={COPY.empty.shopProducts}
+              message="Try another category or check back later."
+              actionLabel="Browse home"
+              onAction={() => router.push('/(guest)/home')}
+              style={{ marginTop: 24 }}
+            />
+          }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />
           }
@@ -140,10 +151,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor: Theme.background,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    ...Theme.shadowSm,
   },
-  chipActive: { backgroundColor: Theme.primary, borderColor: Theme.primary },
+  chipActive: { backgroundColor: Theme.primary },
   chipText: { fontSize: 14, color: Theme.text },
   chipTextActive: { color: '#fff' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 16 },
@@ -151,13 +161,11 @@ const styles = StyleSheet.create({
   card: {
     width: '48%',
     backgroundColor: Theme.background,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     padding: 12,
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    ...Theme.shadowSm,
   },
   cardImage: { width: '100%', aspectRatio: 1, backgroundColor: Theme.inputBg, borderRadius: 8, marginBottom: 8 },
   cardName: { fontSize: 14, color: Theme.text, marginBottom: 4 },
   cardPrice: { fontSize: 14, fontWeight: '600', color: Theme.primary },
-  muted: { textAlign: 'center', color: Theme.textMuted, marginTop: 24, width: '100%' },
 });

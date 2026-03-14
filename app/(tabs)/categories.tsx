@@ -24,7 +24,7 @@ const GRID_COLUMNS_WIDE = 3;
 const GRID_COLUMNS_NARROW = 2;
 const MIN_TOUCH_TARGET = 44;
 
-/** Main category ids – must match keys in CATEGORY_SECTIONS (tola.co) */
+/** Main category ids — tolatola.co Shop by Category */
 const MAIN_CATEGORIES = [
   { id: 'all', label: 'All Categories' },
   { id: 'fmcg', label: 'Fast Moving Consumer Goods' },
@@ -33,6 +33,11 @@ const MAIN_CATEGORIES = [
   { id: 'vehicles', label: 'Vehicles' },
   { id: 'electronics', label: 'Electronics' },
   { id: 'food', label: 'Food & Beverages' },
+  { id: 'handicrafts', label: 'Handicrafts' },
+  { id: 'health', label: 'Health & Beauty' },
+  { id: 'home', label: 'Home & Garden' },
+  { id: 'services', label: 'Services' },
+  { id: 'textiles', label: 'Textiles' },
 ];
 
 /** TOLA-style product for category rows */
@@ -122,6 +127,11 @@ const CATEGORY_SECTIONS: Record<string, Section[]> = {
       ],
     },
   ],
+  handicrafts: [{ title: 'HANDICRAFTS', products: [{ id: 'h1', name: 'Handcrafted items', price: 15000 }] }],
+  health: [{ title: 'HEALTH & BEAUTY', products: [{ id: 'hb1', name: 'Health & beauty products', price: 12000 }] }],
+  home: [{ title: 'HOME & GARDEN', products: [{ id: 'hg1', name: 'Home & garden', price: 25000 }] }],
+  services: [{ title: 'SERVICES', products: [{ id: 's1', name: 'Services', price: 0 }] }],
+  textiles: [{ title: 'TEXTILES', products: [{ id: 't1', name: 'Textiles', price: 18000 }] }],
 };
 
 export default function CategoriesScreen() {
@@ -259,13 +269,13 @@ const styles = StyleSheet.create({
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Theme.inputBg,
+    backgroundColor: Theme.background,
     marginTop: scaleByHeight(8),
     marginBottom: gap.sm,
     paddingHorizontal: scaleByWidth(14),
     paddingVertical: scaleByHeight(12),
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    borderRadius: Theme.radiusMd,
+    ...Theme.shadowSm,
   },
   searchIcon: { marginRight: gap.sm },
   searchInput: { flex: 1, fontSize: scaleByWidth(16), color: Theme.text, paddingVertical: 0 },
@@ -333,10 +343,9 @@ const styles = StyleSheet.create({
   },
   productCard: {
     backgroundColor: Theme.background,
-    borderRadius: scaleByWidth(10),
+    borderRadius: Theme.radiusMd,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Theme.inputBorder,
+    ...Theme.shadowSm,
   },
   productCardPressed: { opacity: 0.85 },
   productImage: {

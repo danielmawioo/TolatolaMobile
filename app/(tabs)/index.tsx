@@ -9,7 +9,6 @@ import {
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  ActivityIndicator,
   FlatList,
   RefreshControl,
 } from 'react-native';
@@ -21,12 +20,22 @@ import { OptimizedImage } from '@/components/OptimizedImage';
 import { Skeleton } from '@/components/Skeleton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet } from '@/src/services/api';
+import type { Product, Banner } from '@/src/types';
+import { COPY } from '@/constants/copy';
 
-const QUICK_ACCESS = [
-  { id: 'fmcg', label: 'FMCG', sub: '', icon: 'shopping-basket' },
-  { id: 'agriculture', label: 'Agriculture', sub: '', icon: 'leaf' },
-  { id: 'construction', label: 'Construction', sub: '& Hardware', icon: 'wrench' },
-  { id: 'food', label: 'Food', sub: '& Beverages', icon: 'cutlery' },
+// tolatola.co: Shop by Category
+const SHOP_BY_CATEGORY = [
+  { id: 'fmcg', label: 'FMCG', icon: 'shopping-basket' as const, color: Theme.categoryFresh },
+  { id: 'agriculture', label: 'Agriculture', icon: 'leaf' as const, color: Theme.categoryFresh },
+  { id: 'construction', label: 'Construction & Hardware', icon: 'wrench' as const, color: Theme.categoryShipping },
+  { id: 'vehicles', label: 'Vehicles', icon: 'car' as const, color: Theme.categoryServices },
+  { id: 'electronics', label: 'Electronics', icon: 'laptop' as const, color: Theme.categoryElectronics },
+  { id: 'food', label: 'Food & Beverages', icon: 'cutlery' as const, color: Theme.categoryShipping },
+  { id: 'handicrafts', label: 'Handicrafts', icon: 'hand-spock-o' as const, color: Theme.categoryHandmade },
+  { id: 'health', label: 'Health & Beauty', icon: 'heart' as const, color: Theme.categoryHealth },
+  { id: 'home', label: 'Home & Garden', icon: 'home' as const, color: Theme.categoryFresh },
+  { id: 'services', label: 'Services', icon: 'cogs' as const, color: Theme.categoryServices },
+  { id: 'textiles', label: 'Textiles', icon: 'th-large' as const, color: Theme.categoryHandmade },
 ];
 
 const BANNER_SLIDES = 3;
@@ -34,13 +43,12 @@ const CAROUSEL_AUTO_INTERVAL_MS = 4000;
 
 export default function HomeScreen() {
   const [search, setSearch] = useState('');
-  const [countdown, setCountdown] = useState({ h: 0, m: 27, s: 17 });
   const [carouselIndex, setCarouselIndex] = useState(0);
-  const [products, setProducts] = useState<any[]>([]);
-  const [banners, setBanners] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const carouselRef = useRef<ScrollView>(null);
   const bannerWidthRef = useRef(0);
   const insets = useSafeAreaInsets();
@@ -48,19 +56,20 @@ export default function HomeScreen() {
 
   const bannerWidth = width;
   bannerWidthRef.current = bannerWidth;
-  const productCardWidth = width * 0.38;
+  const productCardWidth = width * 0.42;
+  const categoryItemWidth = (width - gap.md * 2 - gap.sm * 3) / 4;
 
   const fetchData = async () => {
     try {
       const [prodRes, bannerRes] = await Promise.all([
-        apiGet<any>('/products'),
-        apiGet<any>('/banners').catch(() => []), 
+        apiGet<{ products?: Product[] } | Product[]>('/products'),
+        apiGet<{ banners?: Banner[] } | Banner[]>('/banners').catch(() => []),
       ]);
-      
-      const receivedProducts = Array.isArray(prodRes) ? prodRes : (prodRes?.products || []);
+
+      const receivedProducts = (prodRes as { products?: Product[] })?.products ?? (Array.isArray(prodRes) ? prodRes : []);
       setProducts(receivedProducts);
-      
-      const receivedBanners = Array.isArray(bannerRes) ? bannerRes : (bannerRes?.banners || []);
+
+      const receivedBanners = (bannerRes as { banners?: Banner[] })?.banners ?? (Array.isArray(bannerRes) ? bannerRes : []);
       setBanners(receivedBanners);
     } catch (error) {
       console.error('Error fetching home data:', error);
@@ -77,19 +86,6 @@ export default function HomeScreen() {
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
-  }, []);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setCountdown((c) => {
-        let { h, m, s } = c;
-        if (s > 0) return { ...c, s: s - 1 };
-        if (m > 0) return { h, m: m - 1, s: 59 };
-        if (h > 0) return { h: h - 1, m: 59, s: 59 };
-        return c;
-      });
-    }, 1000);
-    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -115,7 +111,7 @@ export default function HomeScreen() {
   const handleCategoryPress = (categoryId: string) => {
     router.push({
       pathname: '/(guest)/shop',
-      params: { categoryId }
+      params: { categoryId },
     });
   };
 
@@ -130,27 +126,30 @@ export default function HomeScreen() {
       contentContainerStyle={[
         styles.content,
         {
-          paddingTop: insets.top + scaleByWidth(8),
+          paddingTop: insets.top + scaleByWidth(12),
           paddingBottom: 100 + insets.bottom,
         },
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Search */}
-      <View style={styles.searchWrap}>
-        <FontAwesome name="search" size={18} color={Theme.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search on TOLA"
-          placeholderTextColor={Theme.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
+      {/* App header — tolatola.co branding */}
+      <View style={styles.appHeader}>
+        <Text style={styles.logo}>TOLA Tanzania</Text>
+        <Text style={styles.tagline}>{COPY.tagline}</Text>
       </View>
 
-      {/* Promo carousel */}
+      {/* Search — Jumia-style rounded bar */}
+      <Pressable
+        style={styles.searchWrap}
+        onPress={() => router.push('/(guest)/shop')}
+      >
+        <FontAwesome name="search" size={18} color={Theme.textMuted} style={styles.searchIcon} />
+        <Text style={styles.searchPlaceholder}>Search products, categories…</Text>
+      </Pressable>
+
+      {/* Hero carousel */}
       {banners.length > 0 ? (
-        <View>
+        <View style={styles.carouselSection}>
           <ScrollView
             ref={carouselRef}
             horizontal
@@ -163,17 +162,22 @@ export default function HomeScreen() {
             decelerationRate="fast"
           >
             {banners.map((banner, index) => (
-              <View key={banner.id || index} style={[styles.banner, { width: bannerWidth }]}>
+              <View key={banner.id || index} style={[styles.bannerSlide, { width: bannerWidth }]}>
+              <View style={[styles.banner, Theme.shadowMd]}>
                 <View style={styles.bannerInner}>
-                  <Text style={styles.bannerTitle}>{banner.title || 'Special Offer'}</Text>
-                  <Text style={styles.bannerProduct}>{banner.description || 'TOLA Fresh — Best prices'}</Text>
-                  {banner.price && <Text style={styles.bannerPrice}>TSh {banner.price.toLocaleString()}</Text>}
+                  <Text style={styles.bannerLabel}>Special Offer</Text>
+                  <Text style={styles.bannerTitle}>{banner.title || 'TOLA Digital Trade'}</Text>
+                  <Text style={styles.bannerSub}>{banner.description || 'Trade Smarter. Move Faster.'}</Text>
+                  {banner.price != null && (
+                    <Text style={styles.bannerPrice}>TSh {Number(banner.price).toLocaleString()}</Text>
+                  )}
                 </View>
                 {banner.image_url ? (
-                  <OptimizedImage source={banner.image_url} width={scaleByWidth(120)} aspectRatio={1} />
+                  <OptimizedImage source={banner.image_url} width={scaleByWidth(100)} aspectRatio={1} />
                 ) : (
                   <View style={styles.bannerPlaceholder} />
                 )}
+              </View>
               </View>
             ))}
           </ScrollView>
@@ -184,114 +188,154 @@ export default function HomeScreen() {
           </View>
         </View>
       ) : (
-        <View style={[styles.banner, { width: bannerWidth, marginBottom: sectionGap }]}>
-           <View style={styles.bannerInner}>
-            <Text style={styles.bannerTitle}>Welcome to TOLA</Text>
-            <Text style={styles.bannerProduct}>Connecting buyers & transporters</Text>
+        <View style={[styles.banner, styles.bannerFallback, Theme.shadowMd]}>
+          <View style={styles.bannerInner}>
+            <Text style={styles.bannerLabel}>Welcome</Text>
+            <Text style={styles.bannerTitle}>TOLA Pay</Text>
+            <Text style={styles.bannerSub}>Turn Products into Deals. Deals into Deliveries.</Text>
           </View>
           <View style={styles.bannerPlaceholder} />
         </View>
       )}
 
-      {/* Quick access / Categories */}
-      <View style={styles.quickRow}>
-        {QUICK_ACCESS.map((q) => (
-          <Pressable key={q.id} style={styles.quickCard} onPress={() => handleCategoryPress(q.id)}>
-            <View style={styles.quickIconWrap}>
-              <FontAwesome name={q.icon as any} size={24} color={Theme.primary} />
-            </View>
-            <Text style={styles.quickLabel}>{q.label}</Text>
-            {q.sub ? <Text style={styles.quickSub}>{q.sub}</Text> : null}
+      {/* Shop by Category — tolatola.co */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Shop by Category</Text>
+          <Pressable onPress={() => router.push('/(guest)/shop')} hitSlop={12}>
+            <Text style={styles.seeAll}>View catalog</Text>
           </Pressable>
-        ))}
-      </View>
-
-      {/* Flash Sales / Featured Products */}
-      <View style={styles.flashHeader}>
-        <FontAwesome name="bolt" size={18} color="#fff" />
-        <Text style={styles.flashTitle}>FEATURED PRODUCTS</Text>
-        <Pressable style={styles.seeAll} onPress={() => router.push('/(guest)/shop')}>
-          <Text style={styles.seeAllText}>SEE ALL</Text>
-        </Pressable>
-      </View>
-
-      {loading ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.flashScroll}>
-          {[1, 2, 3].map((i) => (
-            <View key={i} style={[styles.productCard, { width: productCardWidth }]}>
-              <Skeleton width="100%" height={productCardWidth - 32} borderRadius={8} style={{ marginBottom: 12 }} />
-              <Skeleton width="80%" height={16} style={{ marginBottom: 8 }} />
-              <Skeleton width="40%" height={20} />
-            </View>
+        </View>
+        <View style={styles.categoryGrid}>
+          {SHOP_BY_CATEGORY.map((cat) => (
+            <Pressable
+              key={cat.id}
+              style={({ pressed }) => [
+                styles.categoryItem,
+                { width: categoryItemWidth, backgroundColor: cat.color },
+                pressed && styles.categoryItemPressed,
+              ]}
+              onPress={() => handleCategoryPress(cat.id)}
+            >
+              <View style={styles.categoryIconWrap}>
+                <FontAwesome name={cat.icon} size={22} color={Theme.primary} />
+              </View>
+              <Text style={styles.categoryLabel} numberOfLines={2}>{cat.label}</Text>
+            </Pressable>
           ))}
-        </ScrollView>
-      ) : (
-        <FlatList
-          data={products.slice(0, 10)}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.flashScroll}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item: p }) => (
-            <Pressable
-              style={[styles.productCard, { width: productCardWidth }]}
-              onPress={() => router.push(`/(guest)/product/${p.id}`)}
-            >
-              <View style={styles.productImage}>
-                {p.discount > 0 && (
-                  <View style={styles.discountBadge}>
-                    <Text style={styles.discountText}>-{p.discount}%</Text>
-                  </View>
-                )}
-                <OptimizedImage source={p.image_url} width="100%" aspectRatio={1} />
-              </View>
-              <Text style={styles.productName} numberOfLines={2}>{p.name}</Text>
-              <Text style={styles.productPrice}>TSh {p.price?.toLocaleString() || '—'}</Text>
-              {p.stock != null ? (
-                <View style={styles.stockBarWrap}>
-                  <View style={[styles.stockBarFill, { width: `${Math.min(100, (p.stock / 50) * 100)}%` }]} />
-                  <Text style={styles.stockBarText}>{p.stock} items left</Text>
-                </View>
-              ) : (
-                <Text style={styles.stockBarText}>In Stock</Text>
-              )}
-            </Pressable>
-          )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No products found.</Text>}
-        />
-      )}
+        </View>
+      </View>
 
-      {/* More products grid */}
-      <Text style={styles.sectionTitle}>Popular products</Text>
-      <View style={styles.productGrid}>
+      {/* Trust strip — tolatola.co: Verified Vendors. Guaranteed Quality. */}
+      <View style={[styles.trustStrip, Theme.shadowSm]}>
+        <View style={styles.trustItem}>
+          <FontAwesome name="lock" size={20} color={Theme.primary} />
+          <Text style={styles.trustText}>Secure Payments</Text>
+        </View>
+        <View style={styles.trustDivider} />
+        <View style={styles.trustItem}>
+          <FontAwesome name="check-circle" size={20} color={Theme.verified} />
+          <Text style={styles.trustText}>Verified Vendors</Text>
+        </View>
+        <View style={styles.trustDivider} />
+        <View style={styles.trustItem}>
+          <FontAwesome name="truck" size={20} color={Theme.primary} />
+          <Text style={styles.trustText}>Pan-Tanzania</Text>
+        </View>
+      </View>
+
+      {/* Featured / Selections for you */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Selections for you</Text>
+          <Pressable onPress={() => router.push('/(guest)/shop')} hitSlop={12}>
+            <Text style={styles.seeAll}>See all</Text>
+          </Pressable>
+        </View>
+
         {loading ? (
-          [1, 2, 4, 5].map((i) => (
-            <View key={i} style={[styles.gridCard, { width: (width - 20 * 2 - 12) / 2 }]}>
-              <Skeleton width="100%" height={(width - 20 * 2 - 12) / 2 - 32} borderRadius={8} style={{ marginBottom: 12 }} />
-              <Skeleton width="80%" height={14} style={{ marginBottom: 8 }} />
-              <Skeleton width="50%" height={18} />
-            </View>
-          ))
-        ) : (
-          products.slice(0, 8).map((p) => (
-            <Pressable
-              key={p.id}
-              style={[styles.gridCard, { width: (width - gap.md * 2 - gap.md) / 2 }]}
-              onPress={() => router.push(`/(guest)/product/${p.id}`)}
-            >
-              <View style={styles.gridCardImage}>
-                {p.discount > 0 && (
-                  <View style={styles.discountBadgeSmall}>
-                    <Text style={styles.discountTextSmall}>-{p.discount}%</Text>
-                  </View>
-                )}
-                <OptimizedImage source={p.image_url} width="100%" aspectRatio={1} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+            {[1, 2, 3].map((i) => (
+              <View key={i} style={[styles.productCard, { width: productCardWidth }]}>
+                <Skeleton width="100%" height={productCardWidth - 24} borderRadius={Theme.radiusMd} style={{ marginBottom: 10 }} />
+                <Skeleton width="80%" height={14} style={{ marginBottom: 6 }} />
+                <Skeleton width="50%" height={18} />
               </View>
-              <Text style={styles.gridCardName} numberOfLines={2}>{p.name}</Text>
-              <Text style={styles.gridCardPrice}>TSh {p.price?.toLocaleString() || '—'}</Text>
-            </Pressable>
-          ))
+            ))}
+          </ScrollView>
+        ) : (
+          <FlatList
+            data={products.slice(0, 10)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+            keyExtractor={(item) => item.id?.toString() ?? String(Math.random())}
+            renderItem={({ item: p }) => (
+              <Pressable
+                style={[styles.productCard, { width: productCardWidth }]}
+                onPress={() => router.push(`/(guest)/product/${p.id}`)}
+              >
+                <View style={styles.productImageWrap}>
+                  {p.discount > 0 && (
+                    <View style={styles.badgeHot}>
+                      <Text style={styles.badgeHotText}>-{p.discount}%</Text>
+                    </View>
+                  )}
+                  <View style={styles.verifiedBadge}>
+                    <FontAwesome name="check-circle" size={10} color={Theme.verified} />
+                    <Text style={styles.verifiedText}>TOLA</Text>
+                  </View>
+                  <OptimizedImage source={p.image_url} width="100%" aspectRatio={1} />
+                </View>
+                <Text style={styles.productName} numberOfLines={2}>{p.name}</Text>
+                <Text style={styles.productPrice}>TSh {(p.price ?? 0).toLocaleString()}</Text>
+                {p.stock != null && p.stock < 50 && (
+                  <Text style={styles.stockHint}>{p.stock} left</Text>
+                )}
+              </Pressable>
+            )}
+            ListEmptyComponent={<Text style={styles.emptyText}>No products yet.</Text>}
+          />
         )}
+      </View>
+
+      {/* Popular products grid */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Popular products</Text>
+        <View style={styles.productGrid}>
+          {loading ? (
+            [1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.gridCard, { width: (width - gap.md * 2 - gap.sm) / 2 }]}>
+                <Skeleton width="100%" height={(width - gap.md * 2 - gap.sm) / 2 - 20} borderRadius={Theme.radiusMd} style={{ marginBottom: 10 }} />
+                <Skeleton width="85%" height={14} style={{ marginBottom: 6 }} />
+                <Skeleton width="45%" height={16} />
+              </View>
+            ))
+          ) : (
+            products.slice(0, 8).map((p) => (
+              <Pressable
+                key={p.id}
+                style={[styles.gridCard, { width: (width - gap.md * 2 - gap.sm) / 2 }]}
+                onPress={() => router.push(`/(guest)/product/${p.id}`)}
+              >
+                <View style={styles.gridCardImage}>
+                  {p.discount > 0 && (
+                    <View style={styles.badgeHotSmall}>
+                      <Text style={styles.badgeHotTextSmall}>-{p.discount}%</Text>
+                    </View>
+                  )}
+                  <OptimizedImage source={p.image_url} width="100%" aspectRatio={1} />
+                </View>
+                <View style={styles.verifiedBadgeSmall}>
+                  <FontAwesome name="check-circle" size={9} color={Theme.verified} />
+                  <Text style={styles.verifiedTextSmall}>Verified</Text>
+                </View>
+                <Text style={styles.gridCardName} numberOfLines={2}>{p.name}</Text>
+                <Text style={styles.gridCardPrice}>TSh {(p.price ?? 0).toLocaleString()}</Text>
+              </Pressable>
+            ))
+          )}
+        </View>
         {!loading && products.length === 0 && (
           <Text style={styles.emptyText}>No products available.</Text>
         )}
@@ -302,164 +346,160 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.backgroundSecondary },
-  content: { paddingBottom: 100 },
+  content: { paddingHorizontal: gap.md },
+  appHeader: { marginBottom: gap.lg },
+  logo: { fontSize: scaleByWidth(22), fontWeight: '800', color: Theme.text, letterSpacing: 0.5 },
+  tagline: { fontSize: scaleByWidth(13), color: Theme.textSecondary, marginTop: 2, lineHeight: 18 },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Theme.background,
-    marginTop: scaleByWidth(12),
+    paddingHorizontal: gap.lg,
+    paddingVertical: scaleByWidth(14),
+    borderRadius: Theme.radiusLg,
     marginBottom: gap.lg,
-    paddingHorizontal: scaleByWidth(14),
-    paddingVertical: scaleByWidth(12),
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    ...Theme.shadowSm,
   },
   searchIcon: { marginRight: gap.sm },
-  searchInput: { flex: 1, fontSize: scaleByWidth(16), color: Theme.text, padding: 0 },
+  searchPlaceholder: { flex: 1, fontSize: scaleByWidth(15), color: Theme.textMuted },
+  carouselSection: { marginBottom: gap.sm },
   carousel: { marginBottom: gap.xs },
   carouselContent: { gap: 0 },
+  bannerSlide: { paddingHorizontal: gap.md },
   banner: {
-    marginRight: gap.md,
-    borderRadius: scaleByWidth(12),
+    flex: 1,
+    borderRadius: Theme.radiusLg,
     overflow: 'hidden',
     backgroundColor: Theme.primary,
-    minHeight: scaleByWidth(160),
+    minHeight: scaleByWidth(140),
     flexDirection: 'row',
+    alignItems: 'center',
   },
+  bannerFallback: { marginHorizontal: gap.md, marginBottom: sectionGap },
   bannerInner: { flex: 1, padding: gap.lg, justifyContent: 'center' },
+  bannerLabel: { fontSize: scaleByWidth(11), fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginBottom: 2, letterSpacing: 0.5 },
   bannerTitle: { fontSize: scaleByWidth(18), fontWeight: '700', color: '#fff', marginBottom: 4 },
-  bannerProduct: { fontSize: scaleByWidth(14), color: 'rgba(255,255,255,0.9)', marginBottom: 8 },
-  bannerPrice: { fontSize: scaleByWidth(20), fontWeight: '700', color: '#fff' },
-  bannerOldPrice: { fontSize: scaleByWidth(14), color: 'rgba(255,255,255,0.8)', textDecorationLine: 'line-through' },
-  bannerPlaceholder: { width: scaleByWidth(120), backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, margin: gap.md },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: scaleByWidth(6), marginBottom: sectionGap, marginTop: 8 },
-  dot: { width: scaleByWidth(8), height: scaleByWidth(8), borderRadius: scaleByWidth(4), backgroundColor: Theme.inputBorder },
-  dotActive: { width: scaleByWidth(20), backgroundColor: Theme.primary },
-  quickRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: sectionGap,
-    paddingHorizontal: gap.md,
+  bannerSub: { fontSize: scaleByWidth(13), color: 'rgba(255,255,255,0.9)', marginBottom: 6 },
+  bannerPrice: { fontSize: scaleByWidth(18), fontWeight: '800', color: '#fff' },
+  bannerPlaceholder: { width: scaleByWidth(100), height: scaleByWidth(100), backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: Theme.radiusMd, margin: gap.md },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: sectionGap, marginTop: 8 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Theme.inputBorder },
+  dotActive: { width: 18, backgroundColor: Theme.primary },
+  section: { marginBottom: sectionGap },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: gap.sm },
+  sectionTitle: { fontSize: scaleByWidth(18), fontWeight: '700', color: Theme.text },
+  seeAll: { fontSize: scaleByWidth(14), fontWeight: '600', color: Theme.primary },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: gap.sm },
+  categoryItem: {
+    borderRadius: Theme.radiusMd,
+    padding: gap.sm,
+    alignItems: 'center',
+    minHeight: scaleByWidth(72),
   },
-  quickCard: { alignItems: 'center', flex: 1 },
-  quickIconWrap: {
-    width: scaleByWidth(56),
-    height: scaleByWidth(56),
-    borderRadius: scaleByWidth(28),
+  categoryItemPressed: { opacity: 0.85 },
+  categoryIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: Theme.background,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: gap.xs,
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    marginBottom: 4,
   },
-  quickLabel: { fontSize: scaleByWidth(12), fontWeight: '600', color: Theme.text },
-  quickSub: { fontSize: scaleByWidth(10), color: Theme.primary, marginTop: 2 },
-  flashHeader: {
+  categoryLabel: { fontSize: scaleByWidth(10), fontWeight: '600', color: Theme.text, textAlign: 'center' },
+  trustStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Theme.primary,
-    paddingVertical: scaleByWidth(12),
-    paddingHorizontal: gap.lg,
-    marginBottom: gap.md,
-    gap: gap.xs,
+    justifyContent: 'space-around',
+    backgroundColor: Theme.background,
+    borderRadius: Theme.radiusMd,
+    paddingVertical: gap.md,
+    paddingHorizontal: gap.sm,
+    marginBottom: sectionGap,
   },
-  flashTitle: { fontSize: scaleByWidth(14), fontWeight: '700', color: '#fff', flex: 1 },
-  flashTimer: { fontSize: scaleByWidth(12), color: 'rgba(255,255,255,0.95)' },
-  seeAll: { paddingVertical: 4, paddingHorizontal: 8 },
-  seeAllText: { fontSize: scaleByWidth(12), fontWeight: '700', color: '#fff' },
-  flashScrollView: { marginBottom: sectionGap },
-  flashScroll: { gap: gap.md, paddingHorizontal: gap.md },
+  trustItem: { alignItems: 'center', flex: 1 },
+  trustText: { fontSize: scaleByWidth(11), fontWeight: '600', color: Theme.textSecondary, marginTop: 4 },
+  trustDivider: { width: 1, height: 24, backgroundColor: Theme.inputBorder },
+  horizontalList: { gap: gap.md, paddingRight: gap.md },
   productCard: {
     backgroundColor: Theme.background,
-    borderRadius: scaleByWidth(12),
-    padding: gap.md,
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    borderRadius: Theme.radiusLg,
+    padding: gap.sm,
+    ...Theme.shadowMd,
   },
-  productImage: {
+  productImageWrap: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 8,
+    borderRadius: Theme.radiusMd,
     overflow: 'hidden',
     marginBottom: gap.sm,
     position: 'relative',
+    backgroundColor: Theme.backgroundTertiary,
   },
-  soldBadge: {
+  badgeHot: {
     position: 'absolute',
-    top: gap.xs,
-    left: gap.xs,
-    backgroundColor: Theme.soldBadge,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    zIndex: 1,
-  },
-  soldBadgeText: { color: '#fff', fontSize: scaleByWidth(11), fontWeight: '600' },
-  discountBadge: {
-    position: 'absolute',
-    top: gap.xs,
-    right: gap.xs,
-    backgroundColor: Theme.primary,
+    top: 6,
+    right: 6,
+    backgroundColor: Theme.accent,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
     zIndex: 1,
   },
-  discountText: { color: '#fff', fontSize: scaleByWidth(12), fontWeight: '700' },
-  productName: { fontSize: scaleByWidth(13), color: Theme.text, marginBottom: 4 },
-  productPrice: { fontSize: scaleByWidth(15), fontWeight: '700', color: Theme.text },
-  productOldPrice: { fontSize: scaleByWidth(12), color: Theme.textMuted, textDecorationLine: 'line-through', marginBottom: 6 },
-  stockBarWrap: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Theme.inputBorder,
-    overflow: 'hidden',
-    marginTop: 4,
+  badgeHotText: { color: '#fff', fontSize: scaleByWidth(11), fontWeight: '700' },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    gap: 4,
+    zIndex: 1,
   },
-  stockBarFill: { height: '100%', backgroundColor: Theme.primary, borderRadius: 3 },
-  stockBarText: { fontSize: scaleByWidth(10), color: Theme.textMuted, marginTop: 4 },
-  sectionTitle: { fontSize: scaleByWidth(18), fontWeight: '700', color: Theme.text, marginBottom: gap.md, paddingHorizontal: gap.md },
-  productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: gap.md, paddingHorizontal: gap.md },
+  verifiedText: { fontSize: scaleByWidth(9), fontWeight: '700', color: Theme.verified },
+  productName: { fontSize: scaleByWidth(13), color: Theme.text, marginBottom: 4, fontWeight: '500' },
+  productPrice: { fontSize: scaleByWidth(15), fontWeight: '700', color: Theme.text },
+  stockHint: { fontSize: scaleByWidth(10), color: Theme.textMuted },
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: gap.sm },
   gridCard: {
     backgroundColor: Theme.background,
-    borderRadius: scaleByWidth(12),
-    padding: gap.md,
-    marginBottom: gap.md,
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    borderRadius: Theme.radiusLg,
+    padding: gap.sm,
+    marginBottom: gap.sm,
+    ...Theme.shadowMd,
   },
   gridCardImage: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 8,
+    borderRadius: Theme.radiusMd,
     overflow: 'hidden',
-    marginBottom: gap.sm,
+    marginBottom: gap.xs,
     position: 'relative',
+    backgroundColor: Theme.backgroundTertiary,
   },
-  soldBadgeSmall: {
+  badgeHotSmall: {
     position: 'absolute',
-    top: gap.xs,
-    left: gap.xs,
-    backgroundColor: Theme.soldBadge,
+    top: 4,
+    left: 4,
+    backgroundColor: Theme.accent,
     paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 10,
-    zIndex: 1,
-  },
-  soldBadgeTextSmall: { color: '#fff', fontSize: scaleByWidth(10), fontWeight: '600' },
-  discountBadgeSmall: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    backgroundColor: Theme.primary,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     borderRadius: 4,
     zIndex: 1,
   },
-  discountTextSmall: { color: '#fff', fontSize: scaleByWidth(10), fontWeight: '700' },
-  gridCardName: { fontSize: scaleByWidth(13), color: Theme.text, marginBottom: 4 },
+  badgeHotTextSmall: { color: '#fff', fontSize: scaleByWidth(9), fontWeight: '700' },
+  verifiedBadgeSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  verifiedTextSmall: { fontSize: scaleByWidth(10), fontWeight: '600', color: Theme.verified },
+  gridCardName: { fontSize: scaleByWidth(13), color: Theme.text, marginBottom: 4, fontWeight: '500' },
   gridCardPrice: { fontSize: scaleByWidth(14), fontWeight: '700', color: Theme.primary },
-  emptyText: { color: Theme.textMuted, textAlign: 'center', width: '100%', marginVertical: 20 },
+  emptyText: { color: Theme.textMuted, textAlign: 'center', width: '100%', marginVertical: 16, fontSize: 14 },
 });

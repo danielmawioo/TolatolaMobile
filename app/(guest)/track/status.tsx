@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 
 const STATUS_LABELS: Record<string, string> = {
   ORDER_RECEIVED: 'Order received',
@@ -51,6 +52,7 @@ export default function TrackStatusScreen() {
   const safePadding = {
     paddingTop: insets.top + 16,
     paddingBottom: insets.bottom + 24,
+    paddingHorizontal: gap.md,
   };
 
   if (loading) {
@@ -136,7 +138,7 @@ export default function TrackStatusScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.backgroundSecondary },
-  content: { paddingBottom: 24 },
+  content: { paddingBottom: 24, paddingHorizontal: gap.md },
   back: { marginBottom: 16 },
   backText: { fontSize: 16, color: Theme.link },
   loading: { textAlign: 'center', marginTop: 48, color: Theme.textSecondary },
@@ -144,11 +146,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '700', color: Theme.text, marginBottom: 20 },
   card: {
     backgroundColor: Theme.background,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     padding: 18,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    ...Theme.shadowSm,
   },
   label: { fontSize: 12, color: Theme.textSecondary, marginBottom: 4 },
   value: { fontSize: 16, color: Theme.text, marginBottom: 12 },
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: Theme.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     alignItems: 'center',
     marginTop: 16,
   },

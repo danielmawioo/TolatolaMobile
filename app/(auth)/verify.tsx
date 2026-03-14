@@ -12,7 +12,7 @@ import { GradientButton } from '@/components/GradientButton';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
 import { Theme } from '@/constants/Theme';
-import { scaleByWidth } from '@/constants/layout';
+import { scaleByWidth, gap } from '@/constants/layout';
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 24;
@@ -124,6 +124,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingTop: scaleByWidth(24),
     paddingBottom: scaleByWidth(40),
+    paddingHorizontal: gap.md,
     backgroundColor: Theme.background,
   },
   title: {

@@ -4,26 +4,16 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { useCart } from '@/src/contexts/CartContext';
+import type { Product } from '@/src/types';
 
 export default function GuestProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [product, setProduct] = useState<{
-    id: string;
-    name: string;
-    price?: number;
-    description?: string;
-    shop_id?: string;
-    image_url?: string;
-    location?: string;
-    moq?: string | number;
-    delivery_available?: boolean;
-    is_vendor_verified?: boolean;
-    currency?: string;
-  } | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(!!id);
   const insets = useSafeAreaInsets();
   const { addItem } = useCart();
@@ -33,8 +23,8 @@ export default function GuestProductDetailScreen() {
     if (!id) return;
     (async () => {
       try {
-        const data = await apiGet(`/products/${id}`);
-        setProduct(data as any);
+        const data = await apiGet<Product>(`/products/${id}`);
+        setProduct(data);
       } catch {
         setProduct(null);
       } finally {
@@ -70,8 +60,10 @@ export default function GuestProductDetailScreen() {
         {
           paddingTop: insets.top + 16,
           paddingBottom: 48 + insets.bottom,
+          paddingHorizontal: gap.md,
         },
       ]}
+      showsVerticalScrollIndicator={false}
     >
       <Pressable onPress={() => router.back()}><Text style={styles.backText}>← Back</Text></Pressable>
       
@@ -150,9 +142,9 @@ export default function GuestProductDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.background },
   content: { paddingBottom: 24 },
-  backText: { fontSize: 16, color: Theme.link, marginBottom: 16, paddingHorizontal: 16 },
+  backText: { fontSize: 16, color: Theme.link, marginBottom: 16 },
   muted: { color: Theme.textMuted, padding: 24, textAlign: 'center' },
-  imageContainer: { width: '100%', position: 'relative' },
+  imageContainer: { width: '100%', position: 'relative', marginHorizontal: -gap.md },
   verifiedBadge: {
     position: 'absolute',
     bottom: 16,
@@ -166,7 +158,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   verifiedText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  infoContainer: { padding: 16 },
+  infoContainer: {},
   name: { fontSize: 24, fontWeight: '700', color: Theme.text, marginBottom: 8 },
   price: { fontSize: 22, fontWeight: '700', color: Theme.primary, marginBottom: 16 },
   metaRow: { flexDirection: 'row', gap: 20, marginBottom: 16 },
@@ -180,11 +172,12 @@ const styles = StyleSheet.create({
   shopLink: {
     backgroundColor: Theme.inputBg,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     marginBottom: 24,
+    ...Theme.shadowSm,
   },
   shopLinkInner: { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center' },
   shopLinkText: { fontSize: 16, color: Theme.link, fontWeight: '600' },
-  addBtn: { backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
+  addBtn: { backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: Theme.radiusMd, alignItems: 'center', ...Theme.shadowSm },
   addBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

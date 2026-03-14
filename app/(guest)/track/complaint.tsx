@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiFetch } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 
 const COMPLAINT_REASONS = [
   'DELAYED_DELIVERY',
@@ -55,6 +56,7 @@ export default function TrackComplaintScreen() {
         {
           paddingTop: insets.top + 16,
           paddingBottom: 48 + insets.bottom,
+          paddingHorizontal: gap.md,
         },
       ]}
     >
@@ -122,7 +124,7 @@ const styles = StyleSheet.create({
   textArea: {
     borderWidth: 1,
     borderColor: Theme.inputBorder,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     padding: 14,
     fontSize: 16,
     minHeight: 100,
@@ -135,7 +137,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: Theme.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     alignItems: 'center',
   },
   buttonDisabled: { opacity: 0.7 },

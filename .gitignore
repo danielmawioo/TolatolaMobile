@@ -37,6 +37,9 @@ yarn-error.*
 # EAS local credentials (keystore paths and passwords)
 credentials.json
 
+# Generated Android signing keystore (never commit)
+android-credentials/
+
 # typescript
 *.tsbuildinfo
 

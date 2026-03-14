@@ -1,13 +1,17 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
 import { Theme } from '@/constants/Theme';
 
-type GradientButtonProps = {
+const MIN_TOUCH_HEIGHT = 48;
+
+export type GradientButtonProps = {
   onPress: () => void;
   title: string;
   loading?: boolean;
   disabled?: boolean;
-  style?: object;
+  style?: ViewStyle;
+  /** Accessibility label (defaults to title) */
+  accessibilityLabel?: string;
 };
 
 export function GradientButton({
@@ -16,11 +20,15 @@ export function GradientButton({
   loading,
   disabled,
   style,
+  accessibilityLabel = title,
 }: GradientButtonProps) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       style={({ pressed }) => [
         styles.button,
         style,
@@ -28,7 +36,7 @@ export function GradientButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color="#fff" size="small" />
       ) : (
         <Text style={styles.text}>{title}</Text>
       )}
@@ -41,10 +49,10 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.primary,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
+    minHeight: MIN_TOUCH_HEIGHT,
   },
   pressed: { opacity: 0.9 },
   text: { color: '#fff', fontSize: 16, fontWeight: '600' },

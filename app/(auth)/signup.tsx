@@ -19,7 +19,7 @@ import { GradientButton } from '@/components/GradientButton';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
 import { Theme } from '@/constants/Theme';
-import { scaleByWidth } from '@/constants/layout';
+import { scaleByWidth, gap } from '@/constants/layout';
 
 export default function SignupScreen() {
   const { signup, isLoading } = useAuth();
@@ -238,6 +238,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: scaleByWidth(24),
     paddingBottom: scaleByWidth(40),
+    paddingHorizontal: gap.md,
     width: '100%',
     flexGrow: 1,
   },
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.inputBg,
     borderWidth: 1,
     borderColor: Theme.inputBorder,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     marginBottom: 16,
     paddingHorizontal: 14,
   },

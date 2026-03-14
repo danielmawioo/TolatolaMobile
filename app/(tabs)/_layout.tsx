@@ -2,6 +2,7 @@ import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import { Theme } from '@/constants/Theme';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -12,6 +13,7 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   return (
+    <ErrorBoundary>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Theme.primary,
@@ -19,10 +21,16 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Theme.background,
           borderTopColor: Theme.inputBorder,
+          borderTopWidth: 1,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 8,
         },
         headerStyle: { backgroundColor: Theme.background },
         headerTintColor: Theme.text,
-        tabBarLabelStyle: { fontSize: 12 },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}
     >
       <Tabs.Screen
@@ -62,5 +70,6 @@ export default function TabLayout() {
       />
       <Tabs.Screen name="orders" options={{ href: null }} />
     </Tabs>
+    </ErrorBoundary>
   );
 }

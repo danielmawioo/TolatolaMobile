@@ -5,7 +5,7 @@ import { apiPost } from '@/src/services/api';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
 import { Theme } from '@/constants/Theme';
-import { scaleByWidth } from '@/constants/layout';
+import { scaleByWidth, gap } from '@/constants/layout';
 
 export default function ResetPasswordScreen() {
   const params = useLocalSearchParams<{ token: string }>();
@@ -54,12 +54,12 @@ export default function ResetPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: scaleByWidth(24), backgroundColor: Theme.background },
+  container: { flex: 1, paddingTop: scaleByWidth(24), paddingHorizontal: gap.md, backgroundColor: Theme.background },
   title: { fontSize: scaleByWidth(24), fontWeight: '700', color: Theme.text, marginBottom: scaleByWidth(8) },
   subtitle: { fontSize: scaleByWidth(15), color: Theme.textSecondary, marginBottom: scaleByWidth(24) },
-  input: { borderWidth: 1, borderColor: Theme.inputBorder, borderRadius: scaleByWidth(12), padding: scaleByWidth(14), fontSize: scaleByWidth(16), marginBottom: scaleByWidth(16), backgroundColor: Theme.inputBg, color: Theme.text },
+  input: { borderWidth: 1, borderColor: Theme.inputBorder, borderRadius: Theme.radiusMd, padding: scaleByWidth(14), fontSize: scaleByWidth(16), marginBottom: scaleByWidth(16), backgroundColor: Theme.inputBg, color: Theme.text },
   error: { color: Theme.error, marginBottom: scaleByWidth(12) },
-  button: { backgroundColor: Theme.primary, paddingVertical: scaleByWidth(16), borderRadius: scaleByWidth(12), alignItems: 'center' },
+  button: { backgroundColor: Theme.primary, paddingVertical: scaleByWidth(16), borderRadius: Theme.radiusMd, alignItems: 'center' },
   buttonDisabled: { opacity: 0.7 },
   buttonText: { color: '#fff', fontSize: scaleByWidth(16), fontWeight: '600' },
 });

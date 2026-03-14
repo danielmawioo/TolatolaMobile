@@ -44,8 +44,17 @@ export async function apiGet<T = unknown>(
   const res = await apiFetch(path, { method: 'GET', accessToken });
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
-    const message = errorBody.message || errorBody.error || res.statusText;
-    const error = new Error(message);
+    let message = errorBody.message || errorBody.error || res.statusText;
+    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
+      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
+      if (first) {
+        const [field, msgs] = first;
+        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
+        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
+        message = `${prettyField}: ${msgText}`;
+      }
+    }
+    const error = new Error(message || `Request failed with status ${res.status}`);
     (error as any).status = res.status;
     throw error;
   }
@@ -67,8 +76,17 @@ export async function apiPost<T = unknown>(
   });
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
-    const message = errorBody.message || errorBody.error || res.statusText;
-    const error = new Error(message);
+    let message = errorBody.message || errorBody.error || res.statusText;
+    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
+      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
+      if (first) {
+        const [field, msgs] = first;
+        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
+        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
+        message = `${prettyField}: ${msgText}`;
+      }
+    }
+    const error = new Error(message || `Request failed with status ${res.status}`);
     (error as any).status = res.status;
     throw error;
   }
@@ -91,8 +109,17 @@ export async function apiPatch<T = unknown>(
   });
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
-    const message = errorBody.message || errorBody.error || res.statusText;
-    const error = new Error(message);
+    let message = errorBody.message || errorBody.error || res.statusText;
+    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
+      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
+      if (first) {
+        const [field, msgs] = first;
+        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
+        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
+        message = `${prettyField}: ${msgText}`;
+      }
+    }
+    const error = new Error(message || `Request failed with status ${res.status}`);
     (error as any).status = res.status;
     throw error;
   }
@@ -115,8 +142,17 @@ export async function apiPut<T = unknown>(
   });
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
-    const message = errorBody.message || errorBody.error || res.statusText;
-    const error = new Error(message);
+    let message = errorBody.message || errorBody.error || res.statusText;
+    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
+      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
+      if (first) {
+        const [field, msgs] = first;
+        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
+        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
+        message = `${prettyField}: ${msgText}`;
+      }
+    }
+    const error = new Error(message || `Request failed with status ${res.status}`);
     (error as any).status = res.status;
     throw error;
   }
@@ -137,8 +173,17 @@ export async function apiDelete<T = unknown>(
   });
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
-    const message = errorBody.message || errorBody.error || res.statusText;
-    const error = new Error(message);
+    let message = errorBody.message || errorBody.error || res.statusText;
+    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
+      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
+      if (first) {
+        const [field, msgs] = first;
+        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
+        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
+        message = `${prettyField}: ${msgText}`;
+      }
+    }
+    const error = new Error(message || `Request failed with status ${res.status}`);
     (error as any).status = res.status;
     throw error;
   }

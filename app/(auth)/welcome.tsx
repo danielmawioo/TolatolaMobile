@@ -18,7 +18,7 @@ export default function WelcomeScreen() {
         </View>
         <Text style={styles.title}>Welcome to{'\n'}TOLA</Text>
         <Text style={styles.tagline}>
-          Secure marketplace.{'\n'}Track every order.
+          Digital Trade & Supply Chain Ecosystem.{'\n'}Registered with TRA, BRELA & TCRA.
         </Text>
       </View>
       <View style={styles.dots}>

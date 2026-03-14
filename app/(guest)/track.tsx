@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiPost } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 
 const TRACKING_CODE_KEY = '@tolatola/tracking_code';
 const TRACKING_PHONE_KEY = '@tolatola/tracking_phone';
@@ -49,6 +50,7 @@ export default function TrackEnterScreen() {
         {
           paddingTop: insets.top + 16,
           paddingBottom: insets.bottom + 24,
+          paddingHorizontal: gap.md,
         },
       ]}
     >
@@ -97,7 +99,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: Theme.inputBorder,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     padding: 14,
     fontSize: 16,
     marginBottom: 16,
@@ -108,7 +110,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: Theme.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     alignItems: 'center',
     marginTop: 8,
   },

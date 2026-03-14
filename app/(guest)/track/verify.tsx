@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiPost } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 
 const TRACKING_CODE_KEY = '@tolatola/tracking_code';
 const TRACKING_PHONE_KEY = '@tolatola/tracking_phone';
@@ -62,6 +63,7 @@ export default function TrackVerifyScreen() {
         {
           paddingTop: insets.top + 16,
           paddingBottom: insets.bottom + 24,
+          paddingHorizontal: gap.md,
         },
       ]}
     >
@@ -112,7 +114,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderWidth: 2,
     borderColor: Theme.inputBorder,
-    borderRadius: 10,
+    borderRadius: Theme.radiusMd,
     fontSize: 20,
     textAlign: 'center',
     color: Theme.text,
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: Theme.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     alignItems: 'center',
   },
   buttonDisabled: { opacity: 0.7 },

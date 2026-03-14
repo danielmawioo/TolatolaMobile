@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 
 export default function PaymentSuccessScreen() {
   const insets = useSafeAreaInsets();
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 0,
+    paddingHorizontal: gap.md,
     paddingVertical: 12,
     backgroundColor: Theme.background,
   },

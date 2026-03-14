@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 
 export default function GuestShopDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -34,6 +35,7 @@ export default function GuestShopDetailScreen() {
   const safePadding = {
     paddingTop: insets.top + 16,
     paddingBottom: 48 + insets.bottom,
+    paddingHorizontal: gap.md,
   };
 
   if (loading || !shop) {
@@ -46,7 +48,7 @@ export default function GuestShopDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={[styles.content, safePadding]}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, safePadding]} showsVerticalScrollIndicator={false}>
       <Pressable onPress={() => router.back()}><Text style={styles.backText}>← Back</Text></Pressable>
       <Text style={styles.name}>{shop.name}</Text>
       {shop.description ? <Text style={styles.desc}>{shop.description}</Text> : null}
@@ -60,7 +62,7 @@ export default function GuestShopDetailScreen() {
           onPress={() => router.push(`/(guest)/product/${p.id}`)}
         >
           <Text style={styles.productName}>{p.name}</Text>
-          <Text style={styles.productPrice}>{p.price != null ? `$${p.price}` : '—'}</Text>
+          <Text style={styles.productPrice}>{p.price != null ? `TSh ${p.price.toLocaleString()}` : '—'}</Text>
         </Pressable>
       ))}
       {products.length === 0 && <Text style={styles.muted}>No products.</Text>}
@@ -80,6 +82,7 @@ const styles = StyleSheet.create({
   productRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Theme.inputBorder,

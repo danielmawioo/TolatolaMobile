@@ -1,12 +1,15 @@
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
 import { useCart } from '@/src/contexts/CartContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Skeleton } from '@/components/Skeleton';
 import { OptimizedImage } from '@/components/OptimizedImage';
+import { EmptyState } from '@/components/EmptyState';
+import { COPY } from '@/constants/copy';
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
@@ -24,7 +27,7 @@ export default function CartScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + 16, paddingHorizontal: 20 }]}>
+      <View style={[styles.container, { paddingTop: insets.top + 16, paddingHorizontal: gap.md }]}>
         <Text style={styles.title}>Cart</Text>
         {[1, 2, 3].map(i => (
           <View key={i} style={styles.skeletonItem}>
@@ -41,18 +44,16 @@ export default function CartScreen() {
 
   if (items.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Cart</Text>
-        </View>
-        <View style={styles.empty}>
-          <FontAwesome name="shopping-basket" size={64} color={Theme.textMuted} style={{ marginBottom: 16 }} />
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptyText}>Add some quality items to get started!</Text>
-          <Pressable style={styles.btn} onPress={() => router.push('/(tabs)')}>
-            <Text style={styles.btnText}>Continue shopping</Text>
-          </Pressable>
-        </View>
+      <View style={[styles.container, { paddingTop: insets.top + 16, paddingHorizontal: gap.md }]}>
+        <Text style={styles.title}>Cart</Text>
+        <EmptyState
+          icon="shopping-basket"
+          title={COPY.empty.cartTitle}
+          message={COPY.empty.cartMessage}
+          actionLabel={COPY.empty.cartAction}
+          onAction={() => router.push('/(tabs)')}
+          style={styles.emptyState}
+        />
       </View>
     );
   }
@@ -115,22 +116,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: gap.md,
     marginBottom: 16,
     backgroundColor: Theme.background,
     paddingBottom: 16,
   },
   title: { fontSize: 24, fontWeight: '700', color: Theme.text },
   clearText: { color: Theme.error, fontSize: 14 },
-  listContent: { paddingHorizontal: 20 },
+  listContent: { paddingHorizontal: gap.md },
   cartItem: {
     flexDirection: 'row',
     backgroundColor: Theme.background,
-    borderRadius: 12,
+    borderRadius: Theme.radiusMd,
     padding: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+    ...Theme.shadowSm,
   },
   itemImage: { borderRadius: 8 },
   itemInfo: { flex: 1, marginLeft: 16 },
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: Theme.background,
-    paddingHorizontal: 20,
+    paddingHorizontal: gap.md,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: Theme.inputBorder,
@@ -178,22 +178,12 @@ const styles = StyleSheet.create({
   checkoutBtn: { 
     backgroundColor: Theme.primary, 
     paddingVertical: 16, 
-    borderRadius: 12, 
-    alignItems: 'center' 
+    borderRadius: Theme.radiusMd, 
+    alignItems: 'center',
+    ...Theme.shadowSm,
   },
   checkoutText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  empty: { 
-    backgroundColor: Theme.background, 
-    borderRadius: 16, 
-    padding: 40, 
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginTop: 40,
-  },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: Theme.text, marginBottom: 8 },
-  emptyText: { color: Theme.textSecondary, marginBottom: 24, textAlign: 'center', lineHeight: 22 },
-  btn: { backgroundColor: Theme.primary, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  emptyState: { marginTop: 40 },
   skeletonItem: {
     flexDirection: 'row',
     backgroundColor: Theme.background,
