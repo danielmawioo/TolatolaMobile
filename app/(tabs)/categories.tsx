@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,375 +6,263 @@ import {
   ScrollView,
   Pressable,
   TextInput,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
-import { gap, sectionGap, scaleByWidth, scaleByHeight } from '@/constants/layout';
+import { gap, scaleByWidth, scaleByHeight } from '@/constants/layout';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
+import { apiGet } from '@/src/services/api';
 
-const SIDEBAR_MIN_WIDTH = 88;
-const SIDEBAR_MAX_WIDTH = 100;
-const SIDEBAR_RATIO = 0.26;
-const BREAKPOINT_NARROW = 380;
-const GRID_COLUMNS_WIDE = 3;
-const GRID_COLUMNS_NARROW = 2;
-const MIN_TOUCH_TARGET = 44;
-
-/** Main category ids — tolatola.co Shop by Category */
-const MAIN_CATEGORIES = [
-  { id: 'all', label: 'All Categories' },
-  { id: 'fmcg', label: 'Fast Moving Consumer Goods' },
-  { id: 'agriculture', label: 'Agriculture' },
-  { id: 'construction', label: 'Construction & Hardware' },
-  { id: 'vehicles', label: 'Vehicles' },
-  { id: 'electronics', label: 'Electronics' },
-  { id: 'food', label: 'Food & Beverages' },
-  { id: 'handicrafts', label: 'Handicrafts' },
-  { id: 'health', label: 'Health & Beauty' },
-  { id: 'home', label: 'Home & Garden' },
-  { id: 'services', label: 'Services' },
-  { id: 'textiles', label: 'Textiles' },
-];
-
-/** TOLA-style product for category rows */
-type CategoryProduct = { id: string; name: string; price: number; image?: string | null };
-type Section = { title: string; products: CategoryProduct[] };
-
-/** Sub-sections and products per main category (TOLA – tola.co) */
-const CATEGORY_SECTIONS: Record<string, Section[]> = {
-  all: [
-    {
-      title: 'POPULAR',
-      products: [
-        { id: 'p1', name: 'Bell pepper', price: 2500 },
-        { id: 'p2', name: 'Carrot', price: 2500 },
-        { id: 'p3', name: 'Fresh Beef Steak', price: 26000 },
-        { id: 'p4', name: 'Fresh green corn', price: 8000 },
-        { id: 'p5', name: 'Fresh octopus', price: 16000 },
-        { id: 'p6', name: 'Fresh water fish', price: 12000 },
-        { id: 'p7', name: 'Fresh ripe tomatoes', price: 3500 },
-        { id: 'p8', name: 'Garlic', price: 4500 },
-      ],
-    },
-  ],
-  fmcg: [
-    {
-      title: 'FAST MOVING CONSUMER GOODS',
-      products: [
-        { id: 'g1', name: 'Cooking Oil 1L', price: 4500 },
-        { id: 'g2', name: 'Rice 2kg', price: 3200 },
-        { id: 'g3', name: 'Sugar 1kg', price: 1800 },
-        { id: 'g4', name: 'Soap', price: 1200 },
-      ],
-    },
-  ],
-  agriculture: [
-    {
-      title: 'AGRICULTURE',
-      products: [
-        { id: 'a1', name: 'Bell pepper', price: 2500 },
-        { id: 'a2', name: 'Carrot', price: 2500 },
-        { id: 'a3', name: 'Fresh green corn', price: 8000 },
-        { id: 'a4', name: 'Fresh ripe tomatoes', price: 3500 },
-        { id: 'a5', name: 'Garlic', price: 4500 },
-        { id: 'a6', name: 'Mahindi mabichi', price: 6000 },
-      ],
-    },
-  ],
-  construction: [
-    {
-      title: 'CONSTRUCTION & HARDWARE',
-      products: [
-        { id: 'c1', name: 'Cement 50kg', price: 18000 },
-        { id: 'c2', name: 'Steel bars', price: 25000 },
-        { id: 'c3', name: 'Paint 4L', price: 35000 },
-      ],
-    },
-  ],
-  vehicles: [
-    {
-      title: 'VEHICLES',
-      products: [
-        { id: 'v1', name: 'Spare parts', price: 45000 },
-        { id: 'v2', name: 'Engine oil', price: 28000 },
-      ],
-    },
-  ],
-  electronics: [
-    {
-      title: 'ELECTRONICS',
-      products: [
-        { id: 'e1', name: 'Smartphones', price: 249000 },
-        { id: 'e2', name: 'Power Banks', price: 25000 },
-        { id: 'e3', name: 'Chargers', price: 8500 },
-      ],
-    },
-  ],
-  food: [
-    {
-      title: 'FOOD & BEVERAGES',
-      products: [
-        { id: 'f1', name: 'Fresh Beef Steak', price: 26000 },
-        { id: 'f2', name: 'Fresh octopus', price: 16000 },
-        { id: 'f3', name: 'Fresh water fish', price: 12000 },
-        { id: 'f4', name: 'Houngary choma sausage', price: 15000 },
-        { id: 'f5', name: 'Bell pepper', price: 2500 },
-        { id: 'f6', name: 'Fresh ripe tomatoes', price: 3500 },
-      ],
-    },
-  ],
-  handicrafts: [{ title: 'HANDICRAFTS', products: [{ id: 'h1', name: 'Handcrafted items', price: 15000 }] }],
-  health: [{ title: 'HEALTH & BEAUTY', products: [{ id: 'hb1', name: 'Health & beauty products', price: 12000 }] }],
-  home: [{ title: 'HOME & GARDEN', products: [{ id: 'hg1', name: 'Home & garden', price: 25000 }] }],
-  services: [{ title: 'SERVICES', products: [{ id: 's1', name: 'Services', price: 0 }] }],
-  textiles: [{ title: 'TEXTILES', products: [{ id: 't1', name: 'Textiles', price: 18000 }] }],
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  image_url?: string;
 };
 
 export default function CategoriesScreen() {
-  const [selectedId, setSelectedId] = useState(MAIN_CATEGORIES[0].id);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
-  const contentScrollRef = useRef<ScrollView>(null);
+  const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const sidebarWidth = Math.min(
-    SIDEBAR_MAX_WIDTH,
-    Math.max(SIDEBAR_MIN_WIDTH, width * SIDEBAR_RATIO)
-  );
-  const contentAreaWidth = width - sidebarWidth;
-  const columns = width < BREAKPOINT_NARROW ? GRID_COLUMNS_NARROW : GRID_COLUMNS_WIDE;
-  const gapBetween = gap.sm;
-  const cardWidth = (contentAreaWidth - (columns - 1) * gapBetween) / columns;
-
-  const sections = useMemo(
-    () => CATEGORY_SECTIONS[selectedId] ?? CATEGORY_SECTIONS.all,
-    [selectedId]
-  );
+  // 2 columns
+  const numColumns = 2;
+  const padding = scaleByWidth(14);
+  const cardGap = gap.sm;
+  const cardWidth = (width - padding * 2 - cardGap * (numColumns - 1)) / numColumns;
 
   useEffect(() => {
-    contentScrollRef.current?.scrollTo({ y: 0, animated: true });
-  }, [selectedId]);
+    async function loadCategories() {
+      try {
+        const res = await apiGet<{ data: Category[] }>('/categories');
+        if (res?.data) {
+          // Sort alphabetically by name
+          const sorted = res.data.sort((a, b) => a.name.localeCompare(b.name));
+          setCategories(sorted);
+        }
+      } catch (error) {
+        console.error('Failed to load categories', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadCategories();
+  }, []);
+
+  const filteredCategories = categories.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <ScreenSafeLayout edges={['top']}>
       <View style={styles.container}>
-      {/* Search bar */}
-      <View style={styles.searchWrap}>
-        <FontAwesome name="search" size={scaleByWidth(18)} color={Theme.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search on TOLA"
-          placeholderTextColor={Theme.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      {/* Two columns: sidebar + content */}
-      <View style={styles.body}>
-        <ScrollView
-          style={[styles.sidebar, { width: sidebarWidth }]}
-          contentContainerStyle={styles.sidebarContent}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
-          {MAIN_CATEGORIES.map((cat) => {
-            const isSelected = cat.id === selectedId;
-            return (
-              <Pressable
-                key={cat.id}
-                style={({ pressed }) => [
-                  styles.sidebarItem,
-                  isSelected && styles.sidebarItemActive,
-                  pressed && styles.sidebarItemPressed,
-                ]}
-                onPress={() => setSelectedId(cat.id)}
-                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-              >
-                {isSelected && <View style={styles.sidebarBar} />}
-                <Text
-                  style={[styles.sidebarLabel, isSelected && styles.sidebarLabelActive]}
-                  numberOfLines={2}
-                >
-                  {cat.label}
-                </Text>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Explore Categories</Text>
+          <Text style={styles.headerSubtitle}>Find exactly what you need</Text>
+          
+          <View style={styles.searchWrap}>
+            <FontAwesome name="search" size={scaleByWidth(16)} color={Theme.textMuted} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search categories..."
+              placeholderTextColor={Theme.textMuted}
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => setSearch('')} style={styles.clearBtn}>
+                <FontAwesome name="times-circle" size={16} color={Theme.textMuted} />
               </Pressable>
-            );
-          })}
-        </ScrollView>
+            )}
+          </View>
+        </View>
 
-        <ScrollView
-          ref={contentScrollRef}
-          style={styles.content}
-          contentContainerStyle={[styles.contentInner, { paddingBottom: height * 0.12 + insets.bottom }]}
-          showsVerticalScrollIndicator={true}
-          keyboardShouldPersistTaps="handled"
-        >
-          {sections.map((section, idx) => (
-            <View key={`${selectedId}-${idx}`} style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle} numberOfLines={1}>
-                  {section.title}
-                </Text>
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={Theme.primary} />
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.list}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: insets.bottom + scaleByHeight(100), paddingHorizontal: padding }
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={[styles.grid, { gap: cardGap }]}>
+              {filteredCategories.map((cat) => (
                 <Pressable
-                  onPress={() => router.push('/(guest)/shop')}
-                  hitSlop={12}
-                  style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                  key={cat.id}
+                  style={({ pressed }) => [
+                    styles.card,
+                    { width: cardWidth },
+                    pressed && styles.cardPressed,
+                  ]}
+                  onPress={() => router.push(`/(guest)/shop?category=${cat.id}`)}
                 >
-                  <Text style={styles.seeAll}>SEE ALL</Text>
-                </Pressable>
-              </View>
-              {section.products.length === 0 ? (
-                <View style={styles.emptySection}>
-                  <Text style={styles.emptyText}>No products in this section yet.</Text>
-                </View>
-              ) : (
-                <View style={[styles.productGrid, { gap: gapBetween }]}>
-                  {section.products.map((p) => (
-                    <Pressable
-                      key={p.id}
-                      style={({ pressed }) => [
-                        styles.productCard,
-                        { width: cardWidth },
-                        pressed && styles.productCardPressed,
-                      ]}
-                      onPress={() => router.push(`/(guest)/product/${p.id}`)}
-                    >
-                      <View style={styles.productImage}>
-                        <OptimizedImage source={p.image ?? null} width="100%" aspectRatio={1} />
+                  <View style={styles.imageContainer}>
+                    {cat.image_url ? (
+                      <OptimizedImage
+                        source={cat.image_url}
+                        width="100%"
+                        aspectRatio={1.2}
+                      />
+                    ) : (
+                      <View style={styles.placeholder}>
+                        <FontAwesome name="image" size={32} color={Theme.textMuted} />
                       </View>
-                      <Text style={styles.productName} numberOfLines={2}>
-                        {p.name}
+                    )}
+                    
+                    {/* Gradient Overlay for Text Readability */}
+                    <View style={styles.gradientOverlay} />
+                    
+                    <View style={styles.cardContent}>
+                      <Text style={styles.name} numberOfLines={2}>
+                        {cat.name}
                       </Text>
-                      <Text style={styles.productPrice}>TSh {p.price.toLocaleString()}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
+                    </View>
+                  </View>
+                </Pressable>
+              ))}
             </View>
-          ))}
-        </ScrollView>
+            
+            {filteredCategories.length === 0 && (
+              <View style={styles.empty}>
+                <FontAwesome name="folder-open-o" size={48} color={Theme.textMuted} />
+                <Text style={styles.emptyText}>No categories found.</Text>
+              </View>
+            )}
+          </ScrollView>
+        )}
       </View>
-    </View>
     </ScreenSafeLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.background },
+  container: { flex: 1, backgroundColor: Theme.backgroundSecondary },
+  header: {
+    backgroundColor: Theme.background,
+    paddingHorizontal: scaleByWidth(14),
+    paddingTop: scaleByHeight(8),
+    paddingBottom: scaleByHeight(16),
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.inputBorder,
+    zIndex: 10,
+  },
+  headerTitle: {
+    fontSize: scaleByWidth(24),
+    fontWeight: '900',
+    color: Theme.text,
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: scaleByWidth(14),
+    color: Theme.textSecondary,
+    marginTop: 2,
+    marginBottom: scaleByHeight(16),
+  },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Theme.background,
-    marginTop: scaleByHeight(8),
-    marginBottom: gap.sm,
-    paddingHorizontal: scaleByWidth(14),
-    paddingVertical: scaleByHeight(12),
-    borderRadius: Theme.radiusMd,
-    ...Theme.shadowSm,
+    backgroundColor: Theme.backgroundSecondary,
+    paddingHorizontal: scaleByWidth(12),
+    height: scaleByHeight(44),
+    borderRadius: Theme.radiusLg,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
   },
   searchIcon: { marginRight: gap.sm },
-  searchInput: { flex: 1, fontSize: scaleByWidth(16), color: Theme.text, paddingVertical: 0 },
-  body: { flex: 1, flexDirection: 'row', minWidth: 0 },
-  sidebar: {
-    backgroundColor: Theme.backgroundSecondary,
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: Theme.inputBorder,
+  searchInput: { 
+    flex: 1, 
+    fontSize: scaleByWidth(15), 
+    color: Theme.text, 
+    height: '100%',
   },
-  sidebarContent: {
-    paddingVertical: gap.xs,
-    paddingBottom: scaleByHeight(120),
+  clearBtn: {
+    padding: 4,
   },
-  sidebarItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: MIN_TOUCH_TARGET,
-    paddingVertical: scaleByHeight(12),
-    paddingLeft: gap.sm,
-    paddingRight: gap.xs,
-  },
-  sidebarItemActive: { backgroundColor: Theme.background },
-  sidebarItemPressed: { opacity: 0.7 },
-  sidebarBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    backgroundColor: Theme.primary,
-    borderTopRightRadius: 2,
-    borderBottomRightRadius: 2,
-  },
-  sidebarLabel: {
-    fontSize: scaleByWidth(12),
-    color: Theme.textSecondary,
+  center: {
     flex: 1,
-    lineHeight: scaleByWidth(16),
-  },
-  sidebarLabelActive: {
-    fontWeight: '700',
-    color: Theme.text,
-  },
-  content: { flex: 1, minWidth: 0 },
-  contentInner: {},
-  section: { marginBottom: sectionGap },
-  sectionHeader: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: gap.sm,
-    gap: gap.sm,
   },
-  sectionTitle: {
-    flex: 1,
-    fontSize: scaleByWidth(13),
-    fontWeight: '700',
-    color: Theme.text,
-    letterSpacing: 0.3,
+  list: { flex: 1 },
+  listContent: {
+    paddingTop: scaleByHeight(16),
   },
-  seeAll: { fontSize: scaleByWidth(12), fontWeight: '600', color: Theme.primary },
-  productGrid: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  productCard: {
+  card: {
     backgroundColor: Theme.background,
-    borderRadius: Theme.radiusMd,
+    borderRadius: Theme.radiusLg,
     overflow: 'hidden',
-    ...Theme.shadowSm,
+    ...Theme.shadowMd,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
   },
-  productCardPressed: { opacity: 0.85 },
-  productImage: {
+  cardPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+  },
+  imageContainer: {
     width: '100%',
-    aspectRatio: 1,
+    aspectRatio: 1.1,
     backgroundColor: Theme.inputBg,
+    position: 'relative',
   },
-  productName: {
-    fontSize: scaleByWidth(12),
-    color: Theme.text,
-    paddingHorizontal: gap.xs,
-    paddingTop: gap.xs,
-    paddingBottom: 2,
-    lineHeight: scaleByWidth(16),
+  placeholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Theme.backgroundSecondary,
   },
-  productPrice: {
-    fontSize: scaleByWidth(13),
-    fontWeight: '700',
-    color: Theme.primary,
-    paddingHorizontal: gap.xs,
-    paddingBottom: gap.sm,
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    // Fake gradient using solid with opacity to keep it simple, but usually you'd use linear-gradient
+    // React Native needs expo-linear-gradient for real gradients, so we use a semi-transparent black overlay
   },
-  emptySection: {
-    paddingVertical: scaleByHeight(24),
+  cardContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: scaleByWidth(12),
+  },
+  name: {
+    fontSize: scaleByWidth(14),
+    fontWeight: '800',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  empty: {
+    paddingVertical: scaleByHeight(40),
     alignItems: 'center',
     justifyContent: 'center',
+    gap: gap.sm,
   },
   emptyText: {
-    fontSize: scaleByWidth(14),
+    fontSize: scaleByWidth(15),
     color: Theme.textMuted,
+    fontWeight: '500',
   },
 });

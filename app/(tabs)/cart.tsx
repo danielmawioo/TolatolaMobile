@@ -102,7 +102,7 @@ export default function CartScreen() {
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>TSh {totalAmount.toLocaleString()}</Text>
         </View>
-        <Pressable style={styles.checkoutBtn} onPress={() => router.push('/payment-success')}>
+        <Pressable style={styles.checkoutBtn} onPress={() => router.push('/checkout')}>
           <Text style={styles.checkoutText}>Proceed to Checkout</Text>
         </Pressable>
       </View>

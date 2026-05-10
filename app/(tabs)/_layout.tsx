@@ -1,17 +1,59 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
+import { View, Text, StyleSheet } from 'react-native';
 import { Theme } from '@/constants/Theme';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { apiGet } from '@/src/services/api';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
+  badge?: number;
 }) {
-  return <FontAwesome size={22} style={{ marginBottom: -2 }} {...props} />;
+  const { badge, ...iconProps } = props;
+  return (
+    <View>
+      <FontAwesome size={22} style={{ marginBottom: -2 }} {...iconProps} />
+      {badge != null && badge > 0 && (
+        <View style={badgeStyles.badge}>
+          <Text style={badgeStyles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+        </View>
+      )}
+    </View>
+  );
 }
 
+const badgeStyles = StyleSheet.create({
+  badge: {
+    position: 'absolute', top: -6, right: -10,
+    backgroundColor: '#ef4444', borderRadius: 10,
+    minWidth: 18, height: 18, paddingHorizontal: 4,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: Theme.background,
+  },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+});
+
 export default function TabLayout() {
+  const { session } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!session?.access_token) { setUnreadCount(0); return; }
+    try {
+      const res = await apiGet<any>('/notifications/unread-count', session.access_token);
+      setUnreadCount(res?.unread_count || 0);
+    } catch { /* silent */ }
+  }, [session?.access_token]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000); // poll every 30s
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
   return (
     <ErrorBoundary>
     <Tabs
@@ -55,10 +97,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="favorites"
+        name="notifications"
         options={{
-          title: 'Wishlist',
-          tabBarIcon: ({ color }) => <TabBarIcon name="heart-o" color={color} />,
+          title: 'Alerts',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <TabBarIcon name="bell" color={color} badge={unreadCount} />,
         }}
       />
       <Tabs.Screen
@@ -69,6 +112,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen name="orders" options={{ href: null }} />
+      <Tabs.Screen name="favorites" options={{ href: null }} />
     </Tabs>
     </ErrorBoundary>
   );

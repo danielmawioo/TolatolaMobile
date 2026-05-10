@@ -9,6 +9,9 @@ import { OptimizedImage } from '@/components/OptimizedImage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { VendorOrdersTab } from '@/src/components/vendor/VendorOrdersTab';
+import { VendorWalletTab } from '@/src/components/vendor/VendorWalletTab';
+import { VendorSubscriptionTab } from '@/src/components/vendor/VendorSubscriptionTab';
 
 const TABS = ['Overview', 'Orders', 'Wallet', 'Subscription', 'Shop'] as const;
 
@@ -84,16 +87,36 @@ export default function VendorDashboardScreen() {
     ]);
   };
 
+  // Compute overview stats from orders
+  const totalSales = orders
+    .filter(o => ['delivered', 'completed', 'shipped'].includes(o.status))
+    .reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+  const newOrdersCount = orders.filter(o => ['pending', 'confirmed', 'paid'].includes(o.status)).length;
+  const processingCount = orders.filter(o => ['processing', 'preparing'].includes(o.status)).length;
+
   const renderOverview = () => (
     <View style={styles.tabContent}>
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
+      {/* Enhanced Stats */}
+      <View style={styles.statsGrid}>
+        <View style={[styles.statCard, { borderLeftColor: Theme.primary, borderLeftWidth: 3 }]}>
+          <FontAwesome name="line-chart" size={16} color={Theme.primary} />
           <Text style={styles.statLabel}>Total Sales</Text>
-          <Text style={styles.statValue}>TSh 0</Text>
+          <Text style={styles.statValue}>TSh {totalSales.toLocaleString()}</Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Orders</Text>
+        <View style={[styles.statCard, { borderLeftColor: Theme.success, borderLeftWidth: 3 }]}>
+          <FontAwesome name="shopping-cart" size={16} color={Theme.success} />
+          <Text style={styles.statLabel}>All Orders</Text>
           <Text style={styles.statValue}>{orders.length}</Text>
+        </View>
+        <View style={[styles.statCard, { borderLeftColor: '#eab308', borderLeftWidth: 3 }]}>
+          <FontAwesome name="bell" size={16} color="#eab308" />
+          <Text style={styles.statLabel}>New Orders</Text>
+          <Text style={styles.statValue}>{newOrdersCount}</Text>
+        </View>
+        <View style={[styles.statCard, { borderLeftColor: '#7c3aed', borderLeftWidth: 3 }]}>
+          <FontAwesome name="cube" size={16} color="#7c3aed" />
+          <Text style={styles.statLabel}>Processing</Text>
+          <Text style={styles.statValue}>{processingCount}</Text>
         </View>
       </View>
 
@@ -138,33 +161,6 @@ export default function VendorDashboardScreen() {
     </View>
   );
 
-  const renderOrders = () => (
-    <View style={styles.tabContent}>
-      <Text style={styles.sectionTitle}>Shop Orders</Text>
-      {orders.length === 0 ? (
-        <View style={styles.empty}>
-          <FontAwesome name="shopping-basket" size={48} color={Theme.textMuted} />
-          <Text style={styles.emptyText}>No orders received yet. They will appear here once customers buy your items.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={orders}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.orderCard}>
-              <View style={styles.orderHeader}>
-                <Text style={styles.orderId}>#{item.id.slice(0, 8)}</Text>
-                <Text style={styles.orderStatus}>{item.status}</Text>
-              </View>
-              <Text style={styles.orderAmount}>TSh {item.total_amount?.toLocaleString()}</Text>
-              <Text style={styles.orderDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
-            </View>
-          )}
-        />
-      )}
-    </View>
-  );
-
   if (!isAuthenticated) return null;
 
   return (
@@ -180,6 +176,9 @@ export default function VendorDashboardScreen() {
         {TABS.map((t) => (
           <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabActive]}>
             <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
+            {t === 'Orders' && newOrdersCount > 0 && (
+              <View style={styles.tabBadge}><Text style={styles.tabBadgeText}>{newOrdersCount}</Text></View>
+            )}
           </Pressable>
         ))}
       </ScrollView>
@@ -190,65 +189,74 @@ export default function VendorDashboardScreen() {
           <Text style={styles.loadingText}>Fetching shop data...</Text>
         </View>
       ) : (
-        <ScrollView 
-          style={styles.body} 
-          contentContainerStyle={styles.bodyContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
-        >
+        <>
           {!shop && !loading ? (
-             <View style={styles.noShop}>
-               <FontAwesome name="bank" size={64} color={Theme.textMuted} />
-               <Text style={styles.noShopTitle}>No Shop Yet</Text>
-               <Text style={styles.noShopText}>Create your shop to start selling on TOLA!</Text>
-               <Pressable style={styles.createShopBtn} onPress={() => router.push('/shop/create')}>
-                 <Text style={styles.createShopBtnText}>Create My Shop</Text>
-               </Pressable>
-             </View>
+            <ScrollView 
+              style={styles.body}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
+            >
+               <View style={styles.noShop}>
+                 <FontAwesome name="bank" size={64} color={Theme.textMuted} />
+                 <Text style={styles.noShopTitle}>No Shop Yet</Text>
+                 <Text style={styles.noShopText}>Create your shop to start selling on TOLA!</Text>
+                 <Pressable style={styles.createShopBtn} onPress={() => router.push('/shop/create')}>
+                   <Text style={styles.createShopBtnText}>Create My Shop</Text>
+                 </Pressable>
+               </View>
+            </ScrollView>
           ) : (
             <>
-              {tab === 'Overview' && renderOverview()}
-              {tab === 'Orders' && renderOrders()}
-              {tab === 'Wallet' && (
-                <View style={styles.tabContent}>
-                  <Text style={styles.sectionTitle}>Wallet & Payouts</Text>
-                  <View style={styles.statCardLarge}>
-                    <Text style={styles.statLabelLarge}>Available Balance</Text>
-                    <Text style={styles.statValueLarge}>TSh 0</Text>
-                    <Pressable style={styles.payoutBtn} disabled>
-                      <Text style={styles.payoutBtnText}>Request Payout</Text>
-                    </Pressable>
-                  </View>
-                </View>
+              {tab === 'Overview' && (
+                <ScrollView 
+                  style={styles.body} 
+                  contentContainerStyle={styles.bodyContent}
+                  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
+                >
+                  {renderOverview()}
+                </ScrollView>
               )}
-              {tab === 'Subscription' && (
-                <View style={styles.tabContent}>
-                  <Text style={styles.sectionTitle}>Membership Plan</Text>
-                  <View style={styles.card}>
-                    <Text style={styles.planName}>Basic Plan</Text>
-                    <Text style={styles.planStatus}>Active until Next Month</Text>
-                    <Pressable style={styles.upgradeBtn}>
-                      <Text style={styles.upgradeBtnText}>Upgrade Plan</Text>
-                    </Pressable>
-                  </View>
-                </View>
+              {tab === 'Orders' && shop?.id && (
+                <VendorOrdersTab
+                  shopId={shop.id}
+                  accessToken={session?.access_token || ''}
+                  onOrdersLoaded={(o) => setOrders(o)}
+                />
+              )}
+              {tab === 'Wallet' && shop?.id && (
+                <VendorWalletTab
+                  vendorId={shop.id}
+                  accessToken={session?.access_token || ''}
+                />
+              )}
+              {tab === 'Subscription' && shop?.id && (
+                <VendorSubscriptionTab
+                  vendorId={shop.id}
+                  accessToken={session?.access_token || ''}
+                />
               )}
               {tab === 'Shop' && (
-                <View style={styles.tabContent}>
-                  <Text style={styles.sectionTitle}>Shop Settings</Text>
-                  <View style={styles.card}>
-                    <Text style={styles.label}>Shop Name</Text>
-                    <Text style={styles.value}>{shop?.name}</Text>
-                    <Text style={[styles.label, { marginTop: 16 }]}>Description</Text>
-                    <Text style={styles.value}>{shop?.description || 'No description provided'}</Text>
-                    <Pressable style={styles.editShopBtn} onPress={() => router.push('/shop/edit')}>
-                      <Text style={styles.editShopBtnText}>Edit Shop Info</Text>
-                    </Pressable>
+                <ScrollView 
+                  style={styles.body} 
+                  contentContainerStyle={styles.bodyContent}
+                  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
+                >
+                  <View style={styles.tabContent}>
+                    <Text style={styles.sectionTitle}>Shop Settings</Text>
+                    <View style={styles.card}>
+                      <Text style={styles.label}>Shop Name</Text>
+                      <Text style={styles.value}>{shop?.name}</Text>
+                      <Text style={[styles.label, { marginTop: 16 }]}>Description</Text>
+                      <Text style={styles.value}>{shop?.description || 'No description provided'}</Text>
+                      <Pressable style={styles.editShopBtn} onPress={() => router.push('/shop/edit')}>
+                        <Text style={styles.editShopBtnText}>Edit Shop Info</Text>
+                      </Pressable>
+                    </View>
                   </View>
-                </View>
+                </ScrollView>
               )}
             </>
           )}
-        </ScrollView>
+        </>
       )}
     </View>
   );
@@ -270,34 +278,28 @@ const styles = StyleSheet.create({
   logout: { fontSize: 15, color: Theme.link },
   tabScroll: { backgroundColor: Theme.background, maxHeight: 48 },
   tabRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, gap: 4 },
-  tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   tabActive: { backgroundColor: Theme.primary },
   tabText: { fontSize: 14, color: Theme.text },
   tabTextActive: { color: '#fff', fontWeight: '600' },
+  tabBadge: { backgroundColor: Theme.error, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1, minWidth: 18, alignItems: 'center' },
+  tabBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
   body: { flex: 1 },
   bodyContent: { padding: 20, paddingBottom: 48 },
   tabContent: { flex: 1 },
-  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  // Enhanced stats grid
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
   statCard: { 
-    flex: 1, 
+    width: '48%',
     backgroundColor: Theme.background, 
-    padding: 16, 
+    padding: 14, 
     borderRadius: 12, 
     borderWidth: 1, 
-    borderColor: Theme.inputBorder 
-  },
-  statCardLarge: { 
-    backgroundColor: Theme.background, 
-    padding: 24, 
-    borderRadius: 16, 
-    borderWidth: 1, 
     borderColor: Theme.inputBorder,
-    alignItems: 'center'
+    gap: 4,
   },
-  statLabel: { fontSize: 13, color: Theme.textSecondary, marginBottom: 4 },
+  statLabel: { fontSize: 11, color: Theme.textSecondary, fontWeight: '600' },
   statValue: { fontSize: 18, fontWeight: '700', color: Theme.text },
-  statLabelLarge: { fontSize: 15, color: Theme.textSecondary, marginBottom: 8 },
-  statValueLarge: { fontSize: 32, fontWeight: '800', color: Theme.primary, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: Theme.text },
   addBtn: { 
@@ -334,21 +336,9 @@ const styles = StyleSheet.create({
   noShopText: { textAlign: 'center', color: Theme.textSecondary, marginTop: 8, marginBottom: 24 },
   createShopBtn: { backgroundColor: Theme.primary, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
   createShopBtnText: { color: '#fff', fontWeight: '600' },
-  payoutBtn: { backgroundColor: Theme.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10, opacity: 0.5 },
-  payoutBtnText: { color: '#fff', fontWeight: '600' },
   card: { backgroundColor: Theme.background, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: Theme.inputBorder },
-  planName: { fontSize: 18, fontWeight: '700', color: Theme.text },
-  planStatus: { fontSize: 14, color: Theme.success, marginVertical: 8 },
-  upgradeBtn: { marginTop: 16, backgroundColor: Theme.backgroundSecondary, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  upgradeBtnText: { color: Theme.primary, fontWeight: '600' },
   label: { fontSize: 12, color: Theme.textSecondary, marginBottom: 4 },
   value: { fontSize: 16, color: Theme.text, fontWeight: '500' },
   editShopBtn: { marginTop: 20, alignItems: 'center' },
   editShopBtnText: { color: Theme.link, fontWeight: '600' },
-  orderCard: { backgroundColor: Theme.background, padding: 16, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: Theme.inputBorder },
-  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  orderId: { fontWeight: '600', color: Theme.text },
-  orderStatus: { color: Theme.primary, fontWeight: '600', fontSize: 12 },
-  orderAmount: { fontSize: 16, fontWeight: '700', color: Theme.text },
-  orderDate: { fontSize: 12, color: Theme.textMuted, marginTop: 4 },
 });

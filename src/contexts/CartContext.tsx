@@ -12,6 +12,7 @@ export type CartItem = {
   price: number;
   quantity: number;
   image_url?: string;
+  shop_id?: string;
 };
 
 type CartState = {
@@ -85,6 +86,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               price: product.price || 0,
               quantity,
               image_url: product.image_url,
+              shop_id: product.shop_id,
             };
             newItems = [...prev.items, newItem];
           }
