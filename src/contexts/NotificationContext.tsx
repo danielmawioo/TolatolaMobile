@@ -46,7 +46,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Register push token on login / app start
   useEffect(() => {
-    if (!session?.access_token) {
+    if (Platform.OS === 'web' || !session?.access_token) {
       setExpoPushToken(null);
       return;
     }
@@ -63,6 +63,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Set up notification listeners
   useEffect(() => {
+    if (Platform.OS === 'web') return;
+
     // Listener for when a notification is received while app is foregrounded
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       console.log('[NOTIFICATIONS] Received in foreground:', notification.request.content.title);
@@ -97,7 +99,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         // App has come to the foreground — refresh unread count and re-register token
         refreshUnreadCount();
-        if (session?.access_token) {
+        if (session?.access_token && Platform.OS !== 'web') {
           registerForPushNotifications(session.access_token).catch(() => {});
         }
       }
@@ -114,6 +116,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Check if app was opened from a notification (cold start)
   useEffect(() => {
+    if (Platform.OS === 'web') return;
+
     Notifications.getLastNotificationResponseAsync().then(response => {
       if (response) {
         const data = response.notification.request.content.data;
@@ -121,7 +125,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         // Small delay to let navigation mount
         setTimeout(() => handleNotificationNavigation(data), 500);
       }
-    });
+    }).catch(() => {});
   }, []);
 
   return (
