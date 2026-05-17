@@ -25,6 +25,39 @@ type Category = {
   image_url?: string;
 };
 
+// Fallback category images (same as homepage)
+const categoryImages: Record<string, string> = {
+  fmcg: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80',
+  agriculture: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=400&q=80',
+  construction: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=400&q=80',
+  electronics: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=400&q=80',
+  food: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80',
+  health: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=400&q=80',
+  services: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=400&q=80',
+  vehicles: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=400&q=80',
+  handicrafts: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&w=400&q=80',
+  home: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=400&q=80',
+  textiles: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?auto=format&fit=crop&w=400&q=80',
+  default: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80',
+};
+
+function getCategoryImage(cat: Category): string {
+  if (cat.image_url) return cat.image_url;
+  const nameLower = (cat.name || '').toLowerCase();
+  if (nameLower.includes('agri') || nameLower.includes('farm')) return categoryImages.agriculture;
+  if (nameLower.includes('food') || nameLower.includes('bev')) return categoryImages.food;
+  if (nameLower.includes('construct') || nameLower.includes('hard')) return categoryImages.construction;
+  if (nameLower.includes('electro')) return categoryImages.electronics;
+  if (nameLower.includes('health') || nameLower.includes('beauty')) return categoryImages.health;
+  if (nameLower.includes('service')) return categoryImages.services;
+  if (nameLower.includes('fmcg') || nameLower.includes('fast')) return categoryImages.fmcg;
+  if (nameLower.includes('vehicle') || nameLower.includes('car') || nameLower.includes('auto') || nameLower.includes('motor')) return categoryImages.vehicles;
+  if (nameLower.includes('handicraft') || nameLower.includes('craft')) return categoryImages.handicrafts;
+  if (nameLower.includes('home') || nameLower.includes('garden')) return categoryImages.home;
+  if (nameLower.includes('textile') || nameLower.includes('fabric') || nameLower.includes('cloth')) return categoryImages.textiles;
+  return categoryImages.default;
+}
+
 export default function CategoriesScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
@@ -108,20 +141,14 @@ export default function CategoriesScreen() {
                     { width: cardWidth },
                     pressed && styles.cardPressed,
                   ]}
-                  onPress={() => router.push(`/(guest)/shop?category=${cat.id}`)}
+                  onPress={() => router.push(`/(tabs)/shop?category=${cat.id}`)}
                 >
                   <View style={styles.imageContainer}>
-                    {cat.image_url ? (
-                      <OptimizedImage
-                        source={cat.image_url}
-                        width="100%"
-                        aspectRatio={1.2}
-                      />
-                    ) : (
-                      <View style={styles.placeholder}>
-                        <FontAwesome name="image" size={32} color={Theme.textMuted} />
-                      </View>
-                    )}
+                    <OptimizedImage
+                      source={getCategoryImage(cat)}
+                      width="100%"
+                      aspectRatio={1.2}
+                    />
                     
                     {/* Gradient Overlay for Text Readability */}
                     <View style={styles.gradientOverlay} />
@@ -223,21 +250,13 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.inputBg,
     position: 'relative',
   },
-  placeholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Theme.backgroundSecondary,
-  },
   gradientOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     height: '60%',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    // Fake gradient using solid with opacity to keep it simple, but usually you'd use linear-gradient
-    // React Native needs expo-linear-gradient for real gradients, so we use a semi-transparent black overlay
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   cardContent: {
     position: 'absolute',

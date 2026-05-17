@@ -1,58 +1,95 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl, ActivityIndicator, Alert, TextInput } from 'react-native';
 import React, { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Theme } from '@/constants/Theme';
-import { apiGet, apiPatch } from '@/src/services/api';
+import { apiGet, apiPatch, apiPut } from '@/src/services/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TransporterAssignmentsTab } from '@/src/components/transporter/TransporterAssignmentsTab';
 import { TransporterPaymentsTab } from '@/src/components/transporter/TransporterPaymentsTab';
 import { TransporterWithdrawalsTab } from '@/src/components/transporter/TransporterWithdrawalsTab';
 import { TransporterSubscriptionTab } from '@/src/components/transporter/TransporterSubscriptionTab';
 
-const TABS = ['Assignments', 'Payments', 'Withdrawals', 'Membership', 'Profile'] as const;
+const TABS = ['Deliveries', 'Payments', 'Withdrawals', 'Membership', 'Profile'] as const;
 
 export default function TransporterDashboardScreen() {
   const { session, logout, isAuthenticated, setSession } = useAuth();
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<(typeof TABS)[number]>('Assignments');
+  const [tab, setTab] = useState<(typeof TABS)[number]>('Deliveries');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Data states
+  const [transporter, setTransporter] = useState<any>(null);
   const [transporterId, setTransporterId] = useState<string>('');
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [profileData, setProfileData] = useState({
     full_name: '', phone: '', vehicle_type: '', license_plate: '',
   });
 
-  const fetchTransporterData = useCallback(async () => {
+  // Location update
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<'updated' | 'error' | 'idle'>('idle');
+
+  const fetchData = useCallback(async (silent = false) => {
     if (!session?.access_token) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
-      const [profile, transporter] = await Promise.all([
-        apiGet<any>('/profile', session.access_token),
+      const [profile, transporterRes] = await Promise.all([
+        apiGet<any>('/profile', session.access_token).catch(() => null),
         apiGet<any>('/transporters/me', session.access_token).catch(() => null),
       ]);
+
+      const tData = transporterRes?.transporter || null;
+      setTransporter(tData);
+      const tId = tData?.id || profile?.transporter_id || session.user?.id || '';
+      setTransporterId(tId);
+
       setProfileData({
-        full_name: profile.full_name || '',
-        phone: profile.phone || '',
-        vehicle_type: profile.vehicle_type || transporter?.transporter?.vehicle_type || '',
-        license_plate: profile.license_plate || transporter?.transporter?.vehicle_registration || '',
+        full_name: profile?.full_name || '',
+        phone: profile?.phone || '',
+        vehicle_type: profile?.vehicle_type || tData?.vehicle_type || '',
+        license_plate: profile?.license_plate || tData?.vehicle_registration || '',
       });
-      setTransporterId(transporter?.transporter?.id || profile.transporter_id || session.user?.id || '');
+
+      // Fetch assignments and payments for stats
+      if (tId) {
+        const [assignRes, payRes] = await Promise.all([
+          apiGet<any>('/transporter/jobs', session.access_token).catch(() => []),
+          apiGet<any>(`/transporters/${tId}/payments`, session.access_token).catch(() => ({ payments: [] })),
+        ]);
+        setAssignments(Array.isArray(assignRes) ? assignRes : assignRes?.assignments || assignRes?.data || []);
+        setPayments(payRes?.payments || []);
+      }
+
+      // Notification count
+      try {
+        const notifRes = await apiGet<any>('/notifications/unread-count', session.access_token);
+        setUnreadNotifs(notifRes?.unread_count || 0);
+      } catch { /* silent */ }
     } catch (error) {
       console.error('Transporter Dashboard Fetch Error:', error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [session?.access_token]);
 
-  useEffect(() => { fetchTransporterData(); }, [fetchTransporterData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const onRefresh = () => { setRefreshing(true); fetchTransporterData(); };
+  useFocusEffect(
+    useCallback(() => { fetchData(true); }, [fetchData])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData(true);
+    setRefreshing(false);
+  }, [fetchData]);
 
   const handleLogout = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -60,9 +97,33 @@ export default function TransporterDashboardScreen() {
     router.replace('/(tabs)');
   };
 
+  const handleUpdateLocation = async () => {
+    setIsUpdatingLocation(true);
+    setLocationStatus('idle');
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is needed to update your position.');
+        setIsUpdatingLocation(false);
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      await apiPut('/transporters/me/location', {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      }, session?.access_token);
+      setLocationStatus('updated');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      console.error('Location update error:', e);
+      setLocationStatus('error');
+    } finally {
+      setIsUpdatingLocation(false);
+    }
+  };
+
   const handleUpdateProfile = async () => {
     if (!session?.access_token) return;
-    setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const updated = await apiPatch<any>('/profile', profileData, session.access_token);
@@ -71,22 +132,45 @@ export default function TransporterDashboardScreen() {
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to update profile');
-    } finally {
-      setLoading(false);
     }
   };
+
+  // Stats
+  const activeAssignments = assignments.filter(a => {
+    const isAccepted = ['accepted', 'picked_up', 'in_transit'].includes(a.status) || (a.status === 'assigned' && a.accepted_at);
+    const isReady = a.status === 'ready_for_pickup';
+    return isAccepted || isReady;
+  });
+  const completedAssignments = assignments.filter(a => a.status === 'delivered');
+  const availableBalance = payments.filter(p => p.status === 'available').reduce((s, p) => s + Number(p.amount), 0);
 
   if (!isAuthenticated) return null;
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={styles.title}>TOLA Transporter</Text>
-        <Pressable onPress={handleLogout}>
-          <Text style={styles.logout}>Logout</Text>
-        </Pressable>
+        <View style={styles.headerLeft}>
+          <Text style={styles.logoText}>TOLA.</Text>
+          <Text style={styles.headerSubtitle}>{transporter?.vehicle_type || 'Transporter'} Driver</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Pressable style={styles.notifBtn} onPress={() => router.push('/(tabs)/notifications' as any)}>
+            <FontAwesome name="bell" size={16} color={Theme.text} />
+            {unreadNotifs > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadNotifs > 9 ? '9+' : unreadNotifs}</Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+            <FontAwesome name="sign-out" size={14} color={Theme.text} />
+            <Text style={styles.logoutText}>Logout</Text>
+          </Pressable>
+        </View>
       </View>
       
+      {/* Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabRow}>
         {TABS.map((t) => (
           <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabActive]}>
@@ -102,11 +186,62 @@ export default function TransporterDashboardScreen() {
         </View>
       ) : (
         <>
-          {tab === 'Assignments' && (
-            <TransporterAssignmentsTab
-              transporterId={transporterId}
-              accessToken={session?.access_token || ''}
-            />
+          {tab === 'Deliveries' && (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.bodyContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}>
+              {/* Welcome */}
+              <View style={styles.welcomeSection}>
+                <Text style={styles.welcomeTitle}>Transporter Dashboard</Text>
+                <Text style={styles.welcomeSubtitle}>{transporter?.business_name || 'Welcome to your dashboard'}</Text>
+              </View>
+
+              {/* Stats Row */}
+              <View style={styles.statsRow}>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#dbeafe' }]}><FontAwesome name="truck" size={16} color="#2563eb" /></View>
+                  <Text style={styles.statValue}>{activeAssignments.length}</Text>
+                  <Text style={styles.statLabel}>Active</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#dcfce7' }]}><FontAwesome name="check-circle" size={16} color="#16a34a" /></View>
+                  <Text style={styles.statValue}>{completedAssignments.length}</Text>
+                  <Text style={styles.statLabel}>Completed</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#ede9fe' }]}><FontAwesome name="money" size={16} color="#7c3aed" /></View>
+                  <Text style={styles.statValue}>{availableBalance > 0 ? `${Math.round(availableBalance / 1000)}k` : '0'}</Text>
+                  <Text style={styles.statLabel}>Balance</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#fef3c7' }]}><FontAwesome name="star" size={16} color="#d97706" /></View>
+                  <Text style={styles.statValue}>{transporter?.rating || '5.0'}</Text>
+                  <Text style={styles.statLabel}>Rating</Text>
+                </View>
+              </View>
+
+              {/* Update Location Card */}
+              <View style={styles.locationCard}>
+                <View style={styles.locationCardHeader}>
+                  <FontAwesome name="map-marker" size={18} color={Theme.primary} />
+                  <Text style={styles.locationCardTitle}>My Location</Text>
+                </View>
+                <Pressable
+                  style={[styles.locationBtn, isUpdatingLocation && { opacity: 0.6 }]}
+                  onPress={handleUpdateLocation}
+                  disabled={isUpdatingLocation}
+                >
+                  <FontAwesome name="crosshairs" size={14} color="#fff" />
+                  <Text style={styles.locationBtnText}>{isUpdatingLocation ? 'Updating...' : 'Update My Location'}</Text>
+                </Pressable>
+                {locationStatus === 'updated' && <Text style={styles.locationSuccess}>✓ Location synced</Text>}
+                {locationStatus === 'error' && <Text style={styles.locationError}>Failed to sync location</Text>}
+              </View>
+
+              {/* Assignments Tab (inline) */}
+              <TransporterAssignmentsTab
+                transporterId={transporterId}
+                accessToken={session?.access_token || ''}
+              />
+            </ScrollView>
           )}
 
           {tab === 'Payments' && (
@@ -120,7 +255,7 @@ export default function TransporterDashboardScreen() {
             <TransporterWithdrawalsTab
               transporterId={transporterId}
               accessToken={session?.access_token || ''}
-              availableBalance={0}
+              availableBalance={availableBalance}
             />
           )}
 
@@ -133,7 +268,7 @@ export default function TransporterDashboardScreen() {
 
           {tab === 'Profile' && (
             <ScrollView 
-              style={styles.body} 
+              style={{ flex: 1 }} 
               contentContainerStyle={styles.bodyContent}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
             >
@@ -161,6 +296,7 @@ export default function TransporterDashboardScreen() {
                     value={profileData.vehicle_type}
                     onChangeText={(t) => setProfileData(p => ({ ...p, vehicle_type: t }))}
                     placeholder="e.g. Motorcycle, Van"
+                    placeholderTextColor={Theme.textMuted}
                   />
 
                   <Text style={[styles.label, { marginTop: 12 }]}>License Plate</Text>
@@ -169,12 +305,12 @@ export default function TransporterDashboardScreen() {
                     value={profileData.license_plate}
                     onChangeText={(t) => setProfileData(p => ({ ...p, license_plate: t }))}
                     placeholder="e.g. T 123 ABC"
+                    placeholderTextColor={Theme.textMuted}
                   />
 
                   <Pressable 
-                    style={[styles.saveBtn, loading && { opacity: 0.7 }]} 
+                    style={styles.saveBtn} 
                     onPress={handleUpdateProfile}
-                    disabled={loading}
                   >
                     <Text style={styles.saveBtnText}>Update Profile</Text>
                   </Pressable>
@@ -200,23 +336,69 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, 
     borderBottomColor: Theme.inputBorder 
   },
-  title: { fontSize: 18, fontWeight: '700', color: Theme.text },
-  logout: { fontSize: 15, color: Theme.link },
-  tabScroll: { backgroundColor: Theme.background, maxHeight: 48 },
+  headerLeft: { gap: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoText: { fontSize: 24, fontWeight: '900', color: Theme.primary, letterSpacing: -1 },
+  headerSubtitle: { fontSize: 11, color: Theme.textSecondary, fontWeight: '600' },
+  notifBtn: { position: 'relative', width: 36, height: 36, borderRadius: 18, backgroundColor: Theme.inputBg, alignItems: 'center', justifyContent: 'center' },
+  notifBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: '#ef4444', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Theme.background },
+  notifBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: Theme.inputBorder, borderRadius: 6 },
+  logoutText: { fontSize: 13, color: Theme.text, fontWeight: '500' },
+
+  tabScroll: { backgroundColor: Theme.background, maxHeight: 48, borderBottomWidth: 1, borderBottomColor: Theme.inputBorder },
   tabRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, gap: 4 },
   tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   tabActive: { backgroundColor: Theme.primary },
-  tabText: { fontSize: 14, color: Theme.text },
-  tabTextActive: { color: '#fff', fontWeight: '600' },
-  body: { flex: 1 },
+  tabText: { fontSize: 14, color: Theme.textSecondary, fontWeight: '500' },
+  tabTextActive: { color: '#fff', fontWeight: '700' },
+
   bodyContent: { padding: 20, paddingBottom: 48 },
-  tabContent: { flex: 1 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: Theme.text, marginBottom: 16 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, color: Theme.textMuted },
+
+  welcomeSection: { marginBottom: 20 },
+  welcomeTitle: { fontSize: 24, fontWeight: '700', color: Theme.text, marginBottom: 4 },
+  welcomeSubtitle: { fontSize: 14, color: Theme.textSecondary },
+
+  // Stats
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  statCard: { flex: 1, backgroundColor: Theme.background, borderRadius: 12, padding: 14, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: Theme.inputBorder },
+  statIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  statValue: { fontSize: 20, fontWeight: '900', color: Theme.text },
+  statLabel: { fontSize: 9, fontWeight: '700', color: Theme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  // Location Card
+  locationCard: {
+    backgroundColor: Theme.primary + '08',
+    borderWidth: 1,
+    borderColor: Theme.primary + '30',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    gap: 12,
+  },
+  locationCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  locationCardTitle: { fontSize: 15, fontWeight: '700', color: Theme.text },
+  locationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Theme.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  locationBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  locationSuccess: { fontSize: 11, color: '#16a34a', fontWeight: '600', textAlign: 'center' },
+  locationError: { fontSize: 11, color: '#ef4444', fontWeight: '600', textAlign: 'center' },
+
+  // Profile
+  tabContent: { flex: 1 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: Theme.text, marginBottom: 16 },
   formCard: { backgroundColor: Theme.background, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: Theme.inputBorder },
-  label: { fontSize: 12, color: Theme.textSecondary, marginBottom: 4 },
+  label: { fontSize: 12, color: Theme.textSecondary, marginBottom: 4, fontWeight: '600' },
   input: { backgroundColor: Theme.backgroundSecondary, borderRadius: 8, padding: 12, fontSize: 16, color: Theme.text, borderWidth: 1, borderColor: Theme.inputBorder },
   saveBtn: { backgroundColor: Theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 24 },
-  saveBtnText: { color: '#fff', fontWeight: '700' },
+  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

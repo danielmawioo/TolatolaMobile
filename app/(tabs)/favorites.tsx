@@ -28,7 +28,7 @@ export default function FavoritesScreen() {
         title={COPY.empty.wishlistTitle}
         message={COPY.empty.wishlistMessage}
         actionLabel={COPY.empty.wishlistAction}
-        onAction={() => router.push('/(guest)/shop')}
+        onAction={() => router.push('/(tabs)/shop')}
       />
     </ScrollView>
   );

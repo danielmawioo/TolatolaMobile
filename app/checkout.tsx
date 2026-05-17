@@ -55,8 +55,10 @@ export default function CheckoutScreen() {
   const [isAwaitingPayment, setIsAwaitingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Delivery fee: simplified for mobile (use flat rate based on transport method)
+  // Delivery fee & Logistics
   const [deliveryFee, setDeliveryFee] = useState(0);
+  const [shopDeliveries, setShopDeliveries] = useState<Record<string, { distanceKm: number, duration: string }>>({});
+  const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -72,24 +74,91 @@ export default function CheckoutScreen() {
       .catch(() => {});
   }, []);
 
-  // Recalculate delivery fee when transport method changes
-  useEffect(() => {
-    if (!selectedTransportId || transportMethods.length === 0) return;
+  // Calculate derived fees per shop based on distances
+  const shopFees = React.useMemo(() => {
     const method = transportMethods.find((m) => m.id === selectedTransportId);
-    if (!method) return;
-    // Simple estimation: use rate_per_km * 5km default or rate_per_kg * total weight
-    const rateKm = Number(method.rate_per_km) || 0;
-    const rateKg = Number(method.rate_per_kg) || 0;
-    let fee = 0;
-    if (rateKg > 0) {
-      fee = items.length * rateKg; // approximate 1kg per item
-    } else if (rateKm > 0) {
-      fee = 5 * rateKm; // approximate 5km default
-    } else {
-      fee = 3000; // fallback
+    const rateKm = Number(method?.rate_per_km) || 0;
+    const rateKg = Number(method?.rate_per_kg) || 0;
+    
+    const fees: Record<string, number> = {};
+    for (const sId in shopDeliveries) {
+       const distanceKm = shopDeliveries[sId].distanceKm;
+       const weight = items.filter(i => (i.shop_id || 'unknown') === sId).reduce((sum, i) => sum + i.quantity, 0);
+       let fee = 0;
+       if (rateKg > 0) fee = weight * rateKg;
+       else if (rateKm > 0) fee = distanceKm * rateKm;
+       else {
+         if (distanceKm <= 5) fee = 3000;
+         else if (distanceKm <= 15) fee = 5000;
+         else fee = distanceKm * 500;
+       }
+       fees[sId] = Math.round(fee);
     }
-    setDeliveryFee(Math.round(fee));
-  }, [selectedTransportId, transportMethods, items.length]);
+    return fees;
+  }, [shopDeliveries, selectedTransportId, transportMethods, items]);
+
+  // Recalculate total delivery fee
+  useEffect(() => {
+    if (Object.keys(shopDeliveries).length > 0) {
+      const totalFee = Object.values(shopFees).reduce((a, b) => a + b, 0);
+      setDeliveryFee(totalFee);
+    } else {
+      if (!selectedTransportId || transportMethods.length === 0) return;
+      const method = transportMethods.find((m) => m.id === selectedTransportId);
+      if (!method) return;
+      
+      const rateKm = Number(method.rate_per_km) || 0;
+      const rateKg = Number(method.rate_per_kg) || 0;
+      let fee = 0;
+      if (rateKg > 0) fee = items.length * rateKg;
+      else if (rateKm > 0) fee = 5 * rateKm;
+      else fee = 3000;
+      
+      setDeliveryFee(Math.round(fee));
+    }
+  }, [shopFees, shopDeliveries, selectedTransportId, transportMethods, items.length]);
+
+  const handleAddressComplete = async (fullAddress: string, coords?: { lat: number, lng: number }) => {
+    if (!coords) return;
+    
+    setIsCalculatingDelivery(true);
+    const newDeliveries: Record<string, any> = {};
+    
+    try {
+      const shopsData: Record<string, { lat: number, lng: number }> = {};
+      
+      // Group items by shop
+      items.forEach(item => {
+        const sId = item.shop_id || 'unknown';
+        if (!shopsData[sId]) {
+          shopsData[sId] = { lat: -6.7924, lng: 39.2083 }; // Default to Dar es Salaam if unknown
+        }
+      });
+
+      for (const sId in shopsData) {
+        const shop = shopsData[sId];
+        const res = await apiPost<any>('/maps/distance', {
+          destLat: coords.lat,
+          destLng: coords.lng,
+          originLat: shop.lat,
+          originLng: shop.lng
+        });
+        
+        if (res && res.distanceKm !== undefined) {
+          newDeliveries[sId] = {
+            distanceKm: res.distanceKm,
+            duration: res.duration || 'Fast',
+          };
+        }
+      }
+      setShopDeliveries(newDeliveries);
+    } catch (error) {
+      console.error('Failed to calculate delivery', error);
+      Alert.alert('Delivery Error', 'Could not calculate delivery routes');
+    } finally {
+      setIsCalculatingDelivery(false);
+    }
+  };
 
   const subtotal = totalAmount;
   const insuranceFee = Math.round((subtotal + deliveryFee) * BUYER_PROTECTION_RATE);
@@ -107,6 +176,8 @@ export default function CheckoutScreen() {
       return 'Please enter a valid email address';
     if (!addressData.region || !addressData.district || !addressData.ward || !addressData.street)
       return 'Please fill in all required address fields (Region, District, Ward, Street)';
+    if (Object.keys(shopDeliveries).length === 0 && selectedTransportId)
+      return 'Please select your location using the autocomplete search to calculate delivery fees.';
     if (!selectedTransportId) return 'Please select a delivery method';
     const isMobile = MOBILE_MONEY_PROVIDERS.some((p) => p.id === paymentMethod);
     if (isMobile && !paymentPhone.trim()) return 'Please enter your mobile money phone number';
@@ -129,15 +200,16 @@ export default function CheckoutScreen() {
 
     try {
       // Build order items
-      const orderItems = items.map((item) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: item.price,
-        shop_id: item.shop_id || '',
-        delivery_fee: 0,
-      }));
-      // Assign full delivery fee to first item
-      if (orderItems.length > 0) orderItems[0].delivery_fee = deliveryFee;
+      const orderItems = items.map((item) => {
+        const sId = item.shop_id || 'unknown';
+        return {
+          product_id: item.product_id,
+          quantity: item.quantity,
+          price: item.price,
+          shop_id: item.shop_id || '',
+          delivery_fee: shopFees[sId] || 0,
+        };
+      });
 
       const shippingAddress = {
         full_name: fullName,
@@ -302,7 +374,51 @@ export default function CheckoutScreen() {
                 </View>
               )}
               <View style={styles.divider} />
-              <TanzaniaAddressForm value={addressData} onChange={setAddressData} />
+              <TanzaniaAddressForm 
+                value={addressData} 
+                onChange={setAddressData} 
+                onAddressComplete={handleAddressComplete}
+              />
+              
+              {isCalculatingDelivery && (
+                <View style={styles.calculatingBox}>
+                  <ActivityIndicator size="small" color={Theme.primary} />
+                  <Text style={styles.calculatingText}>Calculating delivery fee...</Text>
+                </View>
+              )}
+
+              {Object.keys(shopDeliveries).length > 0 && (
+                <View style={styles.logisticsContainer}>
+                  <Text style={styles.logisticsTitle}>DELIVERY LOGISTICS BREAKDOWN</Text>
+                  {Object.entries(shopDeliveries).map(([shopId, info]) => (
+                    <View key={shopId} style={styles.logisticsCard}>
+                      <View style={styles.logisticsHeader}>
+                        <View>
+                          <Text style={styles.logisticsShopLabel}>FROM SHOP</Text>
+                          <Text style={styles.logisticsShopName}>Tola Verified Vendor</Text>
+                        </View>
+                        <View style={styles.logisticsMethodBadge}>
+                          <Text style={styles.logisticsMethodText}>{selectedMethodName}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.logisticsStats}>
+                        <View style={styles.logisticsStatBox}>
+                          <Text style={styles.logisticsStatLabel}>DISTANCE</Text>
+                          <Text style={styles.logisticsStatValue}>{info.distanceKm} KM</Text>
+                        </View>
+                        <View style={styles.logisticsStatBox}>
+                          <Text style={styles.logisticsStatLabel}>STATUS</Text>
+                          <Text style={styles.logisticsStatValue}>{info.duration}</Text>
+                        </View>
+                        <View style={[styles.logisticsStatBox, styles.logisticsFeeBox]}>
+                          <Text style={[styles.logisticsStatLabel, { color: Theme.primary }]}>FEE</Text>
+                          <Text style={[styles.logisticsStatValue, { color: Theme.primary }]}>TSh {shopFees[shopId]?.toLocaleString() || 0}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           </View>
 
@@ -478,14 +594,15 @@ const styles = StyleSheet.create({
   section: { marginBottom: 24 },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   stepBadge: {
-    width: 28, height: 28, borderRadius: 8, backgroundColor: Theme.text,
+    width: 32, height: 32, borderRadius: 10, backgroundColor: Theme.text,
     alignItems: 'center', justifyContent: 'center',
+    ...Theme.shadowSm,
   },
-  stepNumber: { fontSize: 14, fontWeight: '800', color: '#fff' },
-  stepTitle: { fontSize: 17, fontWeight: '700', color: Theme.text },
+  stepNumber: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  stepTitle: { fontSize: 18, fontWeight: '800', color: Theme.text, letterSpacing: -0.3 },
   card: {
-    backgroundColor: Theme.background, borderRadius: Theme.radiusLg,
-    padding: 16, gap: 16, ...Theme.shadowMd,
+    backgroundColor: Theme.background, borderRadius: 24,
+    padding: 20, gap: 16, ...Theme.shadowLg,
   },
   fieldGroup: { gap: 6 },
   label: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -496,11 +613,40 @@ const styles = StyleSheet.create({
   },
   fieldHint: { fontSize: 10, color: Theme.textMuted, fontStyle: 'italic' },
   divider: { height: 1, backgroundColor: Theme.inputBorder, marginVertical: 4 },
+  // Logistics
+  calculatingBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12,
+    backgroundColor: Theme.backgroundSecondary, borderRadius: Theme.radiusMd,
+    marginTop: 8,
+  },
+  calculatingText: { fontSize: 13, fontWeight: '600', color: Theme.textSecondary },
+  logisticsContainer: { marginTop: 8, gap: 12 },
+  logisticsTitle: { fontSize: 10, fontWeight: '800', color: Theme.textMuted, letterSpacing: 1 },
+  logisticsCard: {
+    backgroundColor: Theme.backgroundSecondary, borderRadius: 16, padding: 16, gap: 16,
+    borderWidth: 1, borderColor: Theme.inputBorder,
+  },
+  logisticsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  logisticsShopLabel: { fontSize: 9, fontWeight: '800', color: Theme.primary, letterSpacing: 1, marginBottom: 2 },
+  logisticsShopName: { fontSize: 13, fontWeight: '800', color: Theme.text },
+  logisticsMethodBadge: {
+    backgroundColor: '#fff', paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 6, borderWidth: 1, borderColor: Theme.inputBorder,
+  },
+  logisticsMethodText: { fontSize: 9, fontWeight: '800', color: Theme.textSecondary, textTransform: 'uppercase' },
+  logisticsStats: { flexDirection: 'row', gap: 8 },
+  logisticsStatBox: {
+    flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: 12,
+    borderWidth: 1, borderColor: Theme.inputBorder, gap: 4,
+  },
+  logisticsFeeBox: { backgroundColor: Theme.primary + '08', borderColor: Theme.primary + '20' },
+  logisticsStatLabel: { fontSize: 8, fontWeight: '800', color: Theme.textMuted, letterSpacing: 1 },
+  logisticsStatValue: { fontSize: 12, fontWeight: '800', color: Theme.text },
   // Transport
   transportSelector: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Theme.background, borderRadius: Theme.radiusLg,
-    padding: 18, ...Theme.shadowMd,
+    backgroundColor: Theme.background, borderRadius: 24,
+    padding: 20, borderWidth: 1.5, borderColor: Theme.inputBorder, ...Theme.shadowLg,
   },
   transportLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   transportIcon: {
@@ -527,14 +673,14 @@ const styles = StyleSheet.create({
   transportRateText: { fontSize: 10, fontWeight: '800', color: Theme.primary, textTransform: 'uppercase' },
   // Summary
   summaryCard: {
-    backgroundColor: Theme.background, borderRadius: Theme.radiusLg,
-    overflow: 'hidden',
+    backgroundColor: Theme.background, borderRadius: 24,
+    overflow: 'hidden', ...Theme.shadowLg,
   },
   summaryHeader: {
-    backgroundColor: Theme.success, paddingHorizontal: 18, paddingVertical: 16,
+    backgroundColor: Theme.success, paddingHorizontal: 20, paddingVertical: 18,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  summaryHeaderText: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  summaryHeaderText: { fontSize: 19, fontWeight: '900', color: '#fff', letterSpacing: -0.3 },
   summaryItemCount: { fontSize: 12, fontWeight: '600', color: '#ffffffcc' },
   summaryItems: { padding: 16, gap: 12 },
   summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -576,8 +722,8 @@ const styles = StyleSheet.create({
   bottomItems: { fontSize: 11, color: Theme.textMuted, fontWeight: '600' },
   submitBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Theme.primary, paddingHorizontal: 24, paddingVertical: 16,
-    borderRadius: Theme.radiusMd, ...Theme.shadowMd,
+    backgroundColor: Theme.primary, paddingHorizontal: 28, paddingVertical: 18,
+    borderRadius: 14, ...Theme.shadowLg,
   },
   submitBtnDisabled: { opacity: 0.5 },
   submitBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },

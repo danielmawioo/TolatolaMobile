@@ -38,25 +38,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
   });
 
-  // Load cart from Storage (for guests) or API (for users)
+  // Load cart from Storage (client-side only for now as backend cart is a placeholder)
   const loadCart = useCallback(async () => {
     setState(s => ({ ...s, isLoading: true }));
     try {
-      if (isAuthenticated && session?.access_token) {
-        // Sync with API
-        const data = await apiGet<{ items: CartItem[] }>('/cart', session.access_token);
-        setState({ items: data.items || [], isLoading: false });
-      } else {
-        // Load from local storage
-        const raw = await AsyncStorage.getItem(CART_STORAGE_KEY);
-        const items = raw ? JSON.parse(raw) : [];
-        setState({ items, isLoading: false });
-      }
+      const raw = await AsyncStorage.getItem(CART_STORAGE_KEY);
+      const items = raw ? JSON.parse(raw) : [];
+      setState({ items, isLoading: false });
     } catch (error) {
       console.error('Failed to load cart:', error);
       setState(s => ({ ...s, isLoading: false }));
     }
-  }, [isAuthenticated, session?.access_token]);
+  }, []);
 
   useEffect(() => {
     loadCart();
@@ -68,85 +61,74 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback(async (product: any, quantity = 1) => {
     try {
+      // Optional: still acknowledge to backend if needed, but don't block or reload from it
       if (isAuthenticated && session?.access_token) {
-        await apiPost('/cart/items', { product_id: product.id, quantity }, session.access_token);
-        await loadCart();
-      } else {
-        setState(prev => {
-          const existingIndex = prev.items.findIndex(i => i.product_id === product.id);
-          let newItems;
-          if (existingIndex > -1) {
-            newItems = [...prev.items];
-            newItems[existingIndex].quantity += quantity;
-          } else {
-            const newItem: CartItem = {
-              id: Date.now().toString(), // local fallback ID
-              product_id: product.id,
-              name: product.name,
-              price: product.price || 0,
-              quantity,
-              image_url: product.image_url,
-              shop_id: product.shop_id,
-            };
-            newItems = [...prev.items, newItem];
-          }
-          saveLocalCart(newItems);
-          return { ...prev, items: newItems };
-        });
+        apiPost('/cart/items', { product_id: product.id, quantity }, session.access_token).catch(() => {});
       }
+      
+      setState(prev => {
+        const existingIndex = prev.items.findIndex(i => i.product_id === product.id);
+        let newItems;
+        if (existingIndex > -1) {
+          newItems = [...prev.items];
+          newItems[existingIndex].quantity += quantity;
+        } else {
+          const imgUrl = (product.images && Array.isArray(product.images) && product.images.length > 0) 
+            ? product.images[0] 
+            : product.image_url;
+            
+          const newItem: CartItem = {
+            id: Date.now().toString(),
+            product_id: product.id,
+            name: product.name,
+            price: product.price || 0,
+            quantity,
+            image_url: imgUrl,
+            shop_id: product.shop_id,
+          };
+          newItems = [...prev.items, newItem];
+        }
+        saveLocalCart(newItems);
+        return { ...prev, items: newItems };
+      });
     } catch (error) {
       console.error('Failed to add item:', error);
     }
-  }, [isAuthenticated, session?.access_token, loadCart]);
+  }, [isAuthenticated, session?.access_token]);
 
   const removeItem = useCallback(async (itemId: string) => {
     try {
-      if (isAuthenticated && session?.access_token) {
-        await apiDelete(`/cart/items/${itemId}`, session.access_token);
-        await loadCart();
-      } else {
-        setState(prev => {
-          const newItems = prev.items.filter(i => i.id !== itemId);
-          saveLocalCart(newItems);
-          return { ...prev, items: newItems };
-        });
-      }
+      setState(prev => {
+        const newItems = prev.items.filter(i => i.id !== itemId);
+        saveLocalCart(newItems);
+        return { ...prev, items: newItems };
+      });
     } catch (error) {
       console.error('Failed to remove item:', error);
     }
-  }, [isAuthenticated, session?.access_token, loadCart]);
+  }, []);
 
   const updateQuantity = useCallback(async (itemId: string, quantity: number) => {
     if (quantity < 1) return removeItem(itemId);
     try {
-      if (isAuthenticated && session?.access_token) {
-        await apiPost(`/cart/items/${itemId}/quantity`, { quantity }, session.access_token);
-        await loadCart();
-      } else {
-        setState(prev => {
-          const newItems = prev.items.map(i => i.id === itemId ? { ...i, quantity } : i);
-          saveLocalCart(newItems);
-          return { ...prev, items: newItems };
-        });
-      }
+      setState(prev => {
+        const newItems = prev.items.map(i => i.id === itemId ? { ...i, quantity } : i);
+        saveLocalCart(newItems);
+        return { ...prev, items: newItems };
+      });
     } catch (error) {
       console.error('Failed to update quantity:', error);
     }
-  }, [isAuthenticated, session?.access_token, loadCart, removeItem]);
+  }, [removeItem]);
 
   const clearCart = useCallback(async () => {
     try {
-      if (isAuthenticated && session?.access_token) {
-        await apiDelete('/cart', session.access_token);
-        await loadCart();
-      } else {
-        await AsyncStorage.removeItem(CART_STORAGE_KEY);
-        setState(prev => ({ ...prev, items: [] }));
-      }
+      await AsyncStorage.removeItem(CART_STORAGE_KEY);
+      setState(prev => ({ ...prev, items: [] }));
     } catch (error) {
       console.error('Failed to clear cart:', error);
     }
-  }, [isAuthenticated, session?.access_token, loadCart]);
+  }, []);
 
   const totalAmount = useMemo(() => {
     return state.items.reduce((sum, item) => sum + item.price * item.quantity, 0);

@@ -46,3 +46,4 @@ android-credentials/
 # generated native folders
 /ios
 /android
+pc-api-key.json

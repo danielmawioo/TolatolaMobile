@@ -10,9 +10,9 @@ export function getRoleRedirectPath(userType: string | undefined): string {
     case 'admin':
       return '/(admin)';
     case 'vendor':
-      return '/(vendor)';
+      return '/(vendor)/dashboard';
     case 'transporter':
-      return '/(transporter)';
+      return '/(transporter)/dashboard';
     case 'customer':
     default:
       return '/(tabs)';

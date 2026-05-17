@@ -20,10 +20,10 @@ type ProfileTab = 'personal' | 'kyc' | 'orders' | 'transactions' | 'support' | '
 
 const NAV_ITEMS: { id: ProfileTab; label: string; icon: string }[] = [
   { id: 'personal', label: 'Personal Info', icon: 'user' },
-  { id: 'kyc', label: 'KYC', icon: 'shield' },
+  { id: 'kyc', label: 'KYC Verification', icon: 'shield' },
   { id: 'orders', label: 'Order History', icon: 'shopping-bag' },
   { id: 'transactions', label: 'Transactions', icon: 'credit-card' },
-  { id: 'support', label: 'Support', icon: 'headphones' },
+  { id: 'support', label: 'Support Tickets', icon: 'headphones' },
   { id: 'settings', label: 'Settings', icon: 'cog' },
 ];
 
@@ -125,11 +125,11 @@ export default function ProfileScreen() {
   if (!session) {
     return (
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: '#fff' }]}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: 100 + insets.bottom, paddingHorizontal: gap.md }]}
       >
-        <Text style={styles.title}>Account</Text>
-        <Text style={styles.subtitle}>Sign in to save items, track orders, and manage your profile. Part of TOLA Tanzania — trade smarter.</Text>
+        <Text style={styles.unauthTitle}>Account</Text>
+        <Text style={styles.unauthSubtitle}>Sign in to save items, track orders, and manage your profile. Part of TOLA Tanzania — trade smarter.</Text>
         <Pressable style={styles.primaryBtn} onPress={() => router.push('/(auth)/login')}>
           <Text style={styles.primaryBtnText}>Log in</Text>
         </Pressable>
@@ -148,73 +148,81 @@ export default function ProfileScreen() {
   const userType = (session.user?.user_type as string) || (session.user as any)?.role || 'customer';
   const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
-  const renderPersonalInfo = () => (
-    <View style={styles.sectionContent}>
-      {/* Avatar */}
-      <View style={styles.avatarSection}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.avatarName}>{userName}</Text>
-          <Text style={styles.avatarEmail}>{userEmail}</Text>
-        </View>
-      </View>
+  // Placeholder for KYC status if it was added to session or fetched, using basic fallback
+  const kycStatus = (session.user as any)?.kyc_status || 'Not Verified'; 
 
-      <View style={styles.infoCard}>
-        {editing ? (
-          <>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Full Name</Text>
-              <TextInput style={styles.fieldInput} value={formData.full_name} onChangeText={(t) => setFormData(f => ({ ...f, full_name: t }))} placeholder="Your full name" />
-            </View>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Email</Text>
-              <Text style={[styles.fieldValue, { color: Theme.textMuted }]}>{userEmail}</Text>
-              <Text style={styles.fieldHint}>Email cannot be changed here</Text>
-            </View>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Phone</Text>
-              <TextInput style={styles.fieldInput} value={formData.phone} onChangeText={(t) => setFormData(f => ({ ...f, phone: t }))} placeholder="Phone number" keyboardType="phone-pad" />
-            </View>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Account Type</Text>
-              <Text style={styles.fieldValue}>{userType}</Text>
-            </View>
-            <View style={styles.editActions}>
-              <Pressable style={styles.cancelEditBtn} onPress={() => setEditing(false)}>
-                <Text style={styles.cancelEditText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[styles.saveBtn, loading && { opacity: 0.5 }]} onPress={handleUpdateProfile} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
-              </Pressable>
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Full Name</Text><Text style={styles.fieldValue}>{userName}</Text></View>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Email</Text><Text style={[styles.fieldValue, { color: Theme.textMuted }]}>{userEmail}</Text></View>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Phone</Text><Text style={styles.fieldValue}>{String(session.user?.phone || 'Not provided')}</Text></View>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Account Type</Text><Text style={[styles.fieldValue, { textTransform: 'capitalize' }]}>{userType}</Text></View>
-            <Pressable style={styles.editProfileBtn} onPress={() => setEditing(true)}>
-              <FontAwesome name="edit" size={14} color="#fff" />
-              <Text style={styles.editProfileBtnText}>Edit Profile</Text>
+  const renderPersonalInfo = () => (
+    <View style={styles.tabContentInner}>
+      {editing ? (
+        <View style={styles.infoCard}>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Full Name</Text>
+            <TextInput style={styles.fieldInput} value={formData.full_name} onChangeText={(t) => setFormData(f => ({ ...f, full_name: t }))} placeholder="Your full name" />
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Email</Text>
+            <Text style={[styles.fieldValue, { color: Theme.textMuted }]}>{userEmail}</Text>
+            <Text style={styles.fieldHint}>Email cannot be changed here</Text>
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Phone</Text>
+            <TextInput style={styles.fieldInput} value={formData.phone} onChangeText={(t) => setFormData(f => ({ ...f, phone: t }))} placeholder="Phone number" keyboardType="phone-pad" />
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Account Type</Text>
+            <Text style={styles.fieldValue}>{userType}</Text>
+          </View>
+          <View style={styles.editActions}>
+            <Pressable style={styles.cancelEditBtn} onPress={() => setEditing(false)}>
+              <Text style={styles.cancelEditText}>Cancel</Text>
             </Pressable>
-          </>
-        )}
-      </View>
+            <Pressable style={[styles.saveBtn, loading && { opacity: 0.5 }]} onPress={handleUpdateProfile} disabled={loading}>
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.infoCard}>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Full Name</Text>
+            <Text style={styles.fieldValue}>{userName}</Text>
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Email</Text>
+            <Text style={[styles.fieldValue, { color: Theme.textMuted }]}>{userEmail}</Text>
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Phone</Text>
+            <Text style={styles.fieldValue}>{String(session.user?.phone || 'Not provided')}</Text>
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Account Type</Text>
+            <Text style={[styles.fieldValue, { textTransform: 'capitalize' }]}>{userType}</Text>
+          </View>
+          <Pressable style={styles.editProfileBtn} onPress={() => setEditing(true)}>
+            <FontAwesome name="edit" size={14} color="#fff" />
+            <Text style={styles.editProfileBtnText}>Edit Profile</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 
   const renderSettings = () => (
-    <View style={styles.sectionContent}>
-      {/* Password */}
+    <View style={styles.tabContentInner}>
       <Text style={styles.settingsTitle}>Security</Text>
       <Text style={styles.settingsDesc}>Manage your password and security preferences.</Text>
       <View style={styles.infoCard}>
-        <View style={styles.field}><Text style={styles.fieldLabel}>Current Password</Text>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Current Password</Text>
           <TextInput style={styles.fieldInput} value={passwordData.current} onChangeText={t => setPasswordData(p => ({ ...p, current: t }))} secureTextEntry placeholder="Current password" />
         </View>
-        <View style={styles.field}><Text style={styles.fieldLabel}>New Password</Text>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>New Password</Text>
           <TextInput style={styles.fieldInput} value={passwordData.newPw} onChangeText={t => setPasswordData(p => ({ ...p, newPw: t }))} secureTextEntry placeholder="New password" />
         </View>
-        <View style={styles.field}><Text style={styles.fieldLabel}>Confirm Password</Text>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Confirm Password</Text>
           <TextInput style={styles.fieldInput} value={passwordData.confirm} onChangeText={t => setPasswordData(p => ({ ...p, confirm: t }))} secureTextEntry placeholder="Confirm new password" />
         </View>
         <Pressable style={[styles.editProfileBtn, changingPw && { opacity: 0.5 }]} onPress={handlePasswordChange} disabled={changingPw}>
@@ -222,11 +230,13 @@ export default function ProfileScreen() {
         </Pressable>
       </View>
 
-      {/* Danger Zone */}
       <Text style={[styles.settingsTitle, { color: Theme.error, marginTop: 24 }]}>Danger Zone</Text>
       <View style={styles.dangerCard}>
         <View style={styles.dangerRow}>
-          <View style={{ flex: 1 }}><Text style={styles.dangerLabel}>Sign out</Text><Text style={styles.dangerDesc}>Sign out on this device.</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.dangerLabel}>Sign out</Text>
+            <Text style={styles.dangerDesc}>Sign out on this device.</Text>
+          </View>
           <Pressable style={styles.dangerBtn} onPress={handleLogout}>
             <FontAwesome name="sign-out" size={14} color={Theme.error} />
             <Text style={styles.dangerBtnText}>Sign Out</Text>
@@ -234,118 +244,327 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.dangerDivider} />
         <View style={styles.dangerRow}>
-          <View style={{ flex: 1 }}><Text style={styles.dangerLabel}>Delete Account</Text><Text style={styles.dangerDesc}>Permanently delete your data.</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.dangerLabel}>Delete Account</Text>
+            <Text style={styles.dangerDesc}>Permanently delete your data.</Text>
+          </View>
           <Pressable style={[styles.dangerBtn, { backgroundColor: Theme.error + '10', borderColor: Theme.error }]} onPress={handleDeleteAccount}>
             <Text style={[styles.dangerBtnText, { color: Theme.error }]}>Delete</Text>
           </Pressable>
         </View>
       </View>
-
-      <Text style={styles.memberSince}>Member since {new Date(session.user?.created_at as string || Date.now()).getFullYear()}</Text>
     </View>
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <View style={styles.profileHeaderInner}>
-          <View style={styles.avatarSmall}><Text style={styles.avatarSmallText}>{initials}</Text></View>
-          <View style={{ flex: 1 }}><Text style={styles.profileName} numberOfLines={1}>{userName}</Text><Text style={styles.profileEmail} numberOfLines={1}>{userEmail}</Text></View>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 20, paddingBottom: 100 + insets.bottom }]}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1000); }} colors={[Theme.primary]} />}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Page Title */}
+      <Text style={styles.pageTitle}>My Profile</Text>
+
+      {/* User Info Header Card */}
+      <View style={styles.userHeaderCard}>
+        <View style={styles.avatarCircle}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+          <Text style={styles.userEmail} numberOfLines={1}>{userEmail}</Text>
+        </View>
+        <View style={styles.badgeWrapper}>
+          <Text style={styles.badgeText}>{kycStatus}</Text>
         </View>
       </View>
 
-      {/* Tab Navigation */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.navScroll} contentContainerStyle={styles.navRow}>
-        {NAV_ITEMS.map(item => (
-          <Pressable key={item.id} style={[styles.navItem, activeTab === item.id && styles.navItemActive]} onPress={() => setActiveTab(item.id)}>
-            <FontAwesome name={item.icon as any} size={14} color={activeTab === item.id ? '#fff' : Theme.textMuted} />
-            <Text style={[styles.navLabel, activeTab === item.id && styles.navLabelActive]}>{item.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {/* Vertical Navigation Items */}
+      <View style={styles.navMenuCard}>
+        {NAV_ITEMS.map((item, index) => {
+          const isActive = activeTab === item.id;
+          return (
+            <View key={item.id}>
+              <Pressable
+                style={[styles.navItemBtn, isActive && styles.navItemBtnActive]}
+                onPress={() => setActiveTab(item.id)}
+              >
+                <FontAwesome 
+                  name={item.icon as any} 
+                  size={16} 
+                  color={isActive ? Theme.primary : Theme.textMuted} 
+                  style={styles.navItemIcon}
+                />
+                <Text style={[styles.navItemText, isActive && styles.navItemTextActive]}>
+                  {item.label}
+                </Text>
+                {isActive && (
+                  <FontAwesome name="chevron-right" size={12} color={Theme.primary + '80'} style={{ marginLeft: 'auto' }} />
+                )}
+              </Pressable>
+              {index < NAV_ITEMS.length - 1 && <View style={styles.navDivider} />}
+            </View>
+          );
+        })}
+        <View style={styles.navFooter}>
+          <Text style={styles.memberSince}>
+            MEMBER SINCE {new Date(session.user?.created_at as string || Date.now()).getFullYear()}
+          </Text>
+        </View>
+      </View>
 
-      {/* Content */}
-      <ScrollView
-        style={styles.body}
-        contentContainerStyle={styles.bodyContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1000); }} colors={[Theme.primary]} />}
-      >
-        <Text style={styles.sectionTitle}>{NAV_ITEMS.find(n => n.id === activeTab)?.label}</Text>
-        <View style={styles.divider} />
-
+      {/* Main Tab Content */}
+      <View style={styles.tabContentWrapper}>
+        <Text style={styles.tabTitle}>{NAV_ITEMS.find(n => n.id === activeTab)?.label}</Text>
+        <View style={styles.tabTitleDivider} />
+        
         {activeTab === 'personal' && renderPersonalInfo()}
         {activeTab === 'kyc' && <KycVerificationSection accessToken={session.access_token!} userId={session.user?.id || ''} />}
         {activeTab === 'orders' && <OrderHistorySection accessToken={session.access_token!} />}
         {activeTab === 'transactions' && <TransactionHistorySection accessToken={session.access_token!} />}
         {activeTab === 'support' && <SupportSection accessToken={session.access_token!} />}
         {activeTab === 'settings' && renderSettings()}
-      </ScrollView>
-    </View>
+      </View>
+
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.backgroundSecondary },
-  content: { paddingBottom: 24 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F5F5F7', 
+  },
+  content: { 
+    paddingHorizontal: 16,
+  },
   // Unauth
-  title: { fontSize: 24, fontWeight: '700', color: Theme.text },
-  subtitle: { fontSize: 15, color: Theme.textSecondary, marginBottom: 24 },
+  unauthTitle: { fontSize: 24, fontWeight: '700', color: Theme.text },
+  unauthSubtitle: { fontSize: 15, color: Theme.textSecondary, marginBottom: 24 },
   primaryBtn: { backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: Theme.radiusMd, alignItems: 'center', marginBottom: 12, ...Theme.shadowSm },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  secondaryBtn: { backgroundColor: Theme.background, paddingVertical: 14, borderRadius: Theme.radiusMd, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: Theme.inputBorder },
+  secondaryBtn: { backgroundColor: '#fff', paddingVertical: 14, borderRadius: Theme.radiusMd, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: Theme.inputBorder },
   secondaryBtnText: { fontSize: 16, color: Theme.text },
   linkBtn: { alignItems: 'center', paddingVertical: 12 },
   linkBtnText: { fontSize: 15, color: Theme.link },
-  // Profile Header
-  profileHeader: { backgroundColor: Theme.background, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Theme.inputBorder },
-  profileHeaderInner: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarSmall: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#818cf8', alignItems: 'center', justifyContent: 'center' },
-  avatarSmallText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  profileName: { fontSize: 15, fontWeight: '700', color: Theme.text },
-  profileEmail: { fontSize: 11, color: Theme.textMuted },
-  // Nav
-  navScroll: { backgroundColor: Theme.background, maxHeight: 48, borderBottomWidth: 1, borderBottomColor: Theme.inputBorder },
-  navRow: { flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 6, gap: 4, alignItems: 'center' },
-  navItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
-  navItemActive: { backgroundColor: Theme.primary },
-  navLabel: { fontSize: 12, fontWeight: '600', color: Theme.textSecondary },
-  navLabelActive: { color: '#fff' },
-  // Body
-  body: { flex: 1 },
-  bodyContent: { padding: 16, paddingBottom: 100 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: Theme.text },
-  divider: { height: 1, backgroundColor: Theme.inputBorder, marginVertical: 12 },
-  sectionContent: { gap: 14 },
-  // Avatar
-  avatarSection: { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: Theme.backgroundSecondary, padding: 16, borderRadius: Theme.radiusLg, borderWidth: 1, borderColor: Theme.inputBorder },
-  avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#818cf8', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#fff' },
-  avatarText: { fontSize: 24, fontWeight: '800', color: '#fff' },
-  avatarName: { fontSize: 16, fontWeight: '700', color: Theme.text },
-  avatarEmail: { fontSize: 12, color: Theme.textMuted },
-  // Info card
-  infoCard: { backgroundColor: Theme.background, padding: 16, borderRadius: Theme.radiusLg, borderWidth: 1, borderColor: Theme.inputBorder, gap: 14 },
-  field: { gap: 4 },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary, textTransform: 'uppercase' },
-  fieldValue: { fontSize: 15, fontWeight: '500', color: Theme.text },
-  fieldInput: { backgroundColor: Theme.backgroundSecondary, borderRadius: 8, padding: 12, fontSize: 15, color: Theme.text, borderWidth: 1, borderColor: Theme.inputBorder },
-  fieldHint: { fontSize: 10, color: Theme.textMuted },
-  editActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  cancelEditBtn: { flex: 1, borderWidth: 2, borderColor: Theme.inputBorder, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  cancelEditText: { fontWeight: '600', color: Theme.textSecondary },
-  saveBtn: { flex: 1, backgroundColor: Theme.primary, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontWeight: '600' },
-  editProfileBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Theme.primary, paddingVertical: 12, borderRadius: 8, marginTop: 4 },
-  editProfileBtnText: { color: '#fff', fontWeight: '600' },
+  
+  // Header
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Theme.primary, // Using primary since we don't have CSS gradients easily here
+    marginBottom: 16,
+  },
+  userHeaderCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    ...Theme.shadowSm,
+    marginBottom: 20,
+  },
+  avatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Theme.primary + '20',
+    borderWidth: 2,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Theme.shadowSm,
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Theme.primary,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Theme.text,
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 13,
+    color: Theme.textMuted,
+  },
+  badgeWrapper: {
+    backgroundColor: Theme.backgroundSecondary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Theme.textSecondary,
+  },
+
+  // Nav Menu
+  navMenuCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    ...Theme.shadowSm,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  navItemBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  navItemBtnActive: {
+    backgroundColor: Theme.primary + '10',
+  },
+  navItemIcon: {
+    width: 20,
+    textAlign: 'center',
+    marginRight: 12,
+  },
+  navItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.textSecondary,
+  },
+  navItemTextActive: {
+    color: Theme.primary,
+    fontWeight: '700',
+  },
+  navDivider: {
+    height: 1,
+    backgroundColor: Theme.inputBorder,
+    marginLeft: 48,
+  },
+  navFooter: {
+    borderTopWidth: 1,
+    borderTopColor: Theme.inputBorder,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  memberSince: {
+    fontSize: 10,
+    color: Theme.textMuted,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+
+  // Tab Content
+  tabContentWrapper: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    padding: 20,
+    ...Theme.shadowSm,
+    minHeight: 300,
+  },
+  tabTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Theme.text,
+  },
+  tabTitleDivider: {
+    height: 1,
+    backgroundColor: Theme.inputBorder,
+    marginVertical: 16,
+  },
+  tabContentInner: {
+    gap: 16,
+  },
+
+  // Info card / Forms
+  infoCard: {
+    gap: 16,
+  },
+  field: { 
+    gap: 6 
+  },
+  fieldLabel: { 
+    fontSize: 12, 
+    fontWeight: '700', 
+    color: Theme.textSecondary, 
+  },
+  fieldValue: { 
+    fontSize: 15, 
+    fontWeight: '500', 
+    color: Theme.text 
+  },
+  fieldInput: { 
+    backgroundColor: Theme.backgroundSecondary, 
+    borderRadius: 12, 
+    padding: 14, 
+    fontSize: 15, 
+    color: Theme.text, 
+    borderWidth: 1, 
+    borderColor: Theme.inputBorder 
+  },
+  fieldHint: { 
+    fontSize: 11, 
+    color: Theme.textMuted 
+  },
+  editActions: { 
+    flexDirection: 'row', 
+    gap: 12, 
+    marginTop: 8 
+  },
+  cancelEditBtn: { 
+    flex: 1, 
+    borderWidth: 1, 
+    borderColor: Theme.inputBorder, 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    alignItems: 'center' 
+  },
+  cancelEditText: { 
+    fontWeight: '600', 
+    color: Theme.textSecondary 
+  },
+  saveBtn: { 
+    flex: 1, 
+    backgroundColor: Theme.primary, 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    alignItems: 'center' 
+  },
+  saveBtnText: { 
+    color: '#fff', 
+    fontWeight: '600' 
+  },
+  editProfileBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 8, 
+    backgroundColor: Theme.primary, 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    marginTop: 8 
+  },
+  editProfileBtnText: { 
+    color: '#fff', 
+    fontWeight: '700' 
+  },
+  
   // Settings
   settingsTitle: { fontSize: 16, fontWeight: '700', color: Theme.text },
-  settingsDesc: { fontSize: 12, color: Theme.textMuted },
-  dangerCard: { backgroundColor: '#fef2f2', borderRadius: Theme.radiusMd, borderWidth: 1, borderColor: '#fecaca', padding: 16, gap: 0 },
-  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  dangerLabel: { fontSize: 14, fontWeight: '600', color: Theme.text },
-  dangerDesc: { fontSize: 11, color: Theme.textMuted },
-  dangerBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#fecaca', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8 },
-  dangerBtnText: { fontSize: 12, fontWeight: '700', color: Theme.error },
+  settingsDesc: { fontSize: 13, color: Theme.textMuted },
+  dangerCard: { backgroundColor: '#fef2f2', borderRadius: 12, borderWidth: 1, borderColor: '#fecaca', padding: 16, gap: 0 },
+  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  dangerLabel: { fontSize: 14, fontWeight: '700', color: Theme.text },
+  dangerDesc: { fontSize: 12, color: Theme.textMuted },
+  dangerBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#fecaca', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
+  dangerBtnText: { fontSize: 13, fontWeight: '700', color: Theme.error },
   dangerDivider: { height: 1, backgroundColor: '#fecaca', marginVertical: 8 },
-  memberSince: { fontSize: 10, color: Theme.textMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1, marginTop: 12 },
 });

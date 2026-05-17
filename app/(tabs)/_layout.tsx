@@ -5,6 +5,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Theme } from '@/constants/Theme';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useCart } from '@/src/contexts/CartContext';
 import { apiGet } from '@/src/services/api';
 
 function TabBarIcon(props: {
@@ -38,6 +39,7 @@ const badgeStyles = StyleSheet.create({
 
 export default function TabLayout() {
   const { session } = useAuth();
+  const { itemCount } = useCart();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchUnreadCount = useCallback(async () => {
@@ -79,6 +81,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'TOLA',
+          headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
         }}
       />
@@ -86,6 +89,7 @@ export default function TabLayout() {
         name="categories"
         options={{
           title: 'Categories',
+          headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="th-large" color={color} />,
         }}
       />
@@ -93,13 +97,14 @@ export default function TabLayout() {
         name="cart"
         options={{
           title: 'Cart',
-          tabBarIcon: ({ color }) => <TabBarIcon name="shopping-cart" color={color} />,
+          headerShown: false,
+          tabBarIcon: ({ color }) => <TabBarIcon name="shopping-cart" color={color} badge={itemCount} />,
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Alerts',
+          title: 'Messages',
           headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="bell" color={color} badge={unreadCount} />,
         }}
@@ -107,12 +112,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Account',
+          title: 'Profile',
+          headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="user-o" color={color} />,
         }}
       />
-      <Tabs.Screen name="orders" options={{ href: null }} />
-      <Tabs.Screen name="favorites" options={{ href: null }} />
+      {/* Shop gets the bottom navbar but no visible tab icon */}
+      <Tabs.Screen name="shop" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="orders" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="favorites" options={{ href: null, headerShown: false }} />
     </Tabs>
     </ErrorBoundary>
   );

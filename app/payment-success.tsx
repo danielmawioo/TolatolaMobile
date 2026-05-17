@@ -103,7 +103,10 @@ export default function PaymentSuccessScreen() {
         <View style={styles.heroIcon}>
           <FontAwesome name="check" size={32} color="#fff" />
         </View>
-        <Text style={styles.heroTitle}>Order Confirmed.</Text>
+        <View style={styles.heroTitleRow}>
+          <Text style={styles.heroTitle}>Order</Text>
+          <Text style={[styles.heroTitle, styles.heroTitleDim]}>Confirmed.</Text>
+        </View>
         <Text style={styles.heroSub}>
           {isCod ? "We've received your order. Please prepare cash for delivery."
             : paymentStatus === 'paid' ? 'Your order has been placed and payment is secured.'
@@ -277,7 +280,7 @@ export default function PaymentSuccessScreen() {
           </Pressable>
           <Pressable
             style={styles.secondaryAction}
-            onPress={() => router.replace('/(tabs)')}
+            onPress={() => router.replace('/(tabs)/shop')}
           >
             <Text style={styles.secondaryActionText}>Continue Shopping</Text>
           </Pressable>
@@ -292,13 +295,15 @@ const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 14, color: Theme.textMuted },
   // Hero
-  heroBanner: { backgroundColor: Theme.primary, paddingHorizontal: 24, paddingVertical: 40, alignItems: 'center', gap: 12 },
+  heroBanner: { backgroundColor: Theme.primary, paddingHorizontal: 24, paddingVertical: 40, alignItems: 'center', gap: 16 },
   heroIcon: {
-    width: 72, height: 72, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 80, height: 80, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: '#fff', textAlign: 'center' },
-  heroSub: { fontSize: 14, color: 'rgba(255,255,255,0.8)', textAlign: 'center', lineHeight: 20, maxWidth: 300 },
+  heroTitleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  heroTitle: { fontSize: 32, fontWeight: '900', color: '#fff', letterSpacing: -1 },
+  heroTitleDim: { opacity: 0.8 },
+  heroSub: { fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', lineHeight: 22, maxWidth: 300 },
   // Body
   body: { paddingHorizontal: gap.md, paddingTop: 20, gap: 16 },
   // Status banners

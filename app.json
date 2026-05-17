@@ -2,7 +2,7 @@
   "expo": {
     "name": "TOLA",
     "slug": "TolatolaMobile",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tola",
@@ -19,8 +19,8 @@
       "buildNumber": "1"
     },
     "android": {
-      "package": "co.tolatola.tola",
-      "versionCode": 1,
+      "package": "co.tolata.tolamobile",
+      "versionCode": 20,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

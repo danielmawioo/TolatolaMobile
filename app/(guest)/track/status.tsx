@@ -1,182 +1,436 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { apiGet } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
-import { gap } from '@/constants/layout';
 
-const STATUS_LABELS: Record<string, string> = {
-  ORDER_RECEIVED: 'Order received',
-  PAYMENT_SECURED: 'Payment secured',
-  VENDOR_PREPARING: 'Vendor preparing',
-  PICKED_UP: 'Picked up',
-  IN_TRANSIT: 'In transit',
-  DELIVERED: 'Delivered',
+const TIMELINE_STEPS = [
+  { id: 'ORDER_RECEIVED', label: 'Order Received' },
+  { id: 'PAYMENT_CONFIRMED', label: 'Payment Confirmed' },
+  { id: 'PROCESSING', label: 'Processing' },
+  { id: 'DISPATCHED', label: 'Dispatched' },
+  { id: 'IN_TRANSIT', label: 'In Transit' },
+  { id: 'DELIVERED', label: 'Delivered' },
+];
+
+const STATUS_INDEX_MAP: Record<string, number> = {
+  ORDER_RECEIVED: 0,
+  pending: 0,
+  pending_payment: 0,
+  PAYMENT_CONFIRMED: 1,
+  confirmed: 1,
+  paid: 1,
+  PROCESSING: 2,
+  processing: 2,
+  preparing: 2,
+  DISPATCHED: 3,
+  dispatched: 3,
+  ready_for_pickup: 3,
+  picked_up: 3,
+  IN_TRANSIT: 4,
+  in_transit: 4,
+  shipped: 4,
+  DELIVERED: 5,
+  delivered: 5,
+  completed: 5,
 };
 
 export default function TrackStatusScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ token: string }>();
   const token = params.token;
-  const [data, setData] = useState<{
-    order_number?: string;
-    tracking_code?: string;
-    status?: string;
-    timeline?: { status: string; at?: string }[];
-    transporter_name?: string;
-    transporter_phone_masked?: string;
-    eta?: string;
-  } | null>(null);
-  const [loading, setLoading] = useState(!!token);
+  
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
-      setError('Missing token');
+      setError('Missing tracking session. Please start from the track order page.');
       setLoading(false);
       return;
     }
     (async () => {
       try {
-        const res = await apiGet(`/tracking/status?token=${encodeURIComponent(token)}`);
-        setData(res as any);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load status');
+        const res: any = await apiGet(`/tracking/status?token=${encodeURIComponent(token)}`);
+        const normalized = res?.data || res;
+        const order = normalized?.order || normalized;
+        if (!order) {
+          throw new Error('Order status data not found.');
+        }
+        setData({ ...normalized, order });
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load order status.');
       } finally {
         setLoading(false);
       }
     })();
   }, [token]);
 
-  const safePadding = {
-    paddingTop: insets.top + 16,
-    paddingBottom: insets.bottom + 24,
-    paddingHorizontal: gap.md,
-  };
-
   if (loading) {
     return (
-      <View style={[styles.container, safePadding]}>
-        <Text style={styles.loading}>Loading…</Text>
+      <View style={[styles.centerContainer, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={Theme.primary} />
+        <Text style={styles.loadingText}>Loading order status…</Text>
       </View>
     );
   }
+
   if (error || !data) {
     return (
-      <View style={[styles.container, safePadding]}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.backText}>← Back</Text>
-        </Pressable>
-        <Text style={styles.error}>{error || 'Not found'}</Text>
+      <View style={[styles.centerContainer, { paddingTop: insets.top }]}>
+        <View style={styles.errorCard}>
+          <FontAwesome name="exclamation-circle" size={24} color={Theme.error} style={{ marginBottom: 12 }} />
+          <Text style={styles.errorTitle}>{error || 'Order not found.'}</Text>
+          <Pressable style={styles.outlineButton} onPress={() => router.replace('/(guest)/track')}>
+            <Text style={styles.outlineButtonText}>Track another order</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
+  const { order, timeline = [], transporter } = data;
+  const currentIndex = STATUS_INDEX_MAP[String(order.status)] ?? TIMELINE_STEPS.findIndex(s => s.id === order.status);
+  const progressPercent = currentIndex >= 0 ? ((currentIndex + 1) / TIMELINE_STEPS.length) * 100 : 0;
+
   return (
-    <ScrollView
+    <ScrollView 
       style={styles.container}
-      contentContainerStyle={[styles.content, safePadding]}
+      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40, paddingHorizontal: 16 }}
     >
-      <Pressable style={styles.back} onPress={() => router.back()}>
-        <Text style={styles.backText}>← Back</Text>
+      <Pressable style={styles.backButton} onPress={() => router.replace('/(tabs)')}>
+        <FontAwesome name="arrow-left" size={14} color={Theme.textMuted} />
+        <Text style={styles.backText}>Back to home</Text>
       </Pressable>
-      <Text style={styles.title}>Order status</Text>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Order number</Text>
-        <Text style={styles.value}>{data.order_number || '—'}</Text>
-        <Text style={styles.label}>Tracking code</Text>
-        <Text style={styles.value}>{data.tracking_code || '—'}</Text>
-        <View style={styles.badgeWrap}>
-          <Text style={styles.badge}>{data.status ? STATUS_LABELS[data.status] || data.status : '—'}</Text>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Timeline</Text>
-        {(data.timeline || []).map((item, i) => (
-          <View key={i} style={styles.timelineRow}>
-            <Text style={styles.timelineStatus}>
-              {STATUS_LABELS[item.status] || item.status}
-            </Text>
-            {item.at ? <Text style={styles.timelineAt}>{item.at}</Text> : null}
+        <View style={styles.cardHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.orderNumberTitle}>Order {order.order_number}</Text>
+            <Text style={styles.trackingCode}>{order.tracking_code}</Text>
           </View>
-        ))}
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{(order.status || '').replace(/_/g, ' ')}</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardContent}>
+          {/* Timeline */}
+          <Text style={styles.sectionTitle}>ORDER TIMELINE</Text>
+          
+          <View style={styles.progressBarBg}>
+            <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+          </View>
+
+          <View style={styles.timelineList}>
+            {TIMELINE_STEPS.map((step, idx) => {
+              const done = currentIndex > idx || (currentIndex === idx && order.status === 'DELIVERED');
+              const current = currentIndex === idx && order.status !== 'DELIVERED';
+              const timeItem = timeline.find((t: any) => t.status === step.id);
+
+              return (
+                <View key={step.id} style={styles.timelineRow}>
+                  <View style={styles.timelineIconBox}>
+                    {done ? (
+                      <FontAwesome name="check-circle" size={20} color="#16a34a" />
+                    ) : current ? (
+                      <View style={styles.currentIconInner} />
+                    ) : (
+                      <View style={styles.pendingIconOuter} />
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.timelineStepText, 
+                    done ? styles.stepTextDone : current ? styles.stepTextCurrent : styles.stepTextPending
+                  ]}>
+                    {step.label}
+                  </Text>
+                  {timeItem?.completed_at && (
+                    <Text style={styles.timelineTime}>
+                      {new Date(timeItem.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Delivery Details */}
+          {transporter && (
+            <View style={styles.deliveryBox}>
+              <Text style={styles.sectionTitle}>DELIVERY DETAILS</Text>
+              
+              <View style={styles.deliveryRow}>
+                <FontAwesome name="truck" size={16} color={Theme.textMuted} />
+                <Text style={styles.deliveryText}>{transporter.name}</Text>
+              </View>
+
+              {transporter.phone_masked && (
+                <View style={styles.deliveryRow}>
+                  <FontAwesome name="phone" size={16} color={Theme.textMuted} />
+                  <Text style={[styles.deliveryText, { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
+                    {transporter.phone_masked}
+                  </Text>
+                </View>
+              )}
+
+              {order.estimated_arrival && (
+                <View style={styles.deliveryRow}>
+                  <FontAwesome name="clock-o" size={16} color={Theme.textMuted} />
+                  <Text style={styles.deliveryText}>
+                    ETA: {new Date(order.estimated_arrival).toLocaleString()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       </View>
 
-      {(data.transporter_name || data.eta) && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Delivery</Text>
-          {data.transporter_name ? (
-            <Text style={styles.value}>Transporter: {data.transporter_name}</Text>
-          ) : null}
-          {data.transporter_phone_masked ? (
-            <Text style={styles.muted}>Phone: {data.transporter_phone_masked}</Text>
-          ) : null}
-          {data.eta ? <Text style={styles.muted}>ETA: {data.eta}</Text> : null}
-        </View>
-      )}
+      {/* Action Buttons */}
+      <View style={styles.actionsGrid}>
+        <Pressable 
+          style={[styles.actionBtn, styles.actionBtnOutline]}
+          onPress={() => router.push('/(guest)/contact')}
+        >
+          <FontAwesome name="comments-o" size={16} color={Theme.text} />
+          <Text style={styles.actionBtnOutlineText}>Contact Support</Text>
+        </Pressable>
 
-      <Pressable
-        style={styles.button}
-        onPress={() =>
-          router.push({
+        <Pressable 
+          style={[styles.actionBtn, styles.actionBtnSecondary]}
+          onPress={() => router.push({
             pathname: '/(guest)/track/complaint',
-            params: { token: token!, orderId: (data as any).order_id || '' },
-          })
-        }
-      >
-        <Text style={styles.buttonText}>Raise complaint</Text>
-      </Pressable>
-      <Pressable style={styles.linkBtn} onPress={() => router.push('/(guest)/home')}>
-        <Text style={styles.linkBtnText}>Contact support</Text>
-      </Pressable>
+            params: { token: token!, orderId: order.id }
+          })}
+        >
+          <FontAwesome name="exclamation-triangle" size={16} color={Theme.text} />
+          <Text style={styles.actionBtnSecondaryText}>Raise Complaint</Text>
+        </Pressable>
+      </View>
+
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.backgroundSecondary },
-  content: { paddingBottom: 24, paddingHorizontal: gap.md },
-  back: { marginBottom: 16 },
-  backText: { fontSize: 16, color: Theme.link },
-  loading: { textAlign: 'center', marginTop: 48, color: Theme.textSecondary },
-  error: { color: Theme.error, padding: 24 },
-  title: { fontSize: 24, fontWeight: '700', color: Theme.text, marginBottom: 20 },
-  card: {
-    backgroundColor: Theme.background,
-    borderRadius: Theme.radiusMd,
-    padding: 18,
-    marginBottom: 16,
-    ...Theme.shadowSm,
+  container: {
+    flex: 1,
+    backgroundColor: Theme.backgroundSecondary,
   },
-  label: { fontSize: 12, color: Theme.textSecondary, marginBottom: 4 },
-  value: { fontSize: 16, color: Theme.text, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: Theme.text, marginBottom: 12 },
-  badgeWrap: { marginTop: 8 },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: Theme.primary,
-    borderRadius: 8,
-    color: '#fff',
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Theme.backgroundSecondary,
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    marginTop: 12,
     fontSize: 14,
+    color: Theme.textMuted,
     fontWeight: '600',
   },
-  timelineRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  timelineStatus: { fontSize: 14, color: Theme.text },
-  timelineAt: { fontSize: 12, color: Theme.textMuted },
-  muted: { fontSize: 14, color: Theme.textMuted, marginTop: 4 },
-  button: {
-    backgroundColor: Theme.primary,
-    paddingVertical: 16,
-    borderRadius: Theme.radiusMd,
+  backButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
+    gap: 8,
+    marginBottom: 20,
+    alignSelf: 'flex-start',
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  linkBtn: { alignItems: 'center', marginTop: 16 },
-  linkBtnText: { fontSize: 15, color: Theme.link },
+  backText: {
+    fontSize: 14,
+    color: Theme.textMuted,
+    fontWeight: '600',
+  },
+  errorCard: {
+    backgroundColor: '#fff',
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.error + '40',
+    alignItems: 'center',
+    width: '100%',
+    ...Theme.shadowSm,
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Theme.error,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  outlineButton: {
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  outlineButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.text,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    ...Theme.shadowSm,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    backgroundColor: Theme.backgroundTertiary,
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  orderNumberTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: Theme.text,
+    marginBottom: 4,
+  },
+  trackingCode: {
+    fontSize: 13,
+    color: Theme.textMuted,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  badge: {
+    backgroundColor: Theme.backgroundSecondary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Theme.textSecondary,
+    textTransform: 'uppercase',
+  },
+  cardContent: {
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Theme.textMuted,
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: Theme.inputBg,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: Theme.primary,
+  },
+  timelineList: {
+    gap: 16,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  timelineIconBox: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currentIconInner: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 3,
+    borderColor: Theme.primary,
+  },
+  pendingIconOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Theme.inputBorder,
+  },
+  timelineStepText: {
+    fontSize: 15,
+  },
+  stepTextDone: {
+    color: Theme.text,
+    fontWeight: '500',
+  },
+  stepTextCurrent: {
+    color: Theme.primary,
+    fontWeight: '700',
+  },
+  stepTextPending: {
+    color: Theme.textMuted,
+  },
+  timelineTime: {
+    fontSize: 12,
+    color: Theme.textMuted,
+    marginLeft: 'auto',
+  },
+  deliveryBox: {
+    marginTop: 32,
+    padding: 16,
+    backgroundColor: Theme.backgroundTertiary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+  },
+  deliveryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+  },
+  deliveryText: {
+    fontSize: 14,
+    color: Theme.text,
+    fontWeight: '500',
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  actionBtnOutline: {
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    backgroundColor: '#fff',
+  },
+  actionBtnOutlineText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.text,
+  },
+  actionBtnSecondary: {
+    backgroundColor: Theme.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+  },
+  actionBtnSecondaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.text,
+  },
 });

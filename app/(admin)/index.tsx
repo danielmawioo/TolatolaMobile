@@ -14,7 +14,7 @@ export default function AdminDashboardScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Admin</Text>
-        <Pressable onPress={() => logout().then(() => router.replace('/(guest)/home'))}>
+        <Pressable onPress={() => logout().then(() => router.replace('/(tabs)'))}>
           <Text style={styles.logout}>Logout</Text>
         </Pressable>
       </View>

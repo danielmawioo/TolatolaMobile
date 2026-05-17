@@ -4,24 +4,131 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
 import { TANZANIA_REGIONS, type AddressData } from '@/src/constants/checkout';
+import { apiGet } from '@/src/services/api';
 
 interface Props {
   value: AddressData;
   onChange: (address: AddressData) => void;
+  onAddressComplete?: (fullAddress: string, coords?: { lat: number, lng: number }) => void;
 }
 
-export function TanzaniaAddressForm({ value, onChange }: Props) {
+export function TanzaniaAddressForm({ value, onChange, onAddressComplete }: Props) {
   const [showRegionPicker, setShowRegionPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleField = (field: keyof AddressData, val: string) => {
     onChange({ ...value, [field]: val });
   };
 
+  const handleSearch = async (text: string) => {
+    setSearchQuery(text);
+    if (text.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await apiGet<any>(`/maps/autocomplete?input=${encodeURIComponent(text)}`);
+      if (res && res.predictions) {
+        setSuggestions(res.predictions);
+      }
+    } catch (error) {
+      console.error('Autocomplete error', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectSuggestion = async (placeId: string, description: string) => {
+    setSearchQuery(description);
+    setSuggestions([]);
+    
+    try {
+      const res = await apiGet<any>(`/maps/place?placeId=${placeId}`);
+      if (res && res.result) {
+        const place = res.result;
+        
+        let region = '', district = '', ward = '', village = '', street = '';
+        const streetParts: string[] = [];
+
+        for (const component of place.address_components || []) {
+          const types = component.types;
+          if (types.includes("administrative_area_level_1")) {
+            const regionName = component.long_name.replace(" Region", "");
+            region = TANZANIA_REGIONS.find((r) => r.toLowerCase() === regionName.toLowerCase()) || regionName;
+          } else if (types.includes("administrative_area_level_2")) {
+            district = component.long_name.replace(" District", "");
+          } else if (types.includes("administrative_area_level_3") || types.includes("sublocality_level_1")) {
+            ward = component.long_name;
+          } else if (types.includes("sublocality_level_2") || types.includes("neighborhood")) {
+            village = component.long_name;
+          } else if (types.includes("route")) {
+            streetParts.push(component.long_name);
+          } else if (types.includes("street_number")) {
+            streetParts.unshift(component.short_name);
+          }
+        }
+
+        street = streetParts.join(" ") || place.formatted_address?.split(",")[0] || "";
+        
+        onChange({
+          country: 'Tanzania',
+          region,
+          district,
+          ward,
+          village,
+          street
+        });
+
+        if (onAddressComplete && place.geometry?.location) {
+          onAddressComplete(place.formatted_address, {
+            lat: place.geometry.location.lat,
+            lng: place.geometry.location.lng
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Place details error', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
-        <FontAwesome name="map-marker" size={16} color={Theme.primary} />
-        <Text style={styles.sectionTitle}>Delivery Address</Text>
+        <FontAwesome name="search" size={16} color={Theme.primary} />
+        <Text style={styles.sectionTitle}>Address Search</Text>
+      </View>
+      <View style={{ zIndex: 10 }}>
+        <TextInput
+          style={styles.input}
+          placeholder="Type to search location..."
+          value={searchQuery}
+          onChangeText={handleSearch}
+          placeholderTextColor={Theme.textMuted}
+        />
+        {suggestions.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            {suggestions.map((item) => (
+              <Pressable
+                key={item.place_id}
+                style={styles.suggestionItem}
+                onPress={() => handleSelectSuggestion(item.place_id, item.description)}
+              >
+                <FontAwesome name="map-marker" size={14} color={Theme.textMuted} style={{ marginRight: 8 }} />
+                <Text style={styles.suggestionText} numberOfLines={1}>{item.description}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.sectionHeader}>
+        <FontAwesome name="map-marker" size={16} color={Theme.textMuted} />
+        <Text style={styles.sectionTitle}>Manual Entry</Text>
       </View>
 
       {/* Region Picker */}
@@ -142,4 +249,31 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Theme.primary + '15',
   },
   infoText: { flex: 1, fontSize: 12, color: Theme.textSecondary, lineHeight: 18 },
+  divider: { height: 1, backgroundColor: Theme.inputBorder, marginVertical: 4 },
+  suggestionsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: Theme.radiusMd,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    marginTop: 4,
+    ...Theme.shadowMd,
+    position: 'absolute',
+    top: 52,
+    left: 0,
+    right: 0,
+    maxHeight: 200,
+    zIndex: 999,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.inputBorder,
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: Theme.text,
+    flex: 1,
+  },
 });

@@ -31,9 +31,10 @@ export function OptimizedImage({
 
   const imageStyles = [
     styles.image,
-    typeof width === 'number' ? { width, height: height ?? width / aspectRatio } : { width },
-    height != null && typeof height === 'number' ? { height } : undefined,
-    aspectRatio && height == null ? { aspectRatio } : undefined,
+    { width },
+    height !== undefined 
+      ? { height } 
+      : (typeof width === 'number' ? { height: width / aspectRatio } : { aspectRatio }),
     style,
   ];
 

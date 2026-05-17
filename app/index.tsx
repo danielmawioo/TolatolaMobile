@@ -10,18 +10,8 @@ export default function IndexScreen() {
 
   useEffect(() => {
     if (isLoading) return;
-    const user = session?.user as any;
-    const rawUserType =
-      (user?.user_type as string | undefined) ||
-      (user?.role as string | undefined) ||
-      (user?.account_type as string | undefined);
-
-    if (isAuthenticated) {
-      router.replace(getRoleRedirectPath(rawUserType) as any);
-    } else {
-      router.replace('/(guest)/home');
-    }
-  }, [isAuthenticated, isLoading, session?.user?.user_type]);
+    router.replace('/(tabs)');
+  }, [isLoading]);
 
   return (
     <View style={styles.container}>

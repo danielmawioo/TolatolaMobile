@@ -105,7 +105,7 @@ export default function OrdersScreen() {
                 title={COPY.empty.ordersTitle}
                 message={COPY.empty.ordersMessage}
                 actionLabel={COPY.empty.ordersAction}
-                onAction={() => router.push('/(tabs)')}
+                onAction={() => router.push('/(tabs)/shop')}
               />
             </View>
           }
