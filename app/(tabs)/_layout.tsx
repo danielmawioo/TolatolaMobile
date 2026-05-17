@@ -6,7 +6,7 @@ import { Theme } from '@/constants/Theme';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useCart } from '@/src/contexts/CartContext';
-import { apiGet } from '@/src/services/api';
+import { useNotifications } from '@/src/contexts/NotificationContext';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -40,21 +40,7 @@ const badgeStyles = StyleSheet.create({
 export default function TabLayout() {
   const { session } = useAuth();
   const { itemCount } = useCart();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const fetchUnreadCount = useCallback(async () => {
-    if (!session?.access_token) { setUnreadCount(0); return; }
-    try {
-      const res = await apiGet<any>('/notifications/unread-count', session.access_token);
-      setUnreadCount(res?.unread_count || 0);
-    } catch { /* silent */ }
-  }, [session?.access_token]);
-
-  useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // poll every 30s
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  const { unreadCount } = useNotifications();
 
   return (
     <ErrorBoundary>

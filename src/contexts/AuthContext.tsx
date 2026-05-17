@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiPost } from '@/src/services/api';
-import { registerForPushNotifications } from '@/src/services/pushNotifications';
+
 
 const SESSION_KEY = '@tolatola/session';
 
@@ -61,12 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: !!session,
     });
     
-    // Register for push notifications if we have a valid session
-    if (session?.access_token) {
-      registerForPushNotifications(session.access_token).catch(e => 
-        console.warn('Push notification registration failed silently:', e)
-      );
-    }
+
   }, []);
 
   const login = useCallback(
