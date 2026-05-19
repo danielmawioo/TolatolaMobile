@@ -56,12 +56,15 @@ export default function PaymentSuccessScreen() {
       .finally(() => setLoading(false));
   }, [orderId]);
 
-  // Poll payment status
+  // Poll payment status — backend now actively queries ClickPesa for instant confirmation
   useEffect(() => {
     if (paymentStatus !== 'processing' || isCod || !orderId) return;
     let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
+    const maxAttempts = 120;
+    let cancelled = false;
+
+    async function checkStatus() {
+      if (cancelled) return;
       try {
         const res = await apiGet<any>(`/payments/status/${orderId}`, session?.access_token);
         const payload = res?.data || res;
@@ -70,15 +73,25 @@ export default function PaymentSuccessScreen() {
         if (pStatus === 'paid' || ['confirmed', 'processing', 'preparing'].includes(String(oStatus))) {
           setPaymentStatus('paid');
           setOrder((prev: any) => prev ? { ...prev, payment_status: 'paid', status: oStatus || prev.status } : prev);
-          clearInterval(interval);
+          return; // Stop polling
         } else if (pStatus === 'failed') {
           setPaymentStatus('failed');
-          clearInterval(interval);
+          return; // Stop polling
         }
       } catch {}
-      if (attempts >= 60) clearInterval(interval);
-    }, 3000);
-    return () => clearInterval(interval);
+
+      attempts++;
+      if (attempts >= maxAttempts || cancelled) return;
+
+      // Fast polling (2s) for first 30 seconds, then slower (5s) to reduce load
+      const delay = attempts < 15 ? 2000 : 5000;
+      setTimeout(checkStatus, delay);
+    }
+
+    // Start immediately — no initial delay
+    checkStatus();
+
+    return () => { cancelled = true; };
   }, [paymentStatus, orderId, isCod]);
 
   const currentStep = STATUS_MAP[order?.status || 'pending'] ?? 0;
