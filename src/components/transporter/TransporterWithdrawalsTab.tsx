@@ -40,9 +40,16 @@ export function TransporterWithdrawalsTab({ transporterId, accessToken, availabl
 
   const loadData = async () => {
     try {
-      const res = await apiGet<any>(`/transporters/${transporterId}/withdrawals`, accessToken);
+      const [res, financeRes] = await Promise.all([
+        apiGet<any>('/transporters/withdrawals', accessToken).catch(() => null),
+        apiGet<any>('/transporter/finance-summary', accessToken).catch(() => null)
+      ]);
       setWithdrawals(res?.withdrawals || []);
-      if (res?.availableBalance !== undefined) setBalance(res.availableBalance);
+      if (financeRes?.withdrawable_balance !== undefined) {
+        setBalance(financeRes.withdrawable_balance);
+      } else if (res?.availableBalance !== undefined) {
+        setBalance(res.availableBalance);
+      }
     } catch (e) { console.error('Withdrawals load error', e); }
     setLoading(false);
   };

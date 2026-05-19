@@ -28,6 +28,7 @@ export default function TransporterDashboardScreen() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [financeSummary, setFinanceSummary] = useState<any>(null);
   const [profileData, setProfileData] = useState({
     full_name: '', phone: '', vehicle_type: '', license_plate: '',
   });
@@ -57,14 +58,19 @@ export default function TransporterDashboardScreen() {
         license_plate: profile?.license_plate || tData?.vehicle_registration || '',
       });
 
-      // Fetch assignments and payments for stats
+      // Fetch assignments, payments, and finance summary for stats
       if (tId) {
-        const [assignRes, payRes] = await Promise.all([
+        const [assignRes, payRes, financeRes] = await Promise.all([
           apiGet<any>('/transporter/jobs', session.access_token).catch(() => []),
-          apiGet<any>(`/transporters/${tId}/payments`, session.access_token).catch(() => ({ payments: [] })),
+          apiGet<any>('/transporters/payments', session.access_token).catch(() => ({ payments: [] })),
+          apiGet<any>('/transporter/finance-summary', session.access_token).catch(() => null),
         ]);
         setAssignments(Array.isArray(assignRes) ? assignRes : assignRes?.assignments || assignRes?.data || []);
         setPayments(payRes?.payments || []);
+        // Use finance summary for accurate balance if available
+        if (financeRes) {
+          setFinanceSummary(financeRes);
+        }
       }
 
       // Notification count
@@ -141,8 +147,8 @@ export default function TransporterDashboardScreen() {
     const isReady = a.status === 'ready_for_pickup';
     return isAccepted || isReady;
   });
-  const completedAssignments = assignments.filter(a => a.status === 'delivered');
-  const availableBalance = payments.filter(p => p.status === 'available').reduce((s, p) => s + Number(p.amount), 0);
+  const completedAssignments = assignments.filter(a => a.status === 'delivered' && a.is_customer_verified);
+  const availableBalance = financeSummary?.withdrawable_balance ?? payments.filter(p => p.status === 'available').reduce((s, p) => s + Number(p.amount), 0);
 
   if (!isAuthenticated) return null;
 

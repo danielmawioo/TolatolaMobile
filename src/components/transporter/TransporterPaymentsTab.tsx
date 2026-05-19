@@ -24,10 +24,13 @@ export function TransporterPaymentsTab({ transporterId, accessToken }: Props) {
 
   const loadData = async () => {
     try {
-      const res = await apiGet<any>(`/transporters/${transporterId}/payments`, accessToken);
-      setPayments(res?.payments || []);
-      setAvailable(res?.availableBalance || 0);
-      setPending(res?.pendingBalance || 0);
+      const [paymentsRes, financeRes] = await Promise.all([
+        apiGet<any>('/transporters/payments', accessToken).catch(() => ({ payments: [] })),
+        apiGet<any>('/transporter/finance-summary', accessToken).catch(() => null)
+      ]);
+      setPayments(paymentsRes?.payments || []);
+      setAvailable(financeRes?.withdrawable_balance ?? paymentsRes?.availableBalance ?? 0);
+      setPending(financeRes?.pending_balance ?? paymentsRes?.pendingBalance ?? 0);
     } catch (e) { console.error('Payments load error', e); }
     setLoading(false);
   };
