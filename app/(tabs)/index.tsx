@@ -232,9 +232,37 @@ export default function GuestHomeScreen() {
                     <Text style={[styles.heroDesc, { color: item.text_color || '#fff' }]} numberOfLines={2}>
                       {item.description || "Discover amazing deals and shop from trusted sellers."}
                     </Text>
-                    <Pressable style={styles.heroBtn} onPress={() => router.push('/(tabs)/shop')}>
-                      <Text style={styles.heroBtnText}>{item.button_text?.split('|')[0] || "Start Shopping"}</Text>
-                    </Pressable>
+                    {item.button_link === 'SPECIAL_VENDOR_ACTIONS' ? (
+                      <View style={styles.vendorActionsGrid}>
+                        <View style={styles.vendorActionsRow}>
+                          <Pressable
+                            style={({ pressed }) => [styles.vendorActionBtn, styles.vendorActionBtnPrimary, pressed && { opacity: 0.85 }]}
+                            onPress={() => router.push('/(tabs)/shop')}
+                          >
+                            <FontAwesome name="shopping-cart" size={10} color="#fff" />
+                            <Text style={styles.vendorActionBtnTextPrimary}>Start Shopping</Text>
+                          </Pressable>
+                          <Pressable
+                            style={({ pressed }) => [styles.vendorActionBtn, styles.vendorActionBtnOutline, pressed && { opacity: 0.85 }]}
+                            onPress={() => router.push('/(guest)/auth/signup' as any)}
+                          >
+                            <FontAwesome name="store" size={10} color="#fff" />
+                            <Text style={styles.vendorActionBtnTextOutline}>Become Seller</Text>
+                          </Pressable>
+                        </View>
+                        <Pressable
+                          style={({ pressed }) => [styles.vendorActionBtn, styles.vendorActionBtnOutline, { alignSelf: 'flex-start' }, pressed && { opacity: 0.85 }]}
+                          onPress={() => router.push('/(guest)/auth/signup' as any)}
+                        >
+                          <FontAwesome name="truck" size={10} color="#fff" />
+                          <Text style={styles.vendorActionBtnTextOutline}>Become Transporter</Text>
+                        </Pressable>
+                      </View>
+                    ) : (
+                      <Pressable style={styles.heroBtn} onPress={() => router.push('/(tabs)/shop')}>
+                        <Text style={styles.heroBtnText}>{item.button_text?.split('|')[0] || "Start Shopping"}</Text>
+                      </Pressable>
+                    )}
                   </View>
                 </View>
               </View>
@@ -551,6 +579,36 @@ const styles = StyleSheet.create({
   heroDesc: { fontSize: 11, fontWeight: '500', opacity: 0.9, marginBottom: 12 },
   heroBtn: { backgroundColor: Theme.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, alignSelf: 'flex-start' },
   heroBtnText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  vendorActionsGrid: { gap: 6, marginTop: 2 },
+  vendorActionsRow: { flexDirection: 'row', gap: 6 },
+  vendorActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  vendorActionBtnPrimary: {
+    backgroundColor: Theme.primary,
+  },
+  vendorActionBtnOutline: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  vendorActionBtnTextPrimary: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  vendorActionBtnTextOutline: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
+  },
   
   section: { marginTop: 32 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16, paddingHorizontal: 16 },
