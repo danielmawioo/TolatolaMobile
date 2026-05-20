@@ -14,20 +14,20 @@ import { useCart } from '@/src/contexts/CartContext';
 
 const { width } = Dimensions.get('window');
 
-// Keep category images map similar to web
+// Keep category images map exactly matching the website
 const categoryImages: Record<string, string> = {
-  fmcg: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80',
-  agriculture: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=400&q=80',
-  construction: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=400&q=80',
-  electronics: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=400&q=80',
-  food: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80',
-  health: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=400&q=80',
-  services: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=400&q=80',
-  vehicles: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=400&q=80',
-  handicrafts: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&w=400&q=80',
-  home: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=400&q=80',
-  textiles: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?auto=format&fit=crop&w=400&q=80',
-  default: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80',
+  "fast-moving-consumer-goods": "https://tolatola.co/category-fmcg.jpg",
+  agriculture: "https://tolatola.co/fresh-vegetables-and-farming-crops.jpg",
+  "construction-hardware": "https://tolatola.co/category-hardware.jpg",
+  handicrafts: "https://tolatola.co/handmade-crafts-and-artisan-products.jpg",
+  "food-beverages": "https://tolatola.co/delicious-food-and-beverages.jpg",
+  textiles: "https://tolatola.co/colorful-fabrics-and-textiles.jpg",
+  electronics: "https://tolatola.co/modern-electronics-smartphone-and-gadgets.jpg",
+  "home-garden": "https://tolatola.co/home-decor-and-garden-plants.jpg",
+  "health-beauty": "https://tolatola.co/beauty-and-skincare-products.jpg",
+  services: "https://tolatola.co/professional-services-and-business.jpg",
+  vehicles: "https://tolatola.co/category-vehicles.jpg",
+  default: "https://tolatola.co/placeholder.jpg",
 };
 
 export default function GuestHomeScreen() {
@@ -92,17 +92,20 @@ export default function GuestHomeScreen() {
 
   const getCategoryImage = (cat: any) => {
     if (cat.image_url) return cat.image_url;
+    if (cat.slug && categoryImages[cat.slug]) {
+      return categoryImages[cat.slug];
+    }
     const nameLower = (cat.name || '').toLowerCase();
     if (nameLower.includes('agri') || nameLower.includes('farm')) return categoryImages.agriculture;
-    if (nameLower.includes('food') || nameLower.includes('bev')) return categoryImages.food;
-    if (nameLower.includes('construct') || nameLower.includes('hard')) return categoryImages.construction;
+    if (nameLower.includes('food') || nameLower.includes('bev') || nameLower.includes('beverage')) return categoryImages["food-beverages"];
+    if (nameLower.includes('construct') || nameLower.includes('hard') || nameLower.includes('hardware')) return categoryImages["construction-hardware"];
     if (nameLower.includes('electro')) return categoryImages.electronics;
-    if (nameLower.includes('health') || nameLower.includes('beauty')) return categoryImages.health;
+    if (nameLower.includes('health') || nameLower.includes('beauty')) return categoryImages["health-beauty"];
     if (nameLower.includes('service')) return categoryImages.services;
-    if (nameLower.includes('fmcg') || nameLower.includes('fast')) return categoryImages.fmcg;
+    if (nameLower.includes('fmcg') || nameLower.includes('fast') || nameLower.includes('moving')) return categoryImages["fast-moving-consumer-goods"];
     if (nameLower.includes('vehicle') || nameLower.includes('car') || nameLower.includes('auto') || nameLower.includes('motor')) return categoryImages.vehicles;
     if (nameLower.includes('handicraft') || nameLower.includes('craft')) return categoryImages.handicrafts;
-    if (nameLower.includes('home') || nameLower.includes('garden')) return categoryImages.home;
+    if (nameLower.includes('home') || nameLower.includes('garden')) return categoryImages["home-garden"];
     if (nameLower.includes('textile') || nameLower.includes('fabric') || nameLower.includes('cloth')) return categoryImages.textiles;
     return categoryImages.default;
   };
