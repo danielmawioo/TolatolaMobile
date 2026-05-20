@@ -10,6 +10,7 @@ import { apiGet, apiPost } from '@/src/services/api';
 
 const COMMISSION_RATE = 0.035;
 const PAYOUT_METHODS = [
+  { id: 'm-pesa', name: 'Vodacom M-Pesa' },
   { id: 'airtel-money', name: 'Airtel Money' },
   { id: 'tigo-pesa', name: 'Tigo Pesa' },
   { id: 'halopesa', name: 'HaloPesa' },
@@ -19,8 +20,9 @@ const PAYOUT_METHODS = [
 
 const STATUS_ICON: Record<string, { icon: string; color: string }> = {
   pending: { icon: 'clock-o', color: '#eab308' },
-  approved: { icon: 'check-circle', color: '#2563eb' },
+  processing: { icon: 'line-chart', color: '#2563eb' },
   completed: { icon: 'check-circle', color: '#16a34a' },
+  failed: { icon: 'times-circle', color: '#ef4444' },
   rejected: { icon: 'times-circle', color: '#ef4444' },
 };
 
