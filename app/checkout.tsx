@@ -103,18 +103,7 @@ export default function CheckoutScreen() {
       const totalFee = Object.values(shopFees).reduce((a, b) => a + b, 0);
       setDeliveryFee(totalFee);
     } else {
-      if (!selectedTransportId || transportMethods.length === 0) return;
-      const method = transportMethods.find((m) => m.id === selectedTransportId);
-      if (!method) return;
-      
-      const rateKm = Number(method.rate_per_km) || 0;
-      const rateKg = Number(method.rate_per_kg) || 0;
-      let fee = 0;
-      if (rateKg > 0) fee = items.length * rateKg;
-      else if (rateKm > 0) fee = 5 * rateKm;
-      else fee = 3000;
-      
-      setDeliveryFee(Math.round(fee));
+      setDeliveryFee(0);
     }
   }, [shopFees, shopDeliveries, selectedTransportId, transportMethods, items.length]);
 
@@ -522,7 +511,9 @@ export default function CheckoutScreen() {
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Delivery</Text>
-                <Text style={styles.summaryValue}>TSh {deliveryFee.toLocaleString()}</Text>
+                <Text style={styles.summaryValue}>
+                  {deliveryFee > 0 ? `TSh ${deliveryFee.toLocaleString()}` : 'Pending location'}
+                </Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Buyer Protection (1.5%)</Text>
