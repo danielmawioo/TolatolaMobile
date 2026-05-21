@@ -265,7 +265,7 @@ export default function GuestHomeScreen() {
                           </Pressable>
                           <Pressable
                             style={({ pressed }) => [styles.vendorActionBtn, styles.vendorActionBtnOutline, pressed && { opacity: 0.85 }]}
-                            onPress={() => router.push('/(guest)/auth/signup' as any)}
+                            onPress={() => router.push({ pathname: '/(auth)/signup', params: { role: 'vendor' } } as any)}
                           >
                             <FontAwesome name="store" size={10} color="#fff" />
                             <Text style={styles.vendorActionBtnTextOutline}>Become Seller</Text>
@@ -273,7 +273,7 @@ export default function GuestHomeScreen() {
                         </View>
                         <Pressable
                           style={({ pressed }) => [styles.vendorActionBtn, styles.vendorActionBtnOutline, { alignSelf: 'flex-start' }, pressed && { opacity: 0.85 }]}
-                          onPress={() => router.push('/(guest)/auth/signup' as any)}
+                          onPress={() => router.push({ pathname: '/(auth)/signup', params: { role: 'transporter' } } as any)}
                         >
                           <FontAwesome name="truck" size={10} color="#fff" />
                           <Text style={styles.vendorActionBtnTextOutline}>Become Transporter</Text>

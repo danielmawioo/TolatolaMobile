@@ -10,7 +10,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -23,11 +23,14 @@ import { scaleByWidth, gap } from '@/constants/layout';
 
 export default function SignupScreen() {
   const { signup, isLoading } = useAuth();
+  const params = useLocalSearchParams<{ role?: string }>();
+  const initialRole = (params.role === 'vendor' || params.role === 'transporter') ? params.role : 'customer';
+  
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState<'customer' | 'vendor' | 'transporter'>('customer');
+  const [userType, setUserType] = useState<'customer' | 'vendor' | 'transporter'>(initialRole);
   const [vendorType, setVendorType] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
