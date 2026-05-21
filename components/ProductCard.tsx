@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ViewStyle, Share, Platform } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
@@ -32,6 +32,23 @@ export function ProductCard({
 
   const handlePress = () => {
     router.push(`/(guest)/product/${product.id}`);
+  };
+
+  const handleShare = async () => {
+    if (onShare) {
+      onShare(product);
+      return;
+    }
+    try {
+      const productUrl = `https://tolatola.co/product/${product.id}`;
+      const shareMessage = `Angalia bidhaa hii nzuri kwenye Tola: ${product.name}\n\nNunua sasa kupitia: ${productUrl}`;
+      await Share.share({
+        message: shareMessage,
+        title: product.name,
+      });
+    } catch (error) {
+      console.error('[SHARE] Error sharing product:', error);
+    }
   };
 
   return (
@@ -141,7 +158,7 @@ export function ProductCard({
             <FontAwesome name={isLiked ? 'heart' : 'heart-o'} size={14} color={isLiked ? Theme.error : Theme.textMuted} />
           </Pressable>
 
-          <Pressable style={styles.actionIcon} onPress={() => onShare?.(product)}>
+          <Pressable style={styles.actionIcon} onPress={handleShare}>
             <FontAwesome name="share" size={14} color={Theme.textMuted} />
           </Pressable>
         </View>
