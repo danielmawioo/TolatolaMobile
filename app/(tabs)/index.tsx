@@ -267,7 +267,7 @@ export default function GuestHomeScreen() {
                             style={({ pressed }) => [styles.vendorActionBtn, styles.vendorActionBtnOutline, pressed && { opacity: 0.85 }]}
                             onPress={() => router.push({ pathname: '/(auth)/signup', params: { role: 'vendor' } } as any)}
                           >
-                            <FontAwesome name="store" size={10} color="#fff" />
+                            <FontAwesome name="shopping-bag" size={10} color="#fff" />
                             <Text style={styles.vendorActionBtnTextOutline}>Become Seller</Text>
                           </Pressable>
                         </View>
