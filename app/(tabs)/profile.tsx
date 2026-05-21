@@ -16,6 +16,7 @@ import { OrderHistorySection } from '@/src/components/profile/OrderHistorySectio
 import { TransactionHistorySection } from '@/src/components/profile/TransactionHistorySection';
 import { SupportSection } from '@/src/components/profile/SupportSection';
 import { KycVerificationSection } from '@/src/components/profile/KycVerificationSection';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 type ProfileTab = 'personal' | 'kyc' | 'orders' | 'transactions' | 'support' | 'settings';
 
@@ -44,6 +45,28 @@ export default function ProfileScreen() {
   const [changingPw, setChangingPw] = useState(false);
 
   useEffect(() => {
+    if (!session?.access_token) return;
+    let active = true;
+    apiGet<any>('/profile', session.access_token)
+      .then(res => {
+        if (!active || !res?.profile) return;
+        setSession({
+          ...session,
+          user: {
+            ...session.user,
+            ...res.profile,
+          }
+        });
+      })
+      .catch(err => {
+        console.log('Error fetching fresh profile:', err);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session?.access_token]);
+
+  useEffect(() => {
     if (session?.user) {
       setFormData({
         full_name: (session.user.full_name as string) || '',
@@ -63,7 +86,8 @@ export default function ProfileScreen() {
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const updatedUser = await apiPatch<any>('/profile', formData, session.access_token);
+      const res = await apiPatch<any>('/profile', formData, session.access_token);
+      const updatedUser = res?.profile || res || {};
       await setSession({ ...session, user: { ...session.user, ...updatedUser } });
       setEditing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -270,7 +294,16 @@ export default function ProfileScreen() {
       {/* User Info Header Card */}
       <View style={styles.userHeaderCard}>
         <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
+          {session.user?.profile_image_url ? (
+            <OptimizedImage
+              source={session.user.profile_image_url as string}
+              width="100%"
+              height="100%"
+              style={{ borderRadius: 24 }}
+            />
+          ) : (
+            <Text style={styles.avatarText}>{initials}</Text>
+          )}
         </View>
         <View style={styles.userInfo}>
           <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
