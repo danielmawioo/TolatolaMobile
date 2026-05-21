@@ -127,6 +127,8 @@ export default function GuestHomeScreen() {
     );
   }
 
+  const userType = session?.user?.user_type || (session?.user as any)?.role;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Top Navbar – Row 1 */}
@@ -142,6 +144,22 @@ export default function GuestHomeScreen() {
             </View>
           </Pressable>
           <View style={styles.headerRight}>
+             {(userType === 'vendor' || userType === 'transporter' || userType === 'admin') && (
+               <Pressable 
+                 style={({ pressed }) => [styles.dashboardBtn, pressed && { opacity: 0.75 }]} 
+                 onPress={() => router.push(getRoleRedirectPath(userType) as any)}
+                 hitSlop={10}
+               >
+                 <FontAwesome 
+                   name={userType === 'transporter' ? 'truck' : userType === 'admin' ? 'gears' : 'dashboard'} 
+                   size={13} 
+                   color="#fff" 
+                 />
+                 <Text style={styles.dashboardBtnLabel}>
+                   {userType === 'vendor' ? 'Seller Hub' : userType === 'transporter' ? 'Transporter' : 'Admin'}
+                 </Text>
+               </Pressable>
+             )}
              <Pressable 
                style={({ pressed }) => [styles.shopTextBtn, pressed && { opacity: 0.7 }]} 
                onPress={() => router.push('/(tabs)/shop')}
@@ -660,4 +678,21 @@ const styles = StyleSheet.create({
   ctaBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   ctaBtnOutline: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', paddingVertical: 18, borderRadius: 14, alignItems: 'center' },
   ctaBtnOutlineText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  dashboardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Theme.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Theme.primary,
+    ...Theme.shadowSm,
+  },
+  dashboardBtnLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
 });

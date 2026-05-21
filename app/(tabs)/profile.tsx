@@ -6,6 +6,7 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { getRoleRedirectPath } from '@/src/lib/roleRedirect';
 import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
 import { apiGet, apiPatch, apiPost } from '@/src/services/api';
@@ -279,6 +280,36 @@ export default function ProfileScreen() {
           <Text style={styles.badgeText}>{kycStatus}</Text>
         </View>
       </View>
+
+      {/* Dashboard Shortcut Card */}
+      {(userType === 'vendor' || userType === 'transporter' || userType === 'admin') && (
+        <View style={styles.dashboardCard}>
+          <View style={styles.dashboardCardLeft}>
+            <View style={[styles.dashboardIconBox, { backgroundColor: userType === 'transporter' ? '#10b981' : Theme.primary }]}>
+              <FontAwesome 
+                name={userType === 'transporter' ? 'truck' : userType === 'admin' ? 'gears' : 'store'} 
+                size={20} 
+                color="#fff" 
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.dashboardCardTitle}>
+                {userType === 'vendor' ? 'Seller Center' : userType === 'transporter' ? 'Delivery Center' : 'System Administration'}
+              </Text>
+              <Text style={styles.dashboardCardSubtitle}>
+                Manage your listings, orders, and payouts
+              </Text>
+            </View>
+          </View>
+          <Pressable 
+            style={({ pressed }) => [styles.dashboardActionBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push(getRoleRedirectPath(userType) as any)}
+          >
+            <Text style={styles.dashboardActionBtnText}>Go to Dashboard</Text>
+            <FontAwesome name="arrow-right" size={12} color="#fff" />
+          </Pressable>
+        </View>
+      )}
 
       {/* Vertical Navigation Items */}
       <View style={styles.navMenuCard}>
@@ -567,4 +598,52 @@ const styles = StyleSheet.create({
   dangerBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#fecaca', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
   dangerBtnText: { fontSize: 13, fontWeight: '700', color: Theme.error },
   dangerDivider: { height: 1, backgroundColor: '#fecaca', marginVertical: 8 },
+  dashboardCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    padding: 16,
+    gap: 14,
+    marginBottom: 20,
+    ...Theme.shadowSm,
+  },
+  dashboardCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dashboardIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Theme.shadowSm,
+  },
+  dashboardCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Theme.text,
+  },
+  dashboardCardSubtitle: {
+    fontSize: 12,
+    color: Theme.textMuted,
+    marginTop: 2,
+  },
+  dashboardActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Theme.primary,
+    paddingVertical: 12,
+    borderRadius: 12,
+    ...Theme.shadowSm,
+  },
+  dashboardActionBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
