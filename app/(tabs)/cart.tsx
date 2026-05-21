@@ -25,9 +25,8 @@ export default function CartScreen() {
     updateQuantity(id, newQty);
   };
 
-  const deliveryFeeEstimate = 5000;
   const subtotal = totalAmount;
-  const total = subtotal + deliveryFeeEstimate;
+  const total = subtotal;
 
   if (isLoading) {
     return (
@@ -121,7 +120,9 @@ export default function CartScreen() {
             <FontAwesome name="truck" size={12} color={Theme.textMuted} />
             <Text style={styles.summaryLabel}>Delivery Fee</Text>
           </View>
-          <Text style={styles.summaryValue}>TZS {deliveryFeeEstimate.toLocaleString()}</Text>
+          <Text style={[styles.summaryValue, { color: Theme.textMuted, fontWeight: '500' }]}>
+            Calculated at checkout
+          </Text>
         </View>
 
         <View style={styles.deliveryNote}>
