@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
@@ -17,29 +17,41 @@ export function TanzaniaAddressForm({ value, onChange, onAddressComplete }: Prop
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
 
   const handleField = (field: keyof AddressData, val: string) => {
     onChange({ ...value, [field]: val });
   };
 
-  const handleSearch = async (text: string) => {
+  const handleSearch = useCallback((text: string) => {
     setSearchQuery(text);
     if (text.length < 3) {
       setSuggestions([]);
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
       return;
     }
-    setIsSearching(true);
-    try {
-      const res = await apiGet<any>(`/maps/autocomplete?input=${encodeURIComponent(text)}`);
-      if (res && res.predictions) {
-        setSuggestions(res.predictions);
+
+    // Debounce: wait 400ms after the user stops typing before firing the request
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(async () => {
+      const currentRequestId = ++requestIdRef.current;
+      setIsSearching(true);
+      try {
+        const res = await apiGet<any>(`/maps/autocomplete?input=${encodeURIComponent(text)}`);
+        // Only update if this is still the latest request (prevents stale overwrites)
+        if (currentRequestId === requestIdRef.current && res && res.predictions) {
+          setSuggestions(res.predictions);
+        }
+      } catch (error) {
+        console.error('Autocomplete error', error);
+      } finally {
+        if (currentRequestId === requestIdRef.current) {
+          setIsSearching(false);
+        }
       }
-    } catch (error) {
-      console.error('Autocomplete error', error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
+    }, 400);
+  }, []);
 
   const handleSelectSuggestion = async (placeId: string, description: string) => {
     setSearchQuery(description);
