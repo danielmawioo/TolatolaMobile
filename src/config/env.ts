@@ -12,8 +12,12 @@ const extra = Constants.expoConfig?.extra as {
  * Production: https://api.tolatola.co
  * Local dev: http://localhost:8080 or http://YOUR_IP:8080
  */
+const rawApiUrl = extra?.APP_API_URL ?? process.env.EXPO_PUBLIC_APP_API_URL;
+
 export const APP_API_URL =
-  extra?.APP_API_URL ?? process.env.EXPO_PUBLIC_APP_API_URL ?? 'https://api.tolatola.co';
+  (rawApiUrl && rawApiUrl !== 'https://api.tolatola.co')
+    ? rawApiUrl
+    : (typeof __DEV__ !== 'undefined' && __DEV__ ? 'http://localhost:4000' : 'https://api.tolatola.co');
 
 /**
  * Supabase project URL (same project as the backend).
