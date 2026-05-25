@@ -147,8 +147,13 @@ function handleNotificationNavigation(data: any) {
 
   try {
     // Direct screen navigation (sent from backend as `screen` field)
-    if (data.screen) {
-      router.push(data.screen as any);
+    let targetScreen = data.screen;
+    if (targetScreen === '/(tabs)/assignments' || targetScreen === 'assignments' || targetScreen?.includes('assignments')) {
+      targetScreen = '/(transporter)/dashboard';
+    }
+
+    if (targetScreen) {
+      router.push(targetScreen as any);
       return;
     }
 

@@ -84,10 +84,27 @@ export default function NotificationsScreen() {
   const handleNotificationPress = (notif: any) => {
     if (!notif.is_read) handleMarkRead(notif.id);
     const data = notif.data || {};
-    if (data.screen) {
-      router.push(data.screen);
+    
+    // Determine target screen with robust mapping for mobile screens
+    let targetScreen = data.screen;
+    if (targetScreen === '/(tabs)/assignments' || targetScreen === 'assignments' || targetScreen?.includes('assignments')) {
+      targetScreen = '/(transporter)/dashboard';
+    } else if (data.for_role === 'transporter' || notif.type === 'new_available_order') {
+      targetScreen = '/(transporter)/dashboard';
+    } else if (data.for_role === 'vendor') {
+      targetScreen = '/(vendor)/dashboard';
+    }
+    
+    if (targetScreen) {
+      router.push(targetScreen as any);
     } else if (data.order_id) {
-      router.push('/(tabs)/orders');
+      if (data.for_role === 'transporter') {
+        router.push('/(transporter)/dashboard' as any);
+      } else if (data.for_role === 'vendor') {
+        router.push('/(vendor)/dashboard' as any);
+      } else {
+        router.push('/(tabs)/orders' as any);
+      }
     }
   };
 
