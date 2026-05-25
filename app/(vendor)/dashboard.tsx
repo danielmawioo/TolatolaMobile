@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, Image, RefreshControl } from 'react-native';
 import React, { useState, useEffect, useCallback } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost, apiDelete } from '@/src/services/api';
@@ -16,7 +16,15 @@ const TABS = ['Products', 'Orders', 'Wallet', 'Subscription', 'Shop', 'Profile']
 export default function VendorDashboardScreen() {
   const { session, logout, isAuthenticated } = useAuth();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<(typeof TABS)[number]>('Products');
+
+  useEffect(() => {
+    if (params.tab && TABS.includes(params.tab as any)) {
+      setTab(params.tab as any);
+    }
+  }, [params.tab]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   

@@ -88,20 +88,22 @@ export default function NotificationsScreen() {
     // Determine target screen with robust mapping for mobile screens
     let targetScreen = data.screen;
     if (targetScreen === '/(tabs)/assignments' || targetScreen === 'assignments' || targetScreen?.includes('assignments')) {
-      targetScreen = '/(transporter)/dashboard';
+      targetScreen = '/(transporter)/dashboard?tab=Deliveries';
+    } else if (targetScreen === '/(tabs)/orders' && data.for_role === 'vendor') {
+      targetScreen = '/(vendor)/dashboard?tab=Orders';
     } else if (data.for_role === 'transporter' || notif.type === 'new_available_order') {
-      targetScreen = '/(transporter)/dashboard';
-    } else if (data.for_role === 'vendor') {
-      targetScreen = '/(vendor)/dashboard';
+      targetScreen = '/(transporter)/dashboard?tab=Deliveries';
+    } else if (data.for_role === 'vendor' || notif.type === 'order_received') {
+      targetScreen = '/(vendor)/dashboard?tab=Orders';
     }
     
     if (targetScreen) {
       router.push(targetScreen as any);
     } else if (data.order_id) {
       if (data.for_role === 'transporter') {
-        router.push('/(transporter)/dashboard' as any);
+        router.push('/(transporter)/dashboard?tab=Deliveries' as any);
       } else if (data.for_role === 'vendor') {
-        router.push('/(vendor)/dashboard' as any);
+        router.push('/(vendor)/dashboard?tab=Orders' as any);
       } else {
         router.push('/(tabs)/orders' as any);
       }

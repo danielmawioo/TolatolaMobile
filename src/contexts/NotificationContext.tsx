@@ -149,7 +149,9 @@ function handleNotificationNavigation(data: any) {
     // Direct screen navigation (sent from backend as `screen` field)
     let targetScreen = data.screen;
     if (targetScreen === '/(tabs)/assignments' || targetScreen === 'assignments' || targetScreen?.includes('assignments')) {
-      targetScreen = '/(transporter)/dashboard';
+      targetScreen = '/(transporter)/dashboard?tab=Deliveries';
+    } else if (targetScreen === '/(tabs)/orders' && data.for_role === 'vendor') {
+      targetScreen = '/(vendor)/dashboard?tab=Orders';
     }
 
     if (targetScreen) {
@@ -162,9 +164,9 @@ function handleNotificationNavigation(data: any) {
 
     if (data.order_id || data.orderId) {
       if (role === 'vendor') {
-        router.push('/(vendor)/dashboard' as any);
+        router.push('/(vendor)/dashboard?tab=Orders' as any);
       } else if (role === 'transporter') {
-        router.push('/(transporter)/dashboard' as any);
+        router.push('/(transporter)/dashboard?tab=Deliveries' as any);
       } else {
         // Customer
         router.push('/(tabs)/orders' as any);

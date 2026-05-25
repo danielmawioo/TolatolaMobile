@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl, ActivityIndicator, Alert, TextInput } from 'react-native';
 import React, { useState, useEffect, useCallback } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPatch, apiPut } from '@/src/services/api';
@@ -18,7 +18,15 @@ const TABS = ['Deliveries', 'Payments', 'Withdrawals', 'Membership', 'Profile'] 
 export default function TransporterDashboardScreen() {
   const { session, logout, isAuthenticated, setSession } = useAuth();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<(typeof TABS)[number]>('Deliveries');
+
+  useEffect(() => {
+    if (params.tab && TABS.includes(params.tab as any)) {
+      setTab(params.tab as any);
+    }
+  }, [params.tab]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
