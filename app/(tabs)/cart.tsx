@@ -75,7 +75,7 @@ export default function CartScreen() {
             <FontAwesome name="trash" size={16} color={Theme.error} />
           </Pressable>
         </View>
-        <Text style={styles.vendorLabel}>by Tola Verified Vendor</Text>
+        <Text style={styles.vendorLabel}>by TOLA Verified Vendor</Text>
 
         <View style={styles.qtyPriceRow}>
           <View style={styles.qtyControls}>

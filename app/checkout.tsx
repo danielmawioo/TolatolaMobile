@@ -72,6 +72,35 @@ export default function CheckoutScreen() {
         if (methods.length > 0) setSelectedTransportId(methods[0].id);
       })
       .catch(() => {});
+
+    // Fetch shop coordinates for cart items that are missing them (backward compat)
+    const itemsMissingCoords = items.filter(i => i.shop_id && (!i.shop_latitude || !i.shop_longitude));
+    if (itemsMissingCoords.length > 0) {
+      const uniqueProductIds = [...new Set(itemsMissingCoords.map(i => i.product_id))];
+      Promise.all(
+        uniqueProductIds.map(pid =>
+          apiGet<any>(`/products/${pid}`).catch(() => null)
+        )
+      ).then(results => {
+        const coordsMap: Record<string, { lat: number; lng: number }> = {};
+        results.forEach(res => {
+          const product = res?.data || res;
+          if (product?.shop_id && product?.shops?.latitude && product?.shops?.longitude) {
+            coordsMap[product.shop_id] = {
+              lat: product.shops.latitude,
+              lng: product.shops.longitude,
+            };
+          }
+        });
+        // Update items in-place (they are mutable refs from context)
+        items.forEach(item => {
+          if (item.shop_id && coordsMap[item.shop_id]) {
+            item.shop_latitude = coordsMap[item.shop_id].lat;
+            item.shop_longitude = coordsMap[item.shop_id].lng;
+          }
+        });
+      });
+    }
   }, []);
 
   // Calculate derived fees per shop based on distances
@@ -116,11 +145,14 @@ export default function CheckoutScreen() {
     try {
       const shopsData: Record<string, { lat: number, lng: number }> = {};
       
-      // Group items by shop
+      // Group items by shop and extract actual shop coordinates from cart items
       items.forEach(item => {
         const sId = item.shop_id || 'unknown';
         if (!shopsData[sId]) {
-          shopsData[sId] = { lat: -6.7924, lng: 39.2083 }; // Default to Dar es Salaam if unknown
+          shopsData[sId] = {
+            lat: item.shop_latitude || -6.7924,   // Use actual vendor coordinates
+            lng: item.shop_longitude || 39.2083,   // Fallback to Dar es Salaam only if truly missing
+          };
         }
       });
 
@@ -384,7 +416,7 @@ export default function CheckoutScreen() {
                       <View style={styles.logisticsHeader}>
                         <View>
                           <Text style={styles.logisticsShopLabel}>FROM SHOP</Text>
-                          <Text style={styles.logisticsShopName}>Tola Verified Vendor</Text>
+                          <Text style={styles.logisticsShopName}>TOLA Verified Vendor</Text>
                         </View>
                         <View style={styles.logisticsMethodBadge}>
                           <Text style={styles.logisticsMethodText}>{selectedMethodName}</Text>

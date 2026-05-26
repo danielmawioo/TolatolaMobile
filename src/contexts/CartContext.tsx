@@ -13,6 +13,8 @@ export type CartItem = {
   quantity: number;
   image_url?: string;
   shop_id?: string;
+  shop_latitude?: number;
+  shop_longitude?: number;
 };
 
 type CartState = {
@@ -85,6 +87,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             quantity,
             image_url: imgUrl,
             shop_id: product.shop_id,
+            shop_latitude: product.shops?.latitude ?? product.shop_latitude,
+            shop_longitude: product.shops?.longitude ?? product.shop_longitude,
           };
           newItems = [...prev.items, newItem];
         }
