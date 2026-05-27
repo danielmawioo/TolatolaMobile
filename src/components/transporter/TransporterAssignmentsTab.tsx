@@ -77,6 +77,8 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
     setUpdatingId(null);
   };
 
+  const [requestingPush, setRequestingPush] = useState(false);
+
   const verifyPin = async () => {
     if (!selectedId || !deliveryPin || deliveryPin.length !== 4) {
       Alert.alert('Invalid PIN', 'Please enter a valid 4-digit Delivery PIN.');
@@ -93,6 +95,23 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
       Alert.alert('PIN Error', e.message || 'Failed to verify PIN. Please check and try again.');
     }
     setUpdatingId(null);
+  };
+
+  const requestPushConfirmation = async () => {
+    if (!selectedId) return;
+    setRequestingPush(true);
+    try {
+      await apiPost(`/assignments/${selectedId}/request-delivery-confirmation`, {}, accessToken);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Request Sent 🚚',
+        'We have sent a push notification to the customer to confirm delivery. They can verify this directly on their device.'
+      );
+    } catch (e: any) {
+      Alert.alert('Request Failed', e.message || 'Failed to request delivery confirmation. Please try again.');
+    } finally {
+      setRequestingPush(false);
+    }
   };
 
   const openMap = (lat: number, lng: number) => {
@@ -256,6 +275,15 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
               <Pressable style={[st.pinBtn, deliveryPin.length !== 4 && { opacity: 0.5 }]} onPress={verifyPin} disabled={updatingId === selectedId || deliveryPin.length !== 4}>
                 {updatingId === selectedId ? <ActivityIndicator color="#fff" /> : <Text style={st.pinBtnText}>Verify & Complete</Text>}
               </Pressable>
+              
+              <Pressable 
+                style={[st.pushBtn, requestingPush && { opacity: 0.7 }]} 
+                onPress={requestPushConfirmation} 
+                disabled={requestingPush || updatingId === selectedId}
+              >
+                {requestingPush ? <ActivityIndicator color={Theme.primary} /> : <Text style={st.pushBtnText}>No PIN? Request Push Confirm</Text>}
+              </Pressable>
+
               <Pressable onPress={() => { setPinModalOpen(false); setDeliveryPin(''); }}>
                 <Text style={st.pinCancel}>Cancel</Text>
               </Pressable>
@@ -351,5 +379,7 @@ const st = StyleSheet.create({
   pinInput: { width: '100%', height: 64, backgroundColor: Theme.inputBg, borderRadius: Theme.radiusMd, borderWidth: 2, borderColor: Theme.primary, fontSize: 32, fontWeight: '900', textAlign: 'center', letterSpacing: 12, color: Theme.text },
   pinBtn: { width: '100%', backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: Theme.radiusMd, alignItems: 'center' },
   pinBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  pushBtn: { width: '100%', borderWidth: 1.5, borderColor: Theme.primary, paddingVertical: 14, borderRadius: Theme.radiusMd, alignItems: 'center', backgroundColor: '#f0f7ff' },
+  pushBtnText: { fontSize: 13, fontWeight: '700', color: Theme.primary },
   pinCancel: { fontSize: 14, color: Theme.textMuted, fontWeight: '600', marginTop: 4 },
 });

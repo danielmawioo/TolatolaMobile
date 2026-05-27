@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Platform, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { apiGet } from '@/src/services/api';
+import { apiGet, apiPost } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
 
 const TIMELINE_STEPS = [
@@ -45,6 +45,23 @@ export default function TrackStatusScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  const fetchStatus = async () => {
+    try {
+      const res: any = await apiGet(`/tracking/status?token=${encodeURIComponent(token!)}`);
+      const normalized = res?.data || res;
+      const order = normalized?.order || normalized;
+      if (!order) {
+        throw new Error('Order status data not found.');
+      }
+      setData({ ...normalized, order });
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load order status.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -52,22 +69,25 @@ export default function TrackStatusScreen() {
       setLoading(false);
       return;
     }
-    (async () => {
-      try {
-        const res: any = await apiGet(`/tracking/status?token=${encodeURIComponent(token)}`);
-        const normalized = res?.data || res;
-        const order = normalized?.order || normalized;
-        if (!order) {
-          throw new Error('Order status data not found.');
-        }
-        setData({ ...normalized, order });
-      } catch (e: any) {
-        setError(e?.message || 'Failed to load order status.');
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchStatus();
   }, [token]);
+
+  const handleConfirmDelivery = async () => {
+    if (!data?.order?.id) return;
+    setConfirming(true);
+    try {
+      await apiPost(`/orders/${data.order.id}/confirm-delivery`, {});
+      Alert.alert(
+        'Delivery Confirmed! 🎉',
+        'Thank you for confirming your delivery. Escrow funds have been successfully released to the vendor and transporter.'
+      );
+      await fetchStatus();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to confirm delivery. Please try again.');
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -105,6 +125,45 @@ export default function TrackStatusScreen() {
         <FontAwesome name="arrow-left" size={14} color={Theme.textMuted} />
         <Text style={styles.backText}>Back to home</Text>
       </Pressable>
+
+      {/* Alternative Delivery Confirmation Banner */}
+      {order.delivery_confirmation_requested && order.status !== 'delivered' && order.status !== 'completed' && (
+        <View style={styles.confirmBanner}>
+          <View style={styles.confirmIconBg}>
+            <FontAwesome name="truck" size={22} color={Theme.primary} />
+          </View>
+          <Text style={styles.confirmTitle}>Have you received your product? 📦</Text>
+          <Text style={styles.confirmDesc}>
+            Your transporter requests confirmation to complete this delivery. Please confirm only if you have received the items.
+          </Text>
+          <View style={styles.confirmActionRow}>
+            <Pressable 
+              style={[styles.confirmBtn, confirming && { opacity: 0.7 }]} 
+              onPress={handleConfirmDelivery}
+              disabled={confirming}
+            >
+              {confirming ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <FontAwesome name="check" size={13} color="#fff" />
+                  <Text style={styles.confirmBtnText}>Confirm Delivery</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable 
+              style={styles.reportBtn} 
+              onPress={() => router.push({
+                pathname: '/(guest)/track/complaint',
+                params: { token: token!, orderId: order.id }
+              })}
+            >
+              <FontAwesome name="exclamation-circle" size={13} color={Theme.error} />
+              <Text style={styles.reportBtnText}>Report Issue</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
@@ -432,5 +491,80 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Theme.text,
+  },
+  confirmBanner: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Theme.primary + '25',
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: Theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  confirmIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Theme.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: Theme.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  confirmDesc: {
+    fontSize: 13,
+    color: Theme.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  confirmActionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Theme.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  confirmBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  reportBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Theme.error + '10',
+    borderWidth: 1,
+    borderColor: Theme.error + '25',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  reportBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Theme.error,
   },
 });

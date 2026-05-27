@@ -11,6 +11,7 @@ import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useCart } from '@/src/contexts/CartContext';
+import { useNotifications } from '@/src/contexts/NotificationContext';
 import { apiGet, apiPost } from '@/src/services/api';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { TanzaniaAddressForm } from '@/src/components/checkout/TanzaniaAddressForm';
@@ -25,6 +26,7 @@ export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
   const { session, isAuthenticated } = useAuth();
   const { items, totalAmount, clearCart } = useCart();
+  const { expoPushToken } = useNotifications();
 
   // Contact
   const [fullName, setFullName] = useState(
@@ -263,6 +265,7 @@ export default function CheckoutScreen() {
         },
         transportMethodId: selectedTransportId || null,
         deliveryFee,
+        pushToken: expoPushToken || null,
       };
 
       // 1. Create order
