@@ -5,6 +5,7 @@ const extra = Constants.expoConfig?.extra as {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   APP_URL?: string;
+  GOOGLE_WEB_CLIENT_ID?: string;
 } | undefined;
 
 /**
@@ -36,3 +37,9 @@ export const SUPABASE_ANON_KEY =
  */
 export const APP_URL =
   extra?.APP_URL ?? process.env.EXPO_PUBLIC_APP_URL ?? 'tolatolamobile://';
+
+/**
+ * Google Web Client ID for Google Sign-in.
+ */
+export const GOOGLE_WEB_CLIENT_ID =
+  extra?.GOOGLE_WEB_CLIENT_ID ?? process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';

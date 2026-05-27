@@ -15,6 +15,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useGoogleAuth } from '@/src/hooks/useGoogleAuth';
 import { GradientButton } from '@/components/GradientButton';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
@@ -24,6 +25,7 @@ import { scaleByWidth, gap } from '@/constants/layout';
 
 export default function LoginScreen() {
   const { login, isLoading } = useAuth();
+  const { signInWithGoogle, loading: googleLoading, error: googleError } = useGoogleAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,6 +45,21 @@ export default function LoginScreen() {
       setError(e instanceof Error ? e.message : 'Login failed');
     }
   };
+
+  const handleGoogleSignIn = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setError(null);
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        router.replace(getRoleRedirectPath(user.user_type) as any);
+      }
+    } catch (e: any) {
+      setError(e instanceof Error ? e.message : 'Google sign-in failed');
+    }
+  };
+
+  const isAnyLoading = isLoading || googleLoading;
 
   return (
     <ScreenSafeLayout style={styles.safeWrapper}>
@@ -72,7 +89,7 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
-            editable={!isLoading}
+            editable={!isAnyLoading}
           />
         </View>
 
@@ -85,11 +102,12 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
-            editable={!isLoading}
+            editable={!isAnyLoading}
           />
           <Pressable
             style={styles.eyeBtn}
             onPress={() => setShowPassword((v) => !v)}
+            disabled={isAnyLoading}
           >
             <FontAwesome
               name={showPassword ? 'eye-slash' : 'eye'}
@@ -99,16 +117,16 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error || googleError ? <Text style={styles.error}>{error || googleError}</Text> : null}
 
         <GradientButton
-          title="Log in"
+          title={googleLoading ? 'Signing in with Google...' : 'Log in'}
           onPress={handleLogin}
-          loading={isLoading}
+          loading={isAnyLoading}
           style={styles.button}
         />
 
-        <Pressable style={styles.forgotWrap} onPress={() => router.push('/(auth)/forgot-password')}>
+        <Pressable style={styles.forgotWrap} onPress={() => router.push('/(auth)/forgot-password')} disabled={isAnyLoading}>
           <Text style={styles.forgotText}>Forgot password?</Text>
         </Pressable>
 
@@ -119,11 +137,19 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.socialRow}>
-          <Pressable style={styles.socialBtn} onPress={() => { /* TODO: Google sign-in */ }}>
+          <Pressable 
+            style={[styles.socialBtn, isAnyLoading && { opacity: 0.5 }]} 
+            onPress={handleGoogleSignIn}
+            disabled={isAnyLoading}
+          >
             <Ionicons name="logo-google" size={28} color="#4285F4" />
             <Text style={styles.socialLabel}>Google</Text>
           </Pressable>
-          <Pressable style={styles.socialBtn} onPress={() => { /* TODO: Facebook sign-in */ }}>
+          <Pressable 
+            style={[styles.socialBtn, isAnyLoading && { opacity: 0.5 }]} 
+            onPress={() => { /* TODO: Facebook sign-in */ }}
+            disabled={isAnyLoading}
+          >
             <Ionicons name="logo-facebook" size={28} color="#1877F2" />
             <Text style={styles.socialLabel}>Facebook</Text>
           </Pressable>

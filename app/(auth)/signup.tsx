@@ -15,6 +15,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useGoogleAuth } from '@/src/hooks/useGoogleAuth';
 import { GradientButton } from '@/components/GradientButton';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
@@ -23,6 +24,7 @@ import { scaleByWidth, gap } from '@/constants/layout';
 
 export default function SignupScreen() {
   const { signup, isLoading } = useAuth();
+  const { signInWithGoogle, loading: googleLoading, error: googleError } = useGoogleAuth();
   const params = useLocalSearchParams<{ role?: string }>();
   const initialRole = (params.role === 'vendor' || params.role === 'transporter') ? params.role : 'customer';
   
@@ -66,6 +68,23 @@ export default function SignupScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setError(null);
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        // Since they signed up/logged in via Google, redirect to role-specific dashboard
+        const { getRoleRedirectPath } = await import('@/src/lib/roleRedirect');
+        router.replace(getRoleRedirectPath(user.user_type) as any);
+      }
+    } catch (e: any) {
+      setError(e instanceof Error ? e.message : 'Google sign-in failed');
+    }
+  };
+
+  const isAnyLoading = isLoading || googleLoading;
+
   return (
     <ScreenSafeLayout style={styles.safeWrapper}>
       <KeyboardAvoidingView
@@ -93,7 +112,7 @@ export default function SignupScreen() {
             value={fullName}
             onChangeText={setFullName}
             autoCapitalize="words"
-            editable={!isLoading}
+            editable={!isAnyLoading}
           />
         </View>
 
@@ -107,7 +126,7 @@ export default function SignupScreen() {
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
-            editable={!isLoading}
+            editable={!isAnyLoading}
           />
         </View>
 
@@ -121,7 +140,7 @@ export default function SignupScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
-            editable={!isLoading}
+            editable={!isAnyLoading}
           />
         </View>
 
@@ -134,7 +153,7 @@ export default function SignupScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            editable={!isLoading}
+            editable={!isAnyLoading}
           />
         </View>
 
@@ -145,7 +164,7 @@ export default function SignupScreen() {
               key={type}
               style={[styles.roleBtn, userType === type && styles.roleBtnActive]}
               onPress={() => setUserType(type)}
-              disabled={isLoading}
+              disabled={isAnyLoading}
             >
               <Text style={[styles.roleLabel, userType === type && styles.roleLabelActive]}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -163,7 +182,7 @@ export default function SignupScreen() {
                   key={type}
                   style={[styles.vendorTypeBtn, vendorType === type && styles.vendorTypeBtnActive]}
                   onPress={() => setVendorType(type)}
-                  disabled={isLoading}
+                  disabled={isAnyLoading}
                 >
                   <Text style={[styles.vendorTypeLabel, vendorType === type && styles.vendorTypeLabelActive]}>
                     {type}
@@ -177,7 +196,7 @@ export default function SignupScreen() {
         <Pressable
           style={styles.termsRow}
           onPress={() => setAcceptedTerms((v) => !v)}
-          disabled={isLoading}
+          disabled={isAnyLoading}
         >
           <FontAwesome
             name={acceptedTerms ? 'check-square-o' : 'square-o'}
@@ -193,12 +212,12 @@ export default function SignupScreen() {
           </Text>
         </Pressable>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error || googleError ? <Text style={styles.error}>{error || googleError}</Text> : null}
 
         <GradientButton
-          title="Create account"
+          title={googleLoading ? 'Signing up with Google...' : 'Create account'}
           onPress={handleSignup}
-          loading={isLoading}
+          loading={isAnyLoading}
           style={styles.button}
         />
 
@@ -209,11 +228,19 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.socialRow}>
-          <Pressable style={styles.socialBtn} onPress={() => { /* TODO: Google sign-in */ }}>
+          <Pressable 
+            style={[styles.socialBtn, isAnyLoading && { opacity: 0.5 }]} 
+            onPress={handleGoogleSignIn}
+            disabled={isAnyLoading}
+          >
             <Ionicons name="logo-google" size={28} color="#4285F4" />
             <Text style={styles.socialLabel}>Google</Text>
           </Pressable>
-          <Pressable style={styles.socialBtn} onPress={() => { /* TODO: Facebook sign-in */ }}>
+          <Pressable 
+            style={[styles.socialBtn, isAnyLoading && { opacity: 0.5 }]} 
+            onPress={() => { /* TODO: Facebook sign-in */ }}
+            disabled={isAnyLoading}
+          >
             <Ionicons name="logo-facebook" size={28} color="#1877F2" />
             <Text style={styles.socialLabel}>Facebook</Text>
           </Pressable>
