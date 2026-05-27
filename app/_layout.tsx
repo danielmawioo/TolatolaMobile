@@ -64,6 +64,7 @@ function RootLayoutNav() {
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="(vendor)" />
               <Stack.Screen name="(transporter)" />
+              <Stack.Screen name="(agent)" />
               <Stack.Screen name="(admin)" />
               <Stack.Screen name="payment-success" />
               <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
