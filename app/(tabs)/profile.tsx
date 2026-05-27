@@ -44,26 +44,32 @@ export default function ProfileScreen() {
   const [passwordData, setPasswordData] = useState({ current: '', newPw: '', confirm: '' });
   const [changingPw, setChangingPw] = useState(false);
 
-  useEffect(() => {
+  const fetchProfile = async () => {
     if (!session?.access_token) return;
-    let active = true;
-    apiGet<any>('/profile', session.access_token)
-      .then(res => {
-        if (!active || !res?.profile) return;
-        setSession({
+    try {
+      const res = await apiGet<any>('/profile', session.access_token);
+      if (res?.profile) {
+        await setSession({
           ...session,
           user: {
             ...session.user,
             ...res.profile,
           }
         });
-      })
-      .catch(err => {
-        console.log('Error fetching fresh profile:', err);
-      });
-    return () => {
-      active = false;
-    };
+      }
+    } catch (err) {
+      console.log('Error fetching fresh profile:', err);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchProfile();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, [session?.access_token]);
 
   useEffect(() => {
@@ -173,8 +179,45 @@ export default function ProfileScreen() {
   const userType = (session.user?.user_type as string) || (session.user as any)?.role || 'customer';
   const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
-  // Placeholder for KYC status if it was added to session or fetched, using basic fallback
-  const kycStatus = (session.user as any)?.kyc_status || 'Not Verified'; 
+  // KYC status check from nested session object or profile fallback
+  const kycStatus = (session.user as any)?.kyc?.kyc_status || (session.user as any)?.kyc_status || 'Not Verified'; 
+
+  const renderKycBadge = () => {
+    const rawKycStatus = (session.user as any)?.kyc?.kyc_status || (session.user as any)?.kyc_status;
+    const status = String(rawKycStatus || '').toLowerCase();
+
+    let badgeStyle = {};
+    let textStyle = {};
+    let label = 'Not Verified';
+
+    if (status === 'approved') {
+      badgeStyle = { backgroundColor: '#16a34a', borderWidth: 0 };
+      textStyle = { color: '#ffffff' };
+      label = 'Verified';
+    } else if (status === 'pending') {
+      badgeStyle = { backgroundColor: 'rgba(234, 179, 8, 0.15)', borderColor: '#fef08a', borderWidth: 1 };
+      textStyle = { color: '#a16207' };
+      label = 'Pending Review';
+    } else if (status === 'rejected') {
+      badgeStyle = { backgroundColor: '#dc2626', borderWidth: 0 };
+      textStyle = { color: '#ffffff' };
+      label = 'Rejected';
+    } else if (status === 'changes_requested') {
+      badgeStyle = { backgroundColor: '#fff7ed', borderColor: '#fed7aa', borderWidth: 1 };
+      textStyle = { color: '#c2410c' };
+      label = 'Changes Requested';
+    } else {
+      badgeStyle = { backgroundColor: '#e2e8f0', borderWidth: 0 };
+      textStyle = { color: '#475569' };
+      label = 'Not Verified';
+    }
+
+    return (
+      <View style={[styles.badgeWrapper, badgeStyle]}>
+        <Text style={[styles.badgeText, textStyle]}>{label}</Text>
+      </View>
+    );
+  };
 
   const renderPersonalInfo = () => (
     <View style={styles.tabContentInner}>
@@ -285,7 +328,7 @@ export default function ProfileScreen() {
     <ScrollView 
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 20, paddingBottom: 100 + insets.bottom }]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1000); }} colors={[Theme.primary]} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[Theme.primary]} />}
       showsVerticalScrollIndicator={false}
     >
       {/* Page Title */}
@@ -293,25 +336,30 @@ export default function ProfileScreen() {
 
       {/* User Info Header Card */}
       <View style={styles.userHeaderCard}>
-        <View style={styles.avatarCircle}>
-          {session.user?.profile_image_url ? (
-            <OptimizedImage
-              source={session.user.profile_image_url as string}
-              width="100%"
-              height="100%"
-              style={{ borderRadius: 24 }}
-            />
-          ) : (
-            <Text style={styles.avatarText}>{initials}</Text>
+        <View style={{ position: 'relative' }}>
+          <View style={styles.avatarCircle}>
+            {session.user?.profile_image_url ? (
+              <OptimizedImage
+                source={session.user.profile_image_url as string}
+                width="100%"
+                height="100%"
+                style={{ borderRadius: 24 }}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
+          </View>
+          {((session.user as any)?.kyc?.kyc_status === 'approved' || (session.user as any)?.kyc_status === 'approved') && (
+            <View style={styles.verifiedMiniBadge}>
+              <FontAwesome name="check-circle" size={14} color="#16a34a" />
+            </View>
           )}
         </View>
         <View style={styles.userInfo}>
           <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
           <Text style={styles.userEmail} numberOfLines={1}>{userEmail}</Text>
         </View>
-        <View style={styles.badgeWrapper}>
-          <Text style={styles.badgeText}>{kycStatus}</Text>
-        </View>
+        {renderKycBadge()}
       </View>
 
       {/* Dashboard Shortcut Card */}
@@ -320,7 +368,7 @@ export default function ProfileScreen() {
           <View style={styles.dashboardCardLeft}>
             <View style={[styles.dashboardIconBox, { backgroundColor: userType === 'transporter' ? '#10b981' : Theme.primary }]}>
               <FontAwesome 
-                name={userType === 'transporter' ? 'truck' : userType === 'admin' ? 'gears' : 'store'} 
+                name={(userType === 'transporter' ? 'truck' : userType === 'admin' ? 'gears' : 'store') as any} 
                 size={20} 
                 color="#fff" 
               />
@@ -441,6 +489,15 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    ...Theme.shadowSm,
+  },
+  verifiedMiniBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 1,
     ...Theme.shadowSm,
   },
   avatarText: {
