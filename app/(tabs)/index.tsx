@@ -11,6 +11,7 @@ import { ProductCard } from '@/components/ProductCard';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { getRoleRedirectPath } from '@/src/lib/roleRedirect';
 import { useCart } from '@/src/contexts/CartContext';
+import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
 
@@ -41,35 +42,150 @@ export default function GuestHomeScreen() {
   const [loading, setLoading] = useState(true);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
+  // Smart Supply Chain matching states
+  const [scNotification, setScNotification] = useState<any>(null);
+  const [scProducts, setScProducts] = useState<{ matched: Product[]; others: Product[] }>({ matched: [], others: [] });
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+
   const sliderRef = useRef<FlatList>(null);
   const currentSlide = useRef(0);
+
+  const fetchLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (loc?.coords) {
+          const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          setUserLocation(coords);
+          return coords;
+        }
+      }
+    } catch (err) {
+      console.log('Error getting location for ranking:', err);
+    }
+    return null;
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [catRes, promoRes, prodRes] = await Promise.all([
-        apiGet<{ categories?: any[]; data?: any[] }>('/categories').catch(() => ({ data: [] })),
-        apiGet<{ data?: any[] }>('/promotions').catch(() => ({ data: [] })),
-        apiGet<{ products?: Product[]; data?: Product[] } | Product[]>('/products').catch(() => []),
-      ]);
+      let coords = userLocation;
+      if (isAuthenticated && !coords) {
+        coords = await fetchLocation();
+      }
+
+      const catPromise = apiGet<any>('/categories').catch(() => ({ data: [] }));
+      const promoPromise = apiGet<any>('/promotions').catch(() => ({ data: [] }));
       
+      let prodPromise: Promise<any>;
+      let notifPromise: Promise<any> = Promise.resolve(null);
+
+      if (isAuthenticated && session?.access_token) {
+        const queryStr = coords ? `/products/for-you?userLat=${coords.latitude}&userLng=${coords.longitude}` : '/products/for-you';
+        prodPromise = apiGet<any>(queryStr, session.access_token).catch(() => null);
+        notifPromise = apiGet<any>('/notifications/supply-chain', session.access_token).catch(() => null);
+      } else {
+        prodPromise = apiGet<any>('/products').catch(() => []);
+      }
+
+      const [catRes, promoRes, prodRes, notifRes] = await Promise.all([
+        catPromise,
+        promoPromise,
+        prodPromise,
+        notifPromise,
+      ]);
+
       const cats = catRes?.data || catRes?.categories || [];
       const promos = promoRes?.data || [];
-      const prods = (prodRes as any)?.data || (prodRes as any)?.products || (Array.isArray(prodRes) ? prodRes : []);
-      
       setCategories(cats);
       setPromotions(promos);
-      setProducts(prods);
+
+      if (isAuthenticated && prodRes?.data) {
+        const matched = prodRes.data.matched || [];
+        const others = prodRes.data.others || [];
+        setScProducts({ matched, others });
+        setProducts([...matched, ...others]);
+      } else {
+        const prods = (prodRes as any)?.data || (prodRes as any)?.products || (Array.isArray(prodRes) ? prodRes : []);
+        setProducts(prods);
+        setScProducts({ matched: [], others: [] });
+      }
+
+      if (notifRes?.data && notifRes.data.length > 0) {
+        setScNotification(notifRes.data[0]);
+      } else {
+        setScNotification(null);
+      }
     } catch (e) {
       console.log('Error fetching home data', e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, session?.access_token, userLocation]);
+
+  const fetchDataSilent = useCallback(async () => {
+    try {
+      let coords = userLocation;
+      const catPromise = apiGet<any>('/categories').catch(() => ({ data: [] }));
+      const promoPromise = apiGet<any>('/promotions').catch(() => ({ data: [] }));
+      
+      let prodPromise: Promise<any>;
+      let notifPromise: Promise<any> = Promise.resolve(null);
+
+      if (isAuthenticated && session?.access_token) {
+        const queryStr = coords ? `/products/for-you?userLat=${coords.latitude}&userLng=${coords.longitude}` : '/products/for-you';
+        prodPromise = apiGet<any>(queryStr, session.access_token).catch(() => null);
+        notifPromise = apiGet<any>('/notifications/supply-chain', session.access_token).catch(() => null);
+      } else {
+        prodPromise = apiGet<any>('/products').catch(() => []);
+      }
+
+      const [catRes, promoRes, prodRes, notifRes] = await Promise.all([
+        catPromise,
+        promoPromise,
+        prodPromise,
+        notifPromise,
+      ]);
+
+      const cats = catRes?.data || catRes?.categories || [];
+      const promos = promoRes?.data || [];
+      setCategories(cats);
+      setPromotions(promos);
+
+      if (isAuthenticated && prodRes?.data) {
+        const matched = prodRes.data.matched || [];
+        const others = prodRes.data.others || [];
+        setScProducts({ matched, others });
+        setProducts([...matched, ...others]);
+      } else {
+        const prods = (prodRes as any)?.data || (prodRes as any)?.products || (Array.isArray(prodRes) ? prodRes : []);
+        setProducts(prods);
+        setScProducts({ matched: [], others: [] });
+      }
+
+      if (notifRes?.data && notifRes.data.length > 0) {
+        setScNotification(notifRes.data[0]);
+      } else {
+        setScNotification(null);
+      }
+    } catch (e) {
+      console.log('Silent refresh failed:', e);
+    }
+  }, [isAuthenticated, session?.access_token, userLocation]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Silent refresh interval for non-disruptive homepage updates (every 60s)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => {
+      fetchDataSilent();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, fetchDataSilent]);
 
   useEffect(() => {
     if (promotions.length <= 1) return;
@@ -88,7 +204,7 @@ export default function GuestHomeScreen() {
   }, [promotions]);
 
   const featuredProducts = products.slice(0, 10);
-  const bestDeals = products.filter((p) => p.compare_at_price && p.compare_at_price > (p.price ?? 0)).slice(0, 10);
+  const bestDeals = products.filter((p) => p.compare_at_price && (p.compare_at_price as number) > (p.price ?? 0)).slice(0, 10);
 
   const getCategoryImage = (cat: any) => {
     if (cat.image_url) return cat.image_url;
@@ -205,6 +321,46 @@ export default function GuestHomeScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
+        {/* Supply Chain Real-Time Notification Banner */}
+        {isAuthenticated && scNotification && (
+          <Pressable
+            style={styles.scNotificationBanner}
+            onPress={() => {
+              const pid = scNotification.data?.product_id || scNotification.data?.productId;
+              if (pid) {
+                router.push(`/(guest)/product/${pid}`);
+              } else {
+                router.push('/(tabs)/shop');
+              }
+            }}
+          >
+            <View style={styles.scNotifLeft}>
+              <View style={styles.scNotifIconBg}>
+                <FontAwesome
+                  name={
+                    scNotification.type === 'price_change'
+                      ? 'tag'
+                      : scNotification.type === 'stock_update'
+                      ? 'archive'
+                      : 'star'
+                  }
+                  size={14}
+                  color="#fff"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.scNotifTitle} numberOfLines={1}>
+                  {scNotification.title}
+                </Text>
+                <Text style={styles.scNotifMessage} numberOfLines={1}>
+                  {scNotification.message}
+                </Text>
+              </View>
+            </View>
+            <FontAwesome name="chevron-right" size={12} color={Theme.primary} />
+          </Pressable>
+        )}
+
         {/* Categories Nav (Web Parity) */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catNav} contentContainerStyle={{ paddingHorizontal: 16 }}>
           <Pressable style={[styles.catPill, styles.catPillActive]} onPress={() => router.push('/(tabs)/shop')}>
@@ -212,7 +368,7 @@ export default function GuestHomeScreen() {
             <Text style={[styles.catPillText, styles.catPillTextActive]}>ALL CATEGORIES</Text>
           </Pressable>
           {categories.map(c => (
-            <Pressable key={c.id} style={styles.catPill} onPress={() => router.push(`(tabs)/shop?category=${c.id}`)}>
+            <Pressable key={c.id} style={styles.catPill} onPress={() => router.push(`(tabs)/shop?category=${c.id}` as any)}>
               <View style={styles.catPillImgBox}>
                 <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" />
               </View>
@@ -291,50 +447,109 @@ export default function GuestHomeScreen() {
           />
         )}
 
-        {/* Handpicked for you / Featured Products */}
-        {featuredProducts.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Handpicked for <Text style={styles.italicPrimary}>You</Text></Text>
-              <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-              {featuredProducts.map(p => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  badge={{ text: 'HOT', variant: 'new' }}
-                  isLiked={likedIds.has(p.id)}
-                  isInCart={cartItems.some(i => i.product_id === p.id)}
-                  onAddToCart={addItem}
-                  onToggleLike={toggleLike}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        {/* Personalized Supply Chain Sections */}
+        {isAuthenticated && (scProducts.matched.length > 0 || scProducts.others.length > 0) ? (
+          <>
+            {/* Supply Chain Matches */}
+            {scProducts.matched.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View>
+                    <Text style={styles.sectionSub}>Sourced from preferred partners</Text>
+                    <Text style={styles.sectionTitle}>Supply Chain <Text style={styles.italicPrimary}>Matches</Text></Text>
+                  </View>
+                  <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                  {scProducts.matched.slice(0, 10).map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      badge={{ text: 'MATCHED', variant: 'new' }}
+                      isLiked={likedIds.has(p.id)}
+                      isInCart={cartItems.some(i => i.product_id === p.id)}
+                      onAddToCart={addItem}
+                      onToggleLike={toggleLike}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
-        {/* Best Deals */}
-        {bestDeals.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Best Deals <Text style={styles.italicRed}>In Town</Text></Text>
-              <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-              {bestDeals.map(p => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  badge={{ text: 'OFFER', variant: 'deal' }}
-                  isLiked={likedIds.has(p.id)}
-                  isInCart={cartItems.some(i => i.product_id === p.id)}
-                  onAddToCart={addItem}
-                  onToggleLike={toggleLike}
-                />
-              ))}
-            </ScrollView>
-          </View>
+            {/* Recommended Opportunities */}
+            {scProducts.others.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View>
+                    <Text style={styles.sectionSub}>Top trading opportunities calculated for you</Text>
+                    <Text style={styles.sectionTitle}>Recommended <Text style={styles.italicRed}>For You</Text></Text>
+                  </View>
+                  <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                  {scProducts.others.slice(0, 10).map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      badge={{ text: 'POPULAR', variant: 'deal' }}
+                      isLiked={likedIds.has(p.id)}
+                      isInCart={cartItems.some(i => i.product_id === p.id)}
+                      onAddToCart={addItem}
+                      onToggleLike={toggleLike}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Handpicked for you / Featured Products */}
+            {featuredProducts.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Handpicked for <Text style={styles.italicPrimary}>You</Text></Text>
+                  <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                  {featuredProducts.map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      badge={{ text: 'HOT', variant: 'new' }}
+                      isLiked={likedIds.has(p.id)}
+                      isInCart={cartItems.some(i => i.product_id === p.id)}
+                      onAddToCart={addItem}
+                      onToggleLike={toggleLike}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Best Deals */}
+            {bestDeals.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Best Deals <Text style={styles.italicRed}>In Town</Text></Text>
+                  <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                  {bestDeals.map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      badge={{ text: 'OFFER', variant: 'deal' }}
+                      isLiked={likedIds.has(p.id)}
+                      isInCart={cartItems.some(i => i.product_id === p.id)}
+                      onAddToCart={addItem}
+                      onToggleLike={toggleLike}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </>
         )}
 
         {/* Benefits Strip */}
@@ -359,7 +574,7 @@ export default function GuestHomeScreen() {
           <Text style={styles.sectionTitle}>Shop by <Text style={styles.italicPrimary}>Category</Text></Text>
           <View style={styles.categoryGrid}>
             {categories.slice(0, 12).map((cat) => (
-              <Pressable key={cat.id} style={styles.categoryCard} onPress={() => router.push(`(tabs)/shop?category=${cat.id}`)}>
+              <Pressable key={cat.id} style={styles.categoryCard} onPress={() => router.push(`(tabs)/shop?category=${cat.id}` as any)}>
                 <OptimizedImage source={getCategoryImage(cat)} width="100%" aspectRatio={1.5} style={styles.categoryCardImg} />
                 <View style={styles.categoryCardOverlay}>
                   <Text style={styles.categoryCardText}>{cat.name}</Text>
@@ -694,5 +909,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#fff',
+  },
+  scNotificationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: Theme.primary + '30',
+    borderRadius: 16,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    ...Theme.shadowSm,
+  },
+  scNotifLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  scNotifIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scNotifTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Theme.text,
+  },
+  scNotifMessage: {
+    fontSize: 11,
+    color: Theme.textSecondary,
+    marginTop: 1,
   },
 });

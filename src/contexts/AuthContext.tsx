@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiPost } from '@/src/services/api';
+import { apiPost, getApiBaseUrl, setOn401Handler } from '@/src/services/api';
 
 
 const SESSION_KEY = '@tolatola/session';
@@ -60,9 +60,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading: false,
       isAuthenticated: !!session,
     });
-    
-
   }, []);
+
+  const refreshSession = useCallback(async (): Promise<string | null> => {
+    try {
+      const raw = await AsyncStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Session;
+      if (!parsed?.refresh_token) return null;
+
+      console.log('[AUTH] Attempting silent token refresh...');
+      const response = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: parsed.refresh_token }),
+      });
+
+      if (!response.ok) {
+        console.warn('[AUTH] Token refresh failed with status:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      if (data?.session?.access_token) {
+        const newSession: Session = {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token || parsed.refresh_token,
+          expires_at: data.session.expires_at,
+          user: data.user || parsed.user,
+        };
+        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
+        setState({
+          session: newSession,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+        console.log('[AUTH] Token refreshed successfully!');
+        return newSession.access_token;
+      }
+    } catch (err) {
+      console.error('[AUTH] Silent session refresh error:', err);
+    }
+    return null;
+  }, []);
+
+  // Register 401 interceptor callback
+  useEffect(() => {
+    setOn401Handler(refreshSession);
+    return () => {
+      setOn401Handler(() => Promise.resolve(null));
+    };
+  }, [refreshSession]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -103,7 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body
       );
       
-      // If email verification is mandatory, session might be null/missing
       if (data.session && data.session.access_token) {
         const session: Session = {
           access_token: data.session.access_token,
@@ -113,7 +160,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         await setSession(session);
       } else {
-        // Just set the user if no session returned (verification pending)
         setState(s => ({ ...s, session: null, isAuthenticated: false, isLoading: false }));
       }
     },
@@ -137,11 +183,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const raw = await AsyncStorage.getItem(SESSION_KEY);
         if (cancelled) return;
-        const session = raw ? (JSON.parse(raw) as Session) : null;
+        const parsed = raw ? (JSON.parse(raw) as Session) : null;
+        
+        if (parsed?.refresh_token) {
+          const refreshedToken = await refreshSession();
+          if (refreshedToken) {
+            return;
+          }
+        }
+
         setState({
-          session,
+          session: parsed,
           isLoading: false,
-          isAuthenticated: !!session?.access_token,
+          isAuthenticated: !!parsed?.access_token,
         });
       } catch {
         if (!cancelled) setState((s) => ({ ...s, isLoading: false }));
@@ -150,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

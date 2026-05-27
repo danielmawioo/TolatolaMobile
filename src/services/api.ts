@@ -14,9 +14,21 @@ export type ApiRequestInit = RequestInit & {
   accessToken?: string | null;
 };
 
+let _on401Handler: (() => Promise<string | null>) | null = null;
+
+/**
+ * Set a callback to execute when a 401 response is received.
+ * Should attempt to refresh session tokens and return the new access token.
+ */
+export function setOn401Handler(handler: () => Promise<string | null>) {
+  _on401Handler = handler;
+}
+
 /**
  * Fetch from the Tolatola backend. Automatically prefixes path with API base and
  * adds Authorization: Bearer <accessToken> when provided.
+ *
+ * Implements an automatic retry interceptor on 401.
  */
 export async function apiFetch(
   path: string,
@@ -25,13 +37,33 @@ export async function apiFetch(
   const { accessToken, headers: initHeaders, ...rest } = init ?? {};
   const url = path.startsWith('http') ? path : `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
   const headers = new Headers(initHeaders);
-  if (accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
+  let activeToken = accessToken;
+
+  if (activeToken) {
+    headers.set('Authorization', `Bearer ${activeToken}`);
   }
   if (!headers.has('Content-Type') && !(rest.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
-  return fetch(url, { ...rest, headers });
+
+  const res = await fetch(url, { ...rest, headers });
+
+  // On 401, attempt silent token refresh and retry
+  if (res.status === 401 && _on401Handler) {
+    try {
+      console.log('[API] 401 Unauthorized detected. Attempting token refresh...');
+      const newToken = await _on401Handler();
+      if (newToken) {
+        console.log('[API] Token refresh succeeded. Retrying request with new token.');
+        headers.set('Authorization', `Bearer ${newToken}`);
+        return fetch(url, { ...rest, headers });
+      }
+    } catch (err) {
+      console.error('[API] Direct token refresh intercept failed:', err);
+    }
+  }
+
+  return res;
 }
 
 /**
