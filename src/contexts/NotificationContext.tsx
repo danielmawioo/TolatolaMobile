@@ -44,14 +44,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [session?.access_token]);
 
-  // Register push token on login / app start
+  // Register push token on login / app start / guest mode
   useEffect(() => {
-    if (Platform.OS === 'web' || !session?.access_token) {
+    if (Platform.OS === 'web') {
       setExpoPushToken(null);
       return;
     }
 
-    registerForPushNotifications(session.access_token)
+    registerForPushNotifications(session?.access_token)
       .then(token => {
         if (token) {
           setExpoPushToken(token);
@@ -99,8 +99,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         // App has come to the foreground — refresh unread count and re-register token
         refreshUnreadCount();
-        if (session?.access_token && Platform.OS !== 'web') {
-          registerForPushNotifications(session.access_token).catch(() => {});
+        if (Platform.OS !== 'web') {
+          registerForPushNotifications(session?.access_token).catch(() => {});
         }
       }
       appState.current = nextAppState;

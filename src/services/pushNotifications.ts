@@ -75,10 +75,15 @@ export async function registerForPushNotifications(accessToken?: string): Promis
     console.log('[PUSH] Expo push token:', token);
 
     // Send token to backend
-    if (accessToken && token) {
+    if (token) {
       try {
-        await apiPost('/profile/fcm-token', { token, platform: Platform.OS }, accessToken);
-        console.log('[PUSH] Token registered with backend');
+        if (accessToken) {
+          await apiPost('/profile/fcm-token', { token, platform: Platform.OS }, accessToken);
+          console.log('[PUSH] Token registered with backend (authenticated)');
+        } else {
+          await apiPost('/notifications/register-guest-token', { token, platform: Platform.OS });
+          console.log('[PUSH] Token registered with backend (guest)');
+        }
       } catch (e) {
         console.error('[PUSH] Failed to register token with backend:', e);
       }
