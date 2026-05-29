@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,11 +21,12 @@ import { BackToHomeButton } from '@/components/BackToHomeButton';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
 import { Theme } from '@/constants/Theme';
 import { scaleByWidth, gap } from '@/constants/layout';
+import { apiGet } from '@/src/services/api';
 
 export default function SignupScreen() {
   const { signup, isLoading } = useAuth();
   const { signInWithGoogle, loading: googleLoading, error: googleError } = useGoogleAuth();
-  const params = useLocalSearchParams<{ role?: string }>();
+  const params = useLocalSearchParams<{ role?: string; ref?: string }>();
   const initialRole = (params.role === 'vendor' || params.role === 'transporter') ? params.role : 'customer';
   
   const [fullName, setFullName] = useState('');
@@ -36,6 +37,21 @@ export default function SignupScreen() {
   const [vendorType, setVendorType] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (params.ref) {
+      apiGet<any>(`/agents/referral-info?code=${params.ref}`)
+        .then((res) => {
+          if (res?.agent_name) {
+            setReferrerName(res.agent_name);
+          }
+        })
+        .catch((err) => {
+          console.warn('[SIGNUP] Failed to fetch referral info:', err);
+        });
+    }
+  }, [params.ref]);
 
   const VENDOR_TYPES = ['Producer', 'Manufacturer', 'Supplier', 'Wholesaler', 'Retail trader'];
 
@@ -61,6 +77,7 @@ export default function SignupScreen() {
         fullName: fullName.trim(),
         userType,
         vendorType: userType === 'vendor' ? vendorType : undefined,
+        referralCode: params.ref || undefined,
       });
       router.replace('/(auth)/sign-up-success');
     } catch (e) {
@@ -101,7 +118,15 @@ export default function SignupScreen() {
           <View style={styles.logoWrap}>
             <Image source={require('@/assets/images/icon.png')} style={styles.logo} />
           </View>
-        <Text style={styles.title}>Sign up</Text>
+          {referrerName ? (
+            <View style={styles.referralBanner}>
+              <Ionicons name="gift" size={16} color="#16a34a" style={{ marginRight: 6 }} />
+              <Text style={styles.referralBannerText}>
+                Referred by TOLA agent <Text style={{ fontWeight: '800' }}>{referrerName}</Text>
+              </Text>
+            </View>
+          ) : null}
+          <Text style={styles.title}>Sign up</Text>
 
         <View style={styles.inputWrap}>
           <FontAwesome name="user" size={20} color={Theme.textSecondary} style={styles.inputIcon} />
@@ -354,4 +379,22 @@ const styles = StyleSheet.create({
   vendorTypeLabelActive: { color: '#fff', fontWeight: '600' },
   logoWrap: { alignItems: 'center', marginBottom: 20 },
   logo: { width: scaleByWidth(80), height: scaleByWidth(80), borderRadius: 16 },
+  referralBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    alignSelf: 'center',
+  },
+  referralBannerText: {
+    fontSize: 13,
+    color: '#15803d',
+    fontWeight: '500',
+  },
 });

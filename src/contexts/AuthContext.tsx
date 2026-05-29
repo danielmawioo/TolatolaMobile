@@ -54,6 +54,7 @@ type AuthContextValue = AuthState & {
     fullName: string;
     userType: 'customer' | 'vendor' | 'transporter';
     vendorType?: string;
+    referralCode?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
   setSession: (session: Session | null) => Promise<void>;
@@ -275,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fullName: string;
       userType: 'customer' | 'vendor' | 'transporter';
       vendorType?: string;
+      referralCode?: string;
     }) => {
       const body = {
         email: params.email,
@@ -283,6 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user_type: params.userType,
         vendor_type: params.vendorType,
         accepted_policies: true,
+        referralCode: params.referralCode,
       };
       const data = await apiPost<{ user: User; session: { access_token: string; refresh_token?: string; expires_at?: number } }>(
         '/auth/signup',

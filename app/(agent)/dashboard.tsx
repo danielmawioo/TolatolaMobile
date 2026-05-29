@@ -9,7 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Share,
+  Linking,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
@@ -17,7 +20,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Theme } from '@/constants/Theme';
 import { apiGet } from '@/src/services/api';
-import { RegisterUserModal } from '@/src/components/agent/RegisterUserModal';
 
 const TABS = ['Overview', 'Registrations', 'Commissions', 'Performance', 'Profile'] as const;
 
@@ -29,9 +31,10 @@ export default function AgentDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Modal control states
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [registerType, setRegisterType] = useState<'vendor' | 'customer' | 'transporter'>('vendor');
+  // Referral link states
+  const [referralLink, setReferralLink] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [copied, setCopied] = useState(false);
 
   // Loaded database states
   const [agentProfile, setAgentProfile] = useState<any>(null);
@@ -56,11 +59,12 @@ export default function AgentDashboardScreen() {
       if (!session?.access_token) return;
       if (!silent) setLoading(true);
       try {
-        const [roleRes, dashRes, regsRes, commsRes] = await Promise.all([
+        const [roleRes, dashRes, regsRes, commsRes, refRes] = await Promise.all([
           apiGet<any>('/agents/my-role', session.access_token).catch(() => null),
           apiGet<any>('/agents/dashboard', session.access_token).catch(() => null),
           apiGet<any>('/agents/registrations', session.access_token).catch(() => ({ data: [] })),
           apiGet<any>('/agents/commissions', session.access_token).catch(() => ({ data: [] })),
+          apiGet<any>('/agents/referral-link', session.access_token).catch(() => null),
         ]);
 
         if (roleRes?.agent) {
@@ -71,6 +75,10 @@ export default function AgentDashboardScreen() {
         }
         setRegistrations(regsRes?.data || []);
         setCommissions(commsRes?.data || []);
+        if (refRes?.referral_link) {
+          setReferralLink(refRes.referral_link);
+          setReferralCode(refRes.referral_code || '');
+        }
 
         // Fetch unread notification count
         try {
@@ -110,9 +118,29 @@ export default function AgentDashboardScreen() {
     router.replace('/(tabs)');
   };
 
-  const openRegisterModal = (type: 'vendor' | 'customer' | 'transporter') => {
-    setRegisterType(type);
-    setIsRegisterOpen(true);
+  const handleCopyLink = async () => {
+    const link = referralLink || `https://tolatola.co/auth/sign-up?ref=${agentProfile?.agent_code || ''}`;
+    await Clipboard.setStringAsync(link);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareLink = async () => {
+    const link = referralLink || `https://tolatola.co/auth/sign-up?ref=${agentProfile?.agent_code || ''}`;
+    try {
+      await Share.share({
+        message: `Hello! Register on TOLA using my referral link to get started: ${link}`,
+      });
+    } catch (err) {
+      console.error('Share failed:', err);
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const link = referralLink || `https://tolatola.co/auth/sign-up?ref=${agentProfile?.agent_code || ''}`;
+    const message = encodeURIComponent(`Hello! Register on TOLA using my referral link to get started: ${link}`);
+    Linking.openURL(`https://api.whatsapp.com/send?text=${message}`);
   };
 
   if (!isAuthenticated) return null;
@@ -272,50 +300,41 @@ export default function AgentDashboardScreen() {
                 </View>
               </View>
 
-              {/* Quick Actions Panel */}
-              <Text style={styles.sectionTitle}>Register User</Text>
-              <View style={styles.quickActionsContainer}>
-                <Pressable
-                  style={styles.actionCard}
-                  onPress={() => openRegisterModal('vendor')}
-                >
-                  <View style={[styles.actionIconWrap, { backgroundColor: '#dcfce7' }]}>
-                    <FontAwesome name="shopping-bag" size={18} color="#16a34a" />
-                  </View>
-                  <View style={styles.actionInfo}>
-                    <Text style={styles.actionTitle}>Register Vendor</Text>
-                    <Text style={styles.actionDesc}>Add new shops or businesses</Text>
-                  </View>
-                  <FontAwesome name="chevron-right" size={12} color={Theme.textMuted} />
-                </Pressable>
+              {/* Referral Link Card */}
+              <Text style={styles.sectionTitle}>Your Referral Link</Text>
+              <View style={styles.referralCard}>
+                <View style={styles.referralBadge}>
+                  <FontAwesome name="gift" size={12} color="#16a34a" />
+                  <Text style={styles.referralBadgeText}>Refer & Earn Commission</Text>
+                </View>
+                <Text style={styles.referralHeading}>
+                  Invite Customers, Vendors & Transporters
+                </Text>
+                <Text style={styles.referralDesc}>
+                  Share your unique referral link. When they sign up, they are automatically added to your dashboard and you earn commissions.
+                </Text>
 
-                <Pressable
-                  style={styles.actionCard}
-                  onPress={() => openRegisterModal('transporter')}
-                >
-                  <View style={[styles.actionIconWrap, { backgroundColor: '#ede9fe' }]}>
-                    <FontAwesome name="truck" size={18} color="#7c3aed" />
-                  </View>
-                  <View style={styles.actionInfo}>
-                    <Text style={styles.actionTitle}>Register Transporter</Text>
-                    <Text style={styles.actionDesc}>Add drivers and delivery fleets</Text>
-                  </View>
-                  <FontAwesome name="chevron-right" size={12} color={Theme.textMuted} />
-                </Pressable>
+                <View style={styles.referralLinkBox}>
+                  <Text style={styles.referralLinkText} numberOfLines={1}>
+                    {referralLink || `https://tolatola.co/auth/sign-up?ref=${agentProfile?.agent_code || '...'}`}
+                  </Text>
+                </View>
 
-                <Pressable
-                  style={styles.actionCard}
-                  onPress={() => openRegisterModal('customer')}
-                >
-                  <View style={[styles.actionIconWrap, { backgroundColor: '#dbeafe' }]}>
-                    <FontAwesome name="user" size={18} color="#2563eb" />
-                  </View>
-                  <View style={styles.actionInfo}>
-                    <Text style={styles.actionTitle}>Register Customer</Text>
-                    <Text style={styles.actionDesc}>Refer new retail shoppers</Text>
-                  </View>
-                  <FontAwesome name="chevron-right" size={12} color={Theme.textMuted} />
-                </Pressable>
+                <View style={styles.referralActions}>
+                  <Pressable style={styles.referralCopyBtn} onPress={handleCopyLink}>
+                    <FontAwesome name={copied ? 'check' : 'copy'} size={14} color="#fff" />
+                    <Text style={styles.referralCopyBtnText}>
+                      {copied ? 'Copied!' : 'Copy Link'}
+                    </Text>
+                  </Pressable>
+                  <Pressable style={styles.referralWhatsAppBtn} onPress={handleWhatsAppShare}>
+                    <FontAwesome name="whatsapp" size={16} color="#fff" />
+                    <Text style={styles.referralWhatsAppBtnText}>WhatsApp</Text>
+                  </Pressable>
+                  <Pressable style={styles.referralShareBtn} onPress={handleShareLink}>
+                    <FontAwesome name="share-alt" size={14} color={Theme.primary} />
+                  </Pressable>
+                </View>
               </View>
 
               {/* Recent registrations preview */}
@@ -592,14 +611,7 @@ export default function AgentDashboardScreen() {
         </ScrollView>
       )}
 
-      {/* Dedicated Modal for adding new registrants */}
-      <RegisterUserModal
-        isOpen={isRegisterOpen}
-        onClose={() => setIsRegisterOpen(false)}
-        type={registerType}
-        accessToken={session?.access_token || ''}
-        onSuccess={() => fetchData(true)}
-      />
+
     </View>
   );
 }
@@ -1161,5 +1173,117 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
+  },
+  referralCard: {
+    backgroundColor: Theme.background,
+    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  referralBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 6,
+    marginBottom: 12,
+  },
+  referralBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#16a34a',
+    textTransform: 'uppercase',
+  },
+  referralHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Theme.text,
+    marginBottom: 6,
+  },
+  referralDesc: {
+    fontSize: 12,
+    color: Theme.textSecondary,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  referralLinkBox: {
+    backgroundColor: Theme.backgroundSecondary,
+    borderColor: Theme.inputBorder,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  referralLinkText: {
+    fontSize: 12,
+    color: Theme.textSecondary,
+    fontWeight: '500',
+  },
+  referralActions: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  referralCopyBtn: {
+    flex: 1.2,
+    flexDirection: 'row',
+    backgroundColor: Theme.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: Theme.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  referralCopyBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  referralWhatsAppBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#25D366',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#25D366',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  referralWhatsAppBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  referralShareBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderColor: Theme.primary,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
