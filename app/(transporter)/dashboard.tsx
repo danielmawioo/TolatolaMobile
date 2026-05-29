@@ -160,6 +160,140 @@ export default function TransporterDashboardScreen() {
 
   if (!isAuthenticated) return null;
 
+  // KYC GATE
+  if (!loading) {
+    if (!transporter) {
+      return (
+        <View style={styles.container}>
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.logoText}>TOLA.</Text>
+              <Text style={styles.headerSubtitle}>Transporter Profile</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+                <FontAwesome name="sign-out" size={14} color={Theme.text} />
+                <Text style={styles.logoutText}>Logout</Text>
+              </Pressable>
+            </View>
+          </View>
+          
+          <ScrollView 
+            contentContainerStyle={styles.gateContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
+          >
+            <View style={styles.gateCard}>
+              <View style={[styles.gateIconContainer, { backgroundColor: '#ede9fe' }]}>
+                <FontAwesome name="truck" size={32} color="#7c3aed" />
+              </View>
+              <Text style={styles.gateTitle}>Transporter KYC Required</Text>
+              <Text style={styles.gateDesc}>
+                To start taking deliveries and earning with Tolatola, you need to register your transporter details and verify your license.
+              </Text>
+              
+              <Pressable 
+                style={styles.gatePrimaryBtn}
+                onPress={() => router.push('/(transporter)/register' as any)}
+              >
+                <Text style={styles.gatePrimaryBtnText}>Register as Transporter</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      );
+    }
+
+    if (transporter.kyc_status === 'pending') {
+      return (
+        <View style={styles.container}>
+          <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.logoText}>TOLA.</Text>
+              <Text style={styles.headerSubtitle}>Under Review</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+                <FontAwesome name="sign-out" size={14} color={Theme.text} />
+                <Text style={styles.logoutText}>Logout</Text>
+              </Pressable>
+            </View>
+          </View>
+          
+          <ScrollView 
+            contentContainerStyle={styles.gateContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
+          >
+            <View style={styles.gateCard}>
+              <View style={[styles.gateIconContainer, { backgroundColor: '#fef3c7' }]}>
+                <FontAwesome name="clock-o" size={36} color="#d97706" />
+              </View>
+              <Text style={styles.gateTitle}>KYC Under Review</Text>
+              <Text style={styles.gateSubtitle}>Your application for {transporter.business_name || 'Transporter'} is being reviewed</Text>
+              <Text style={styles.gateDesc}>
+                Thank you for submitting your transporter profile. Our admin team is currently reviewing your documents and vehicle details.
+              </Text>
+              
+              <View style={styles.gateInfoBox}>
+                <Text style={styles.gateInfoText}>Typical review time: 24-48 hours</Text>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      );
+    }
+
+    if (transporter.kyc_status === 'rejected') {
+      return (
+        <View style={styles.container}>
+          <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.logoText}>TOLA.</Text>
+              <Text style={styles.headerSubtitle}>Rejected</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+                <FontAwesome name="sign-out" size={14} color={Theme.text} />
+                <Text style={styles.logoutText}>Logout</Text>
+              </Pressable>
+            </View>
+          </View>
+          
+          <ScrollView 
+            contentContainerStyle={styles.gateContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
+          >
+            <View style={[styles.gateCard, { borderColor: '#fca5a5' }]}>
+              <View style={[styles.gateIconContainer, { backgroundColor: '#fee2e2' }]}>
+                <FontAwesome name="times-circle" size={36} color={Theme.error} />
+              </View>
+              <Text style={[styles.gateTitle, { color: Theme.error }]}>Application Rejected</Text>
+              <Text style={styles.gateSubtitle}>Your transporter profile application has been rejected</Text>
+              
+              {transporter.kyc_notes && (
+                <View style={styles.rejectionBox}>
+                  <Text style={styles.rejectionTitle}>Rejection Reason:</Text>
+                  <Text style={styles.rejectionText}>{transporter.kyc_notes}</Text>
+                </View>
+              )}
+              
+              <Text style={styles.gateDesc}>
+                Please review the rejection reason above and make the necessary corrections before reapplying.
+              </Text>
+              
+              <Pressable 
+                style={[styles.gatePrimaryBtn, { backgroundColor: Theme.error }]}
+                onPress={() => router.push('/(transporter)/register' as any)}
+              >
+                <Text style={styles.gatePrimaryBtnText}>Reapply as Transporter</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      );
+    }
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -415,4 +549,19 @@ const styles = StyleSheet.create({
   input: { backgroundColor: Theme.backgroundSecondary, borderRadius: 8, padding: 12, fontSize: 16, color: Theme.text, borderWidth: 1, borderColor: Theme.inputBorder },
   saveBtn: { backgroundColor: Theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 24 },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  // KYC Gate Styles
+  gateContent: { flexGrow: 1, padding: 24, justifyContent: 'center', alignItems: 'center' },
+  gateCard: { width: '100%', backgroundColor: Theme.background, borderRadius: Theme.radiusLg, borderWidth: 1, borderColor: Theme.inputBorder, padding: 24, alignItems: 'center', gap: 16, ...Theme.shadowMd },
+  gateIconContainer: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  gateTitle: { fontSize: 20, fontWeight: '800', color: Theme.text, textAlign: 'center' },
+  gateSubtitle: { fontSize: 14, fontWeight: '600', color: Theme.textSecondary, textAlign: 'center', lineHeight: 20 },
+  gateDesc: { fontSize: 13, color: Theme.textMuted, textAlign: 'center', lineHeight: 20 },
+  gatePrimaryBtn: { width: '100%', backgroundColor: Theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  gatePrimaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  gateInfoBox: { width: '100%', backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 12, marginTop: 8 },
+  gateInfoText: { fontSize: 12, color: '#b45309', fontWeight: '600', textAlign: 'center' },
+  rejectionBox: { width: '100%', backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 8, padding: 14, marginTop: 4, gap: 4 },
+  rejectionTitle: { fontSize: 12, fontWeight: '700', color: '#991b1b', textTransform: 'uppercase' },
+  rejectionText: { fontSize: 13, color: '#dc2626', lineHeight: 18 },
 });
