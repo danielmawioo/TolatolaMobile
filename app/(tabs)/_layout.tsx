@@ -107,6 +107,7 @@ export default function TabLayout() {
       <Tabs.Screen name="shop" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="orders" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="favorites" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="validation-survey" options={{ href: null, headerShown: false }} />
     </Tabs>
     </ErrorBoundary>
   );
