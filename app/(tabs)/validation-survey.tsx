@@ -90,7 +90,7 @@ export default function ValidationSurveyScreen() {
   const toggleCh = (c: string) => set('q6_channels', form.q6_channels.includes(c) ? form.q6_channels.filter(x => x !== c) : [...form.q6_channels, c]);
 
   const validateStep0 = () => {
-    if (!form.full_name.trim() || !form.phone.trim() || !form.email.trim() || !form.region || !form.district.trim() || !form.location_ward.trim() || !form.respondent_type) {
+    if (!form.full_name.trim() || !form.phone.trim() || !form.region || !form.district.trim() || !form.location_ward.trim() || !form.respondent_type) {
       Alert.alert('Missing Fields', 'Please fill in all required fields.');
       return false;
     }
@@ -158,7 +158,7 @@ export default function ValidationSurveyScreen() {
             <TextInput style={s.input} value={form.full_name} onChangeText={t => set('full_name', t)} placeholder="John Doe" />
             <Text style={s.label}>Phone Number *</Text>
             <TextInput style={s.input} value={form.phone} onChangeText={t => set('phone', t)} placeholder="+255 7XX" keyboardType="phone-pad" />
-            <Text style={s.label}>Email Address *</Text>
+            <Text style={s.label}>Email Address (Optional)</Text>
             <TextInput style={s.input} value={form.email} onChangeText={t => set('email', t)} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
             <Text style={s.label}>Region *</Text>
             <PillSelect options={REGIONS} value={form.region} onSelect={v => set('region', v)} />
