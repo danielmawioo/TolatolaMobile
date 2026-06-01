@@ -170,6 +170,26 @@ export default function ProfileScreen() {
         <Pressable style={styles.linkBtn} onPress={() => router.push('/(guest)/track')}>
           <Text style={styles.linkBtnText}>Track order</Text>
         </Pressable>
+
+        <View style={{ height: 24 }} />
+        <Pressable
+          style={({ pressed }) => [styles.dashboardCard, { borderColor: '#10b981' + '40', backgroundColor: '#f0fdf4' }, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/(tabs)/validation-survey' as any)}
+        >
+          <View style={styles.dashboardCardLeft}>
+            <View style={[styles.dashboardIconBox, { backgroundColor: '#10b981' }]}>
+              <FontAwesome name="clipboard" size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.dashboardCardTitle}>Market Validation Survey</Text>
+              <Text style={styles.dashboardCardSubtitle}>Help us build TOLA — take the survey and share your feedback</Text>
+            </View>
+          </View>
+          <View style={[styles.dashboardActionBtn, { backgroundColor: '#10b981' }]}>
+            <Text style={styles.dashboardActionBtnText}>Take Survey</Text>
+            <FontAwesome name="arrow-right" size={12} color="#fff" />
+          </View>
+        </Pressable>
       </ScrollView>
     );
   }
