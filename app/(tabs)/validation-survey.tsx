@@ -76,6 +76,9 @@ function RatingRow({ label, value, onChange }: { label: string; value: number; o
 export default function ValidationSurveyScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const userType = session?.user?.user_type || (session?.user as any)?.role || 'customer';
+  const isAgent = userType === 'agent';
+
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>({
     ...initial,
@@ -83,6 +86,8 @@ export default function ValidationSurveyScreen() {
     phone: (session?.user?.phone as string) || '',
     email: session?.user?.email || '',
   });
+  const [assistedByAgent, setAssistedByAgent] = useState(isAgent);
+  const [agentNameInput, setAgentNameInput] = useState(isAgent ? ((session?.user?.full_name as string) || '') : '');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -92,6 +97,10 @@ export default function ValidationSurveyScreen() {
   const validateStep0 = () => {
     if (!form.full_name.trim() || !form.phone.trim() || !form.region || !form.district.trim() || !form.location_ward.trim() || !form.respondent_type) {
       Alert.alert('Missing Fields', 'Please fill in all required fields.');
+      return false;
+    }
+    if (assistedByAgent && !agentNameInput.trim()) {
+      Alert.alert('Missing Agent Name', 'Please enter the agent name.');
       return false;
     }
     return true;
@@ -113,8 +122,9 @@ export default function ValidationSurveyScreen() {
         ...form,
         collection_method: 'Mobile App',
         source: 'Mobile App',
-        agent_id: session?.user?.id || null,
-        agent_name: (session?.user?.full_name as string) || null,
+        assisted_by_agent: assistedByAgent,
+        agent_id: assistedByAgent ? (isAgent ? session?.user?.id : null) : null,
+        agent_name: assistedByAgent ? (agentNameInput.trim() || 'Unknown Agent') : 'Self-Submitted',
         survey_date: new Date().toISOString().split('T')[0],
       };
       await apiPost('/validation-survey', payload);
@@ -176,6 +186,46 @@ export default function ValidationSurveyScreen() {
             <TextInput style={s.input} value={form.location_ward} onChangeText={t => set('location_ward', t)} placeholder="e.g. Kariakoo" />
             <Text style={s.label}>Respondent Type *</Text>
             <PillSelect options={RESPONDENT_TYPES} value={form.respondent_type} onSelect={v => set('respondent_type', v)} />
+
+            {!isAgent && (
+              <>
+                <Pressable 
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}
+                  onPress={() => {
+                    const next = !assistedByAgent;
+                    setAssistedByAgent(next);
+                    if (!next) setAgentNameInput('');
+                  }}
+                >
+                  <View style={{
+                    width: 20, 
+                    height: 20, 
+                    borderRadius: 6, 
+                    borderWidth: 2, 
+                    borderColor: assistedByAgent ? '#10b981' : '#cbd5e1', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    backgroundColor: assistedByAgent ? '#10b981' : '#fff'
+                  }}>
+                    {assistedByAgent && <FontAwesome name="check" size={12} color="#fff" />}
+                  </View>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: Theme.textSecondary }}>Assisted by a TOLA agent?</Text>
+                </Pressable>
+
+                {assistedByAgent && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={s.label}>Agent Name *</Text>
+                    <TextInput 
+                      style={s.input} 
+                      value={agentNameInput} 
+                      onChangeText={setAgentNameInput} 
+                      placeholder="Enter agent name" 
+                    />
+                  </View>
+                )}
+              </>
+            )}
+
             <Pressable style={s.primaryBtn} onPress={() => validateStep0() && setStep(1)}>
               <Text style={s.primaryBtnText}>Continue</Text>
               <FontAwesome name="arrow-right" size={14} color="#fff" />
