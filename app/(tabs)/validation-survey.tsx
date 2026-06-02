@@ -109,7 +109,15 @@ export default function ValidationSurveyScreen() {
     if (!validateStep1()) return;
     setSubmitting(true);
     try {
-      await apiPost('/validation-survey', form);
+      const payload = {
+        ...form,
+        collection_method: 'Mobile App',
+        source: 'Mobile App',
+        agent_id: session?.user?.id || null,
+        agent_name: (session?.user?.full_name as string) || null,
+        survey_date: new Date().toISOString().split('T')[0],
+      };
+      await apiPost('/validation-survey', payload);
       setSubmitted(true); setStep(2);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to submit survey.');
