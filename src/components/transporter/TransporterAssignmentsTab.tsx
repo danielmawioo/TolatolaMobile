@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator,
   Alert, Modal, TextInput, Linking,
 } from 'react-native';
+import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
@@ -217,6 +218,32 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
               {updatingId === a.id ? <ActivityIndicator color="#fff" size="small" /> : <><FontAwesome name="check-circle" size={14} color="#fff" /><Text style={st.acceptBtnText}>Accept Cargo</Text></>}
             </Pressable>
           </View>
+        )}
+
+        {isAccepted && ['accepted', 'picked_up', 'in_transit'].includes(a.status) && (
+          <Pressable
+            style={[st.fullActionBtn, { backgroundColor: '#0284c7', marginBottom: 8 }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: '/(transporter)/delivery-map',
+                params: {
+                  assignmentId: a.id,
+                  orderId: a.order_id,
+                  shopLat: a.shops?.latitude || '',
+                  shopLng: a.shops?.longitude || '',
+                  shopName: a.shops?.name || 'Shop',
+                  custLat: a.orders?.shipping_address?.latitude || '',
+                  custLng: a.orders?.shipping_address?.longitude || '',
+                  custName: a.orders?.users?.full_name || a.orders?.shipping_address?.full_name || 'Customer',
+                  status: a.status
+                }
+              } as any);
+            }}
+          >
+            <FontAwesome name="compass" size={16} color="#fff" />
+            <Text style={st.fullActionText}>Live GPS Guidance & Map</Text>
+          </Pressable>
         )}
 
         {(displayStatus === 'accepted') && isAccepted && (

@@ -125,6 +125,8 @@ export default function TransporterDashboardScreen() {
       await apiPut('/transporters/me/location', {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
+        bearing: loc.coords.heading || null,
+        speed: loc.coords.speed || null,
       }, session?.access_token);
       setLocationStatus('updated');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -135,6 +137,56 @@ export default function TransporterDashboardScreen() {
       setIsUpdatingLocation(false);
     }
   };
+
+  // Real-time active GPS streaming loop for Uber-like driver tracking
+  useEffect(() => {
+    if (!session?.access_token || assignments.length === 0) return;
+
+    // Check if there are active assignments in transit or picked up
+    const hasActiveTrip = assignments.some(a => ['picked_up', 'in_transit'].includes(a.status));
+    if (!hasActiveTrip) return;
+
+    let locationInterval: any;
+
+    const startLocationStreaming = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+
+        // Perform immediate sync
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        await apiPut('/transporters/me/location', {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          bearing: loc.coords.heading || null,
+          speed: loc.coords.speed || null,
+        }, session.access_token);
+
+        // Stream every 10 seconds
+        locationInterval = setInterval(async () => {
+          try {
+            const currentLoc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            await apiPut('/transporters/me/location', {
+              latitude: currentLoc.coords.latitude,
+              longitude: currentLoc.coords.longitude,
+              bearing: currentLoc.coords.heading || null,
+              speed: currentLoc.coords.speed || null,
+            }, session.access_token);
+          } catch (err) {
+            console.warn('Real-time location stream error:', err);
+          }
+        }, 10000);
+      } catch (err) {
+        console.warn('Location streaming setup failed:', err);
+      }
+    };
+
+    startLocationStreaming();
+
+    return () => {
+      if (locationInterval) clearInterval(locationInterval);
+    };
+  }, [assignments, session?.access_token]);
 
   const handleUpdateProfile = async () => {
     if (!session?.access_token) return;
