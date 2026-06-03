@@ -1,13 +1,14 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl, ActivityIndicator, Alert, TextInput, Image, Platform } from 'react-native';
 import React, { useState, useEffect, useCallback } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Theme } from '@/constants/Theme';
-import { apiGet, apiPatch, apiPut } from '@/src/services/api';
+import { apiGet, apiPatch, apiPut, apiPost } from '@/src/services/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { TransporterAssignmentsTab } from '@/src/components/transporter/TransporterAssignmentsTab';
 import { TransporterPaymentsTab } from '@/src/components/transporter/TransporterPaymentsTab';
 import { TransporterWithdrawalsTab } from '@/src/components/transporter/TransporterWithdrawalsTab';
@@ -47,8 +48,17 @@ export default function TransporterDashboardScreen() {
   const [payments, setPayments] = useState<any[]>([]);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [financeSummary, setFinanceSummary] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [profileData, setProfileData] = useState({
-    full_name: '', phone: '', vehicle_type: '', license_plate: '',
+    full_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    business_name: '',
+    vehicle_type: '',
+    license_plate: '',
+    profile_image_url: '',
   });
 
   // Location update
@@ -59,11 +69,12 @@ export default function TransporterDashboardScreen() {
     if (!session?.access_token) return;
     if (!silent) setLoading(true);
     try {
-      const [profile, transporterRes] = await Promise.all([
+      const [profileRes, transporterRes] = await Promise.all([
         apiGet<any>('/profile', session.access_token).catch(() => null),
         apiGet<any>('/transporters/me', session.access_token).catch(() => null),
       ]);
 
+      const profile = profileRes?.profile || profileRes?.user || null;
       const tData = transporterRes?.transporter || null;
       setTransporter(tData);
       const tId = tData?.id || profile?.transporter_id || session.user?.id || '';
@@ -71,9 +82,13 @@ export default function TransporterDashboardScreen() {
 
       setProfileData({
         full_name: profile?.full_name || '',
+        email: profile?.email || session.user?.email || '',
         phone: profile?.phone || '',
-        vehicle_type: profile?.vehicle_type || tData?.vehicle_type || '',
-        license_plate: profile?.license_plate || tData?.vehicle_registration || '',
+        address: profile?.address || '',
+        business_name: tData?.business_name || '',
+        vehicle_type: tData?.vehicle_type || '',
+        license_plate: tData?.license_plate || tData?.vehicle_registration || '',
+        profile_image_url: profile?.profile_image_url || '',
       });
 
       // Fetch assignments, payments, and finance summary for stats
@@ -198,16 +213,119 @@ export default function TransporterDashboardScreen() {
     };
   }, [assignments, session?.access_token]);
 
+  const requestPermissions = async () => {
+    const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: libStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (camStatus !== 'granted' || libStatus !== 'granted') {
+      Alert.alert('Permissions Required', 'Camera and photo library access needed to change profile photo.');
+      return false;
+    }
+    return true;
+  };
+
+  const pickImage = async (useCamera: boolean) => {
+    const hasPerms = await requestPermissions();
+    if (!hasPerms) return;
+
+    setIsUploadingImage(true);
+    try {
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true });
+
+      if (result.canceled || !result.assets?.[0]) { setIsUploadingImage(false); return; }
+
+      const asset = result.assets[0];
+      const base64 = asset.base64;
+      if (!base64) { Alert.alert('Error', 'Failed to read image data'); setIsUploadingImage(false); return; }
+
+      const ext = asset.uri.split('.').pop() || 'jpg';
+      const contentType = `image/${ext === 'png' ? 'png' : 'jpeg'}`;
+      const dataUrl = `data:${contentType};base64,${base64}`;
+
+      await apiPost('/profile/avatar', { image: dataUrl }, session?.access_token);
+      
+      setProfileData(p => ({ ...p, profile_image_url: dataUrl }));
+      if (session) {
+        await setSession({
+          ...session,
+          user: {
+            ...session.user,
+            profile_image_url: dataUrl,
+          }
+        });
+      }
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Success', 'Profile photo updated successfully');
+    } catch (e: any) {
+      Alert.alert('Upload Error', e.message || 'Failed to update profile photo');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const showUploadOptions = () => {
+    Alert.alert('Profile Photo', 'Choose how to upload your profile photo', [
+      { text: 'Take Photo', onPress: () => pickImage(true) },
+      { text: 'Choose from Library', onPress: () => pickImage(false) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const getKycBadgeStyle = (status: string) => {
+    const s = String(status || '').toLowerCase();
+    if (s === 'approved') return { backgroundColor: '#16a34a' };
+    if (s === 'pending') return { backgroundColor: 'rgba(234, 179, 8, 0.15)', borderColor: '#fef08a', borderWidth: 1 };
+    if (s === 'rejected') return { backgroundColor: '#dc2626' };
+    return { backgroundColor: '#e2e8f0' };
+  };
+
+  const getKycTextStyle = (status: string) => {
+    const s = String(status || '').toLowerCase();
+    if (s === 'approved' || s === 'rejected') return { color: '#ffffff' };
+    if (s === 'pending') return { color: '#a16207' };
+    return { color: '#475569' };
+  };
+
   const handleUpdateProfile = async () => {
     if (!session?.access_token) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLoading(true);
     try {
-      const updated = await apiPatch<any>('/profile', profileData, session.access_token);
-      await setSession({ ...session, user: { ...session.user, ...updated } });
+      // 1. Update user profile (name and phone)
+      const updatedUser = await apiPatch<any>('/profile', {
+        full_name: profileData.full_name,
+        phone: profileData.phone,
+      }, session.access_token);
+      
+      // 2. Update transporter details (business_name, vehicle_type, license_plate)
+      const updatedTransporter = await apiPost<any>('/transporters', {
+        business_name: profileData.business_name,
+        vehicle_type: profileData.vehicle_type,
+        license_plate: profileData.license_plate,
+        vehicle_registration: profileData.license_plate,
+      }, session.access_token);
+
+      setTransporter(updatedTransporter.transporter);
+      
+      if (session) {
+        await setSession({
+          ...session,
+          user: {
+            ...session.user,
+            ...updatedUser.profile,
+          }
+        });
+      }
+
+      setIsEditing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -483,31 +601,99 @@ export default function TransporterDashboardScreen() {
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />}
             >
               <View style={styles.tabContent}>
-                <Text style={styles.sectionTitle}>Vehicle & Profile</Text>
+                <Text style={styles.sectionTitle}>Profile Details</Text>
+                
                 <View style={styles.formCard}>
+                  {/* Avatar/Profile Photo Section */}
+                  <View style={styles.avatarContainer}>
+                    <View style={styles.avatarFrame}>
+                      {profileData.profile_image_url ? (
+                        <Image source={{ uri: profileData.profile_image_url }} style={styles.avatarImage} />
+                      ) : (
+                        <View style={styles.avatarFallback}>
+                          <Text style={styles.avatarFallbackText}>
+                            {profileData.full_name
+                              ? profileData.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                              : 'T'}
+                          </Text>
+                        </View>
+                      )}
+                      {isUploadingImage && (
+                        <View style={styles.avatarLoadingOverlay}>
+                          <ActivityIndicator color="#fff" size="small" />
+                        </View>
+                      )}
+                      {isEditing && (
+                        <Pressable style={styles.avatarEditBadge} onPress={showUploadOptions}>
+                          <FontAwesome name="camera" size={12} color="#fff" />
+                        </Pressable>
+                      )}
+                    </View>
+                    <Text style={styles.avatarTitle}>Profile Photo</Text>
+                    {isEditing && <Text style={styles.avatarSubtitle}>Tap camera icon to change</Text>}
+                  </View>
+
                   <Text style={styles.label}>Full Name</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, !isEditing && styles.inputDisabled]}
                     value={profileData.full_name}
                     onChangeText={(t) => setProfileData(p => ({ ...p, full_name: t }))}
+                    editable={isEditing}
+                    placeholder="Your full name"
+                    placeholderTextColor={Theme.textMuted}
                   />
 
-                  <Text style={[styles.label, { marginTop: 12 }]}>Phone</Text>
+                  <Text style={[styles.label, { marginTop: 12 }]}>Email Address</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, styles.inputDisabled]}
+                    value={profileData.email}
+                    editable={false}
+                    placeholder="Your email address"
+                    placeholderTextColor={Theme.textMuted}
+                  />
+
+                  <Text style={[styles.label, { marginTop: 12 }]}>Phone Number</Text>
+                  <TextInput
+                    style={[styles.input, !isEditing && styles.inputDisabled]}
                     value={profileData.phone}
                     onChangeText={(t) => setProfileData(p => ({ ...p, phone: t }))}
                     keyboardType="phone-pad"
+                    editable={isEditing}
+                    placeholder="e.g. +255..."
+                    placeholderTextColor={Theme.textMuted}
+                  />
+
+                  <Text style={[styles.label, { marginTop: 12 }]}>Base Location / Address</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputDisabled]}
+                    value={profileData.address || 'Not provided'}
+                    editable={false}
+                    placeholder="e.g. Dar es Salaam"
+                    placeholderTextColor={Theme.textMuted}
+                  />
+
+                  <Text style={[styles.label, { marginTop: 12 }]}>Business Name</Text>
+                  <TextInput
+                    style={[styles.input, !isEditing && styles.inputDisabled]}
+                    value={profileData.business_name}
+                    onChangeText={(t) => setProfileData(p => ({ ...p, business_name: t }))}
+                    editable={isEditing}
+                    placeholder="Transport Company Name"
+                    placeholderTextColor={Theme.textMuted}
                   />
 
                   <Text style={[styles.label, { marginTop: 12 }]}>Vehicle Type *</Text>
-                  <Pressable style={styles.picker} onPress={() => setShowVehiclePicker(!showVehiclePicker)}>
-                    <Text style={styles.pickerText}>
+                  <Pressable 
+                    style={[styles.picker, !isEditing && styles.pickerDisabled]} 
+                    onPress={() => isEditing && setShowVehiclePicker(!showVehiclePicker)}
+                    disabled={!isEditing}
+                  >
+                    <Text style={[styles.pickerText, !isEditing && { color: Theme.textMuted }]}>
                       {VEHICLE_TYPES.find(t => t.value === profileData.vehicle_type)?.label || profileData.vehicle_type || 'Select vehicle type'}
                     </Text>
-                    <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+                    {isEditing && <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />}
                   </Pressable>
-                  {showVehiclePicker && (
+                  {showVehiclePicker && isEditing && (
                     <View style={styles.dropdown}>
                       {VEHICLE_TYPES.map(t => (
                         <Pressable 
@@ -526,19 +712,59 @@ export default function TransporterDashboardScreen() {
 
                   <Text style={[styles.label, { marginTop: 12 }]}>License Plate</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, !isEditing && styles.inputDisabled]}
                     value={profileData.license_plate}
                     onChangeText={(t) => setProfileData(p => ({ ...p, license_plate: t }))}
                     placeholder="e.g. T 123 ABC"
                     placeholderTextColor={Theme.textMuted}
+                    editable={isEditing}
+                    autoCapitalize="characters"
                   />
 
-                  <Pressable 
-                    style={styles.saveBtn} 
-                    onPress={handleUpdateProfile}
-                  >
-                    <Text style={styles.saveBtnText}>Update Profile</Text>
-                  </Pressable>
+                  <Text style={[styles.label, { marginTop: 12 }]}>KYC Status</Text>
+                  <View style={styles.kycStatusContainer}>
+                    <View style={[styles.kycStatusBadge, getKycBadgeStyle(transporter?.kyc_status)]}>
+                      <Text style={[styles.kycStatusText, getKycTextStyle(transporter?.kyc_status)]}>
+                        {transporter?.kyc_status ? (transporter.kyc_status.charAt(0).toUpperCase() + transporter.kyc_status.slice(1)) : 'Pending'}
+                      </Text>
+                    </View>
+                    {transporter?.kyc_status === 'approved' && (
+                      <Text style={styles.kycStatusHint}>Verified Transporter</Text>
+                    )}
+                  </View>
+
+                  {!isEditing ? (
+                    <Pressable 
+                      style={styles.editBtn} 
+                      onPress={() => setIsEditing(true)}
+                    >
+                      <Text style={styles.editBtnText}>Edit Profile</Text>
+                    </Pressable>
+                  ) : (
+                    <View style={styles.actionsRow}>
+                      <Pressable 
+                        style={styles.cancelBtn} 
+                        onPress={() => {
+                          setIsEditing(false);
+                          setShowVehiclePicker(false);
+                          fetchData(true);
+                        }}
+                      >
+                        <Text style={styles.cancelBtnText}>Cancel</Text>
+                      </Pressable>
+                      <Pressable 
+                        style={[styles.saveBtn, loading && { opacity: 0.5 }]} 
+                        onPress={handleUpdateProfile}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <Text style={styles.saveBtnText}>Save Changes</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  )}
                 </View>
               </View>
             </ScrollView>
@@ -624,9 +850,7 @@ const styles = StyleSheet.create({
   formCard: { backgroundColor: Theme.background, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: Theme.inputBorder },
   label: { fontSize: 12, color: Theme.textSecondary, marginBottom: 4, fontWeight: '600' },
   input: { backgroundColor: Theme.backgroundSecondary, borderRadius: 8, padding: 12, fontSize: 16, color: Theme.text, borderWidth: 1, borderColor: Theme.inputBorder },
-  saveBtn: { backgroundColor: Theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 24 },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
+  inputDisabled: { backgroundColor: '#f4f4f5', color: Theme.textSecondary, borderColor: Theme.inputBorder },
   picker: { 
     height: 48, 
     backgroundColor: Theme.backgroundSecondary, 
@@ -638,6 +862,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'space-between' 
   },
+  pickerDisabled: { backgroundColor: '#f4f4f5', borderColor: Theme.inputBorder },
   pickerText: { fontSize: 16, color: Theme.text, fontWeight: '500' },
   dropdown: { 
     backgroundColor: Theme.background, 
@@ -650,6 +875,32 @@ const styles = StyleSheet.create({
   dropItem: { paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: 0.5, borderBottomColor: Theme.inputBorder },
   dropItemActive: { backgroundColor: Theme.primary + '08' },
   dropText: { fontSize: 14, color: Theme.text },
+
+  // Avatar/Profile Photo styles
+  avatarContainer: { alignItems: 'center', marginVertical: 20, gap: 6 },
+  avatarFrame: { width: 120, height: 120, borderRadius: 60, position: 'relative' },
+  avatarImage: { width: 120, height: 120, borderRadius: 60 },
+  avatarFallback: { width: 120, height: 120, borderRadius: 60, backgroundColor: Theme.primary + '15', justifyContent: 'center', alignItems: 'center' },
+  avatarFallbackText: { fontSize: 36, fontWeight: '800', color: Theme.primary },
+  avatarLoadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 60, justifyContent: 'center', alignItems: 'center' },
+  avatarEditBadge: { position: 'absolute', bottom: 4, right: 4, backgroundColor: Theme.primary, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderColor: '#fff', borderWidth: 2 },
+  avatarTitle: { fontSize: 15, fontWeight: '600', color: Theme.text },
+  avatarSubtitle: { fontSize: 12, color: Theme.textMuted },
+
+  // KYC status container
+  kycStatusContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4, marginBottom: 8 },
+  kycStatusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  kycStatusText: { fontSize: 13, fontWeight: '700' },
+  kycStatusHint: { fontSize: 12, color: Theme.textMuted },
+
+  // Edit / Action Buttons
+  editBtn: { backgroundColor: Theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 24 },
+  editBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  actionsRow: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  cancelBtn: { flex: 1, borderWidth: 1, borderColor: Theme.inputBorder, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+  cancelBtnText: { color: Theme.textSecondary, fontWeight: '600', fontSize: 15 },
+  saveBtn: { flex: 1, backgroundColor: Theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   // KYC Gate Styles
   gateContent: { flexGrow: 1, padding: 24, justifyContent: 'center', alignItems: 'center' },
