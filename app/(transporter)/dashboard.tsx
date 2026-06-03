@@ -15,11 +15,21 @@ import { TransporterSubscriptionTab } from '@/src/components/transporter/Transpo
 
 const TABS = ['Deliveries', 'Payments', 'Withdrawals', 'Membership', 'Profile'] as const;
 
+const VEHICLE_TYPES = [
+  { value: 'bodaboda', label: 'Bodaboda (Motorcycle)' },
+  { value: 'bajaj', label: 'Bajaj (Three-Wheeler)' },
+  { value: 'car', label: 'Car / Small Van' },
+  { value: 'canter', label: 'Canter / Fuso Truck' },
+  { value: 'semi_trailer', label: 'Semi Trailer Truck' },
+  { value: 'flight', label: 'Air Transport' },
+];
+
 export default function TransporterDashboardScreen() {
   const { session, logout, isAuthenticated, setSession } = useAuth();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<(typeof TABS)[number]>('Deliveries');
+  const [showVehiclePicker, setShowVehiclePicker] = useState(false);
 
   useEffect(() => {
     if (params.tab && TABS.includes(params.tab as any)) {
@@ -490,14 +500,29 @@ export default function TransporterDashboardScreen() {
                     keyboardType="phone-pad"
                   />
 
-                  <Text style={[styles.label, { marginTop: 12 }]}>Vehicle Type</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={profileData.vehicle_type}
-                    onChangeText={(t) => setProfileData(p => ({ ...p, vehicle_type: t }))}
-                    placeholder="e.g. Motorcycle, Van"
-                    placeholderTextColor={Theme.textMuted}
-                  />
+                  <Text style={[styles.label, { marginTop: 12 }]}>Vehicle Type *</Text>
+                  <Pressable style={styles.picker} onPress={() => setShowVehiclePicker(!showVehiclePicker)}>
+                    <Text style={styles.pickerText}>
+                      {VEHICLE_TYPES.find(t => t.value === profileData.vehicle_type)?.label || profileData.vehicle_type || 'Select vehicle type'}
+                    </Text>
+                    <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+                  </Pressable>
+                  {showVehiclePicker && (
+                    <View style={styles.dropdown}>
+                      {VEHICLE_TYPES.map(t => (
+                        <Pressable 
+                          key={t.value} 
+                          style={[styles.dropItem, profileData.vehicle_type === t.value && styles.dropItemActive]} 
+                          onPress={() => {
+                            setProfileData(p => ({ ...p, vehicle_type: t.value }));
+                            setShowVehiclePicker(false);
+                          }}
+                        >
+                          <Text style={[styles.dropText, profileData.vehicle_type === t.value && { color: Theme.primary, fontWeight: '700' }]}>{t.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
 
                   <Text style={[styles.label, { marginTop: 12 }]}>License Plate</Text>
                   <TextInput
@@ -601,6 +626,30 @@ const styles = StyleSheet.create({
   input: { backgroundColor: Theme.backgroundSecondary, borderRadius: 8, padding: 12, fontSize: 16, color: Theme.text, borderWidth: 1, borderColor: Theme.inputBorder },
   saveBtn: { backgroundColor: Theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 24 },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  picker: { 
+    height: 48, 
+    backgroundColor: Theme.backgroundSecondary, 
+    borderRadius: 8, 
+    borderWidth: 1, 
+    borderColor: Theme.inputBorder, 
+    paddingHorizontal: 12, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between' 
+  },
+  pickerText: { fontSize: 16, color: Theme.text, fontWeight: '500' },
+  dropdown: { 
+    backgroundColor: Theme.background, 
+    borderRadius: 8, 
+    borderWidth: 1, 
+    borderColor: Theme.inputBorder, 
+    marginTop: 4, 
+    ...Theme.shadowMd 
+  },
+  dropItem: { paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: 0.5, borderBottomColor: Theme.inputBorder },
+  dropItemActive: { backgroundColor: Theme.primary + '08' },
+  dropText: { fontSize: 14, color: Theme.text },
 
   // KYC Gate Styles
   gateContent: { flexGrow: 1, padding: 24, justifyContent: 'center', alignItems: 'center' },
