@@ -211,10 +211,6 @@ export function TransporterSubscriptionTab({ transporterId, accessToken }: Props
                 <Text style={s.modalPlanPrice}>TSh {selectedPlan?.price?.toLocaleString()}</Text>
                 <Text style={s.modalPlanBilling}>Billed monthly</Text>
               </View>
-              <View style={s.field}>
-                <Text style={s.label}>Phone Number</Text>
-                <TextInput style={s.input} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="e.g. 2557..." placeholderTextColor={Theme.textMuted} keyboardType="phone-pad" />
-              </View>
               <PaymentMethodPicker paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} phoneNumber={phoneNumber} setPhoneNumber={setPhoneNumber} cardDetails={cardDetails} setCardDetails={setCardDetails} />
             </ScrollView>
             <View style={s.modalFooter}>

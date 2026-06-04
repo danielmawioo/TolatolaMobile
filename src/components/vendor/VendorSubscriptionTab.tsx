@@ -230,11 +230,6 @@ export function VendorSubscriptionTab({ vendorId, accessToken }: Props) {
                 <Text style={st.modalPlanBilling}>Billed monthly</Text>
               </View>
 
-              <View style={st.field}>
-                <Text style={st.label}>Phone Number (for mobile money)</Text>
-                <TextInput style={st.input} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="e.g. 2557..." placeholderTextColor={Theme.textMuted} keyboardType="phone-pad" />
-              </View>
-
               <PaymentMethodPicker
                 paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod}
                 phoneNumber={phoneNumber} setPhoneNumber={setPhoneNumber}
