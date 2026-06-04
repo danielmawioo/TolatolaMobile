@@ -20,9 +20,13 @@ Notifications.setNotificationHandler({
  * Sends the token to the backend so it can send push notifications.
  */
 export async function registerForPushNotifications(accessToken?: string): Promise<string | null> {
-  if (!Device.isDevice) {
-    console.log('[PUSH] Must use physical device for push notifications');
+  if (!Device.isDevice && Platform.OS === 'ios') {
+    console.log('[PUSH] Must use physical device for iOS push notifications');
     return null;
+  }
+
+  if (!Device.isDevice) {
+    console.log('[PUSH] Simulator/Emulator detected. Proceeding with Android push registration...');
   }
 
   // Request permissions
@@ -67,31 +71,34 @@ export async function registerForPushNotifications(accessToken?: string): Promis
   }
 
   try {
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId || 'e2e4ea34-64fc-4698-9baf-329e34255023';
+    console.log('[PUSH] Retrieving Expo push token with projectId:', projectId);
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: projectId || undefined,
+      projectId,
     });
     const token = tokenData.data;
-    console.log('[PUSH] Expo push token:', token);
+    console.log('[PUSH] Expo push token retrieved successfully:', token);
 
     // Send token to backend
     if (token) {
       try {
         if (accessToken) {
-          await apiPost('/profile/fcm-token', { token, platform: Platform.OS }, accessToken);
-          console.log('[PUSH] Token registered with backend (authenticated)');
+          console.log('[PUSH] Attempting to register authenticated token with backend...');
+          const result = await apiPost('/profile/fcm-token', { token, platform: Platform.OS }, accessToken);
+          console.log('[PUSH] Authenticated token registered successfully:', result);
         } else {
-          await apiPost('/notifications/register-guest-token', { token, platform: Platform.OS });
-          console.log('[PUSH] Token registered with backend (guest)');
+          console.log('[PUSH] Attempting to register guest token with backend...');
+          const result = await apiPost('/notifications/register-guest-token', { token, platform: Platform.OS });
+          console.log('[PUSH] Guest token registered successfully:', result);
         }
-      } catch (e) {
-        console.error('[PUSH] Failed to register token with backend:', e);
+      } catch (e: any) {
+        console.error('[PUSH] Failed to register token with backend. Error details:', e.message || e);
       }
     }
 
     return token;
-  } catch (error) {
-    console.error('[PUSH] Error getting push token:', error);
+  } catch (error: any) {
+    console.error('[PUSH] Error getting push token:', error.message || error);
     return null;
   }
 }
