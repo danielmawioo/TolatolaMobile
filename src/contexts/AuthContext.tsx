@@ -52,6 +52,7 @@ type AuthContextValue = AuthState & {
     email: string;
     password: string;
     fullName: string;
+    phone: string;
     userType: 'customer' | 'vendor' | 'transporter';
     vendorType?: string;
     referralCode?: string;
@@ -287,6 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: string;
       password: string;
       fullName: string;
+      phone: string;
       userType: 'customer' | 'vendor' | 'transporter';
       vendorType?: string;
       referralCode?: string;
@@ -295,6 +297,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: params.email,
         password: params.password,
         full_name: params.fullName,
+        phone: params.phone,
         user_type: params.userType,
         vendor_type: params.vendorType,
         accepted_policies: true,

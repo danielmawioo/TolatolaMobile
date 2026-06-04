@@ -22,6 +22,7 @@ import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
 import { Theme } from '@/constants/Theme';
 import { scaleByWidth, gap } from '@/constants/layout';
 import { apiGet } from '@/src/services/api';
+import { CountryCodePicker } from '@/components/CountryCodePicker';
 
 export default function SignupScreen() {
   const { signup, isLoading } = useAuth();
@@ -31,6 +32,7 @@ export default function SignupScreen() {
   
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+255');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [userType, setUserType] = useState<'customer' | 'vendor' | 'transporter'>(initialRole);
@@ -85,6 +87,11 @@ export default function SignupScreen() {
       setError('Please fill in all required fields');
       return;
     }
+    const cleanedPhone = phone.replace(/^0+/, '').replace(/\D/g, '');
+    if (!cleanedPhone || cleanedPhone.length < 7) {
+      setError('Please enter a valid phone number (at least 7 digits)');
+      return;
+    }
     if (!acceptedTerms) {
       setError('Please agree to the Terms and Privacy Policy');
       return;
@@ -98,6 +105,7 @@ export default function SignupScreen() {
         email: email.trim(),
         password,
         fullName: fullName.trim(),
+        phone: countryCode + cleanedPhone,
         userType,
         vendorType: userType === 'vendor' ? vendorType : undefined,
         referralCode: referralCode.trim() || params.ref || undefined,
@@ -166,13 +174,17 @@ export default function SignupScreen() {
 
         <View style={styles.inputWrap}>
           <FontAwesome name="phone" size={20} color={Theme.textSecondary} style={styles.inputIcon} />
-          <Text style={styles.prefix}>+255</Text>
+          <CountryCodePicker
+            value={countryCode}
+            onChange={setCountryCode}
+            disabled={isAnyLoading}
+          />
           <TextInput
             style={styles.input}
             placeholder="Phone Number"
             placeholderTextColor={Theme.textMuted}
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ''))}
             keyboardType="phone-pad"
             editable={!isAnyLoading}
           />
