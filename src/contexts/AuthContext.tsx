@@ -71,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
   /**
    * Clear any scheduled proactive refresh timer.
@@ -105,78 +106,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * current token, which may still work or will be retried later.
    */
   const refreshSession = useCallback(async (): Promise<string | null> => {
-    try {
-      const raw = await AsyncStorage.getItem(SESSION_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as Session;
-      if (!parsed?.refresh_token) return null;
+    if (refreshPromiseRef.current) {
+      console.log('[AUTH] Token refresh already in progress, reusing promise.');
+      return refreshPromiseRef.current;
+    }
 
-      // Check if the session has exceeded the maximum age (30 days)
-      const createdAtStr = await AsyncStorage.getItem(SESSION_CREATED_KEY);
-      if (createdAtStr) {
-        const createdAt = parseInt(createdAtStr, 10);
-        if (Date.now() - createdAt > MAX_SESSION_AGE_MS) {
-          console.log('[AUTH] Session exceeded 30-day maximum age. Logging out.');
-          await setSession(null);
+    const doRefresh = async (): Promise<string | null> => {
+      try {
+        const raw = await AsyncStorage.getItem(SESSION_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Session;
+        if (!parsed?.refresh_token) return null;
+
+        // Check if the session has exceeded the maximum age (30 days)
+        const createdAtStr = await AsyncStorage.getItem(SESSION_CREATED_KEY);
+        if (createdAtStr) {
+          const createdAt = parseInt(createdAtStr, 10);
+          if (Date.now() - createdAt > MAX_SESSION_AGE_MS) {
+            console.log('[AUTH] Session exceeded 30-day maximum age. Logging out.');
+            await setSession(null);
+            return null;
+          }
+        }
+
+        console.log('[AUTH] Attempting silent token refresh...');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        const response = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: parsed.refresh_token }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          console.warn('[AUTH] Token refresh failed with status:', response.status);
+          // On 4xx errors (except network), the refresh token is likely invalid
+          if (response.status >= 400 && response.status < 500) {
+            console.log('[AUTH] Refresh token rejected by server. Clearing session.');
+            await setSession(null);
+          }
+          // On 5xx, keep session — server may be temporarily down
           return null;
         }
-      }
 
-      console.log('[AUTH] Attempting silent token refresh...');
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-      const response = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: parsed.refresh_token }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.warn('[AUTH] Token refresh failed with status:', response.status);
-        // On 4xx errors (except network), the refresh token is likely invalid
-        if (response.status >= 400 && response.status < 500) {
-          console.log('[AUTH] Refresh token rejected by server. Clearing session.');
-          await setSession(null);
+        const data = await response.json();
+        if (data?.session?.access_token) {
+          const newSession: Session = {
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token || parsed.refresh_token,
+            expires_at: data.session.expires_at,
+            user: data.user || parsed.user,
+          };
+          await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
+          setState({
+            session: newSession,
+            isLoading: false,
+            isAuthenticated: true,
+          });
+          console.log('[AUTH] Token refreshed successfully!');
+          return newSession.access_token;
         }
-        // On 5xx, keep session — server may be temporarily down
-        return null;
-      }
+      } catch (err: any) {
+        // Network errors (no connectivity, DNS failure, timeout) — keep the session
+        const isNetworkError =
+          err?.name === 'AbortError' ||
+          err?.message?.includes('Network request failed') ||
+          err?.message?.includes('fetch failed') ||
+          err?.message?.includes('Failed to fetch');
 
-      const data = await response.json();
-      if (data?.session?.access_token) {
-        const newSession: Session = {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token || parsed.refresh_token,
-          expires_at: data.session.expires_at,
-          user: data.user || parsed.user,
-        };
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
-        setState({
-          session: newSession,
-          isLoading: false,
-          isAuthenticated: true,
-        });
-        console.log('[AUTH] Token refreshed successfully!');
-        return newSession.access_token;
+        if (isNetworkError) {
+          console.warn('[AUTH] Token refresh failed due to network issue. Keeping session active.');
+        } else {
+          console.error('[AUTH] Silent session refresh error:', err);
+        }
+      } finally {
+        refreshPromiseRef.current = null;
       }
-    } catch (err: any) {
-      // Network errors (no connectivity, DNS failure, timeout) — keep the session
-      const isNetworkError =
-        err?.name === 'AbortError' ||
-        err?.message?.includes('Network request failed') ||
-        err?.message?.includes('fetch failed') ||
-        err?.message?.includes('Failed to fetch');
+      return null;
+    };
 
-      if (isNetworkError) {
-        console.warn('[AUTH] Token refresh failed due to network issue. Keeping session active.');
-      } else {
-        console.error('[AUTH] Silent session refresh error:', err);
-      }
-    }
-    return null;
+    refreshPromiseRef.current = doRefresh();
+    return refreshPromiseRef.current;
   }, [setSession]);
 
   /**
