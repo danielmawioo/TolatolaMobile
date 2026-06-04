@@ -11,6 +11,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Theme } from '@/constants/Theme';
 import { apiPost } from '@/src/services/api';
+import { TanzaniaAddressForm } from '@/src/components/checkout/TanzaniaAddressForm';
+import MapPicker from '@/src/components/MapPicker';
+
 
 type KYCType = 'individual' | 'company';
 
@@ -24,11 +27,17 @@ export default function VendorRegisterScreen() {
   const [tinNumber, setTinNumber] = useState('');
   
   // Address / Location
-  const [region, setRegion] = useState('');
-  const [district, setDistrict] = useState('');
-  const [ward, setWard] = useState('');
-  const [village, setVillage] = useState('');
-  const [street, setStreet] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [addressData, setAddressData] = useState({
+    country: 'Tanzania',
+    region: '',
+    district: '',
+    ward: '',
+    village: '',
+    street: '',
+  });
+
   
   const [businessLicense, setBusinessLicense] = useState<string>('');
   const [uploadingLicense, setUploadingLicense] = useState(false);
@@ -95,8 +104,15 @@ export default function VendorRegisterScreen() {
     ]);
   };
 
+  const handleAddressComplete = (fullAddress: string, coords?: { lat: number, lng: number }) => {
+    if (coords) {
+      setLatitude(coords.lat);
+      setLongitude(coords.lng);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!phoneNumber || !businessName || !tinNumber || !region || !district || !street) {
+    if (!phoneNumber || !businessName || !tinNumber || !addressData.region || !addressData.district || !addressData.street) {
       Alert.alert('Required Fields', 'Please fill in all fields marked with *');
       return;
     }
@@ -115,21 +131,24 @@ export default function VendorRegisterScreen() {
 
     setSubmitting(true);
     try {
-      const fullAddress = `${street}, ${ward ? ward + ', ' : ''}${district}, ${region}`;
+      const fullAddress = `${addressData.street}, ${addressData.ward ? addressData.ward + ', ' : ''}${addressData.district}, ${addressData.region}`;
       const payload: any = {
         kyc_type: kycType,
         phone_number: phoneNumber,
         business_name: businessName,
         tin_number: tinNumber,
         location: fullAddress,
-        region,
-        district,
-        ward,
-        street,
-        village,
+        region: addressData.region,
+        district: addressData.district,
+        ward: addressData.ward,
+        street: addressData.street,
+        village: addressData.village,
         business_license_url: businessLicense,
         kyc_status: 'pending',
+        latitude,
+        longitude,
       };
+
 
       if (kycType === 'company') {
         payload.representative_full_name = repFullName;
@@ -251,65 +270,22 @@ export default function VendorRegisterScreen() {
         </View>
 
         {/* Location Section */}
-        <Text style={styles.sectionTitle}>Business Location Details</Text>
-        <View style={styles.card}>
-          <View style={styles.row2}>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={styles.label}>Region *</Text>
-              <TextInput
-                style={styles.input}
-                value={region}
-                onChangeText={setRegion}
-                placeholder="e.g. Dar es Salaam"
-                placeholderTextColor={Theme.textMuted}
-              />
-            </View>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={styles.label}>District *</Text>
-              <TextInput
-                style={styles.input}
-                value={district}
-                onChangeText={setDistrict}
-                placeholder="e.g. Kinondoni"
-                placeholderTextColor={Theme.textMuted}
-              />
-            </View>
-          </View>
+        <TanzaniaAddressForm
+          value={addressData}
+          onChange={setAddressData}
+          onAddressComplete={handleAddressComplete}
+        />
 
-          <View style={styles.row2}>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={styles.label}>Ward *</Text>
-              <TextInput
-                style={styles.input}
-                value={ward}
-                onChangeText={setWard}
-                placeholder="e.g. Hananasif"
-                placeholderTextColor={Theme.textMuted}
-              />
-            </View>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={styles.label}>Village / Locality</Text>
-              <TextInput
-                style={styles.input}
-                value={village}
-                onChangeText={setVillage}
-                placeholder="Optional"
-                placeholderTextColor={Theme.textMuted}
-              />
-            </View>
-          </View>
+        <MapPicker
+          latitude={latitude}
+          longitude={longitude}
+          onLocationSelect={({ lat, lng }) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+          title="Pick Business Location"
+        />
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Street / Building / Plot *</Text>
-            <TextInput
-              style={styles.input}
-              value={street}
-              onChangeText={setStreet}
-              placeholder="e.g. Kawawa Road, House #14"
-              placeholderTextColor={Theme.textMuted}
-            />
-          </View>
-        </View>
 
         {/* Representative details for Company */}
         {kycType === 'company' && (

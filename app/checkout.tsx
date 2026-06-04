@@ -16,6 +16,8 @@ import { apiGet, apiPost } from '@/src/services/api';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { TanzaniaAddressForm } from '@/src/components/checkout/TanzaniaAddressForm';
 import { PaymentMethodPicker } from '@/src/components/checkout/PaymentMethodPicker';
+import MapPicker from '@/src/components/MapPicker';
+
 import {
   BUYER_PROTECTION_RATE, INITIAL_ADDRESS,
   MOBILE_MONEY_PROVIDERS, CARD_PROVIDERS,
@@ -61,6 +63,9 @@ export default function CheckoutScreen() {
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [shopDeliveries, setShopDeliveries] = useState<Record<string, { distanceKm: number, duration: string }>>({});
   const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+
 
   useEffect(() => {
     if (items.length === 0) {
@@ -140,8 +145,11 @@ export default function CheckoutScreen() {
 
   const handleAddressComplete = async (fullAddress: string, coords?: { lat: number, lng: number }) => {
     if (!coords) return;
+    setLatitude(coords.lat);
+    setLongitude(coords.lng);
     
     setIsCalculatingDelivery(true);
+
     const newDeliveries: Record<string, any> = {};
     
     try {
@@ -246,7 +254,10 @@ export default function CheckoutScreen() {
         street: addressData.street,
         address: [addressData.street, addressData.ward, addressData.district, addressData.region].filter(Boolean).join(', '),
         delivery_fee: deliveryFee,
+        latitude,
+        longitude,
       };
+
 
       const isMobile = MOBILE_MONEY_PROVIDERS.some((p) => p.id === paymentMethod);
       const isCard = CARD_PROVIDERS.some((p) => p.id === paymentMethod);
@@ -403,6 +414,19 @@ export default function CheckoutScreen() {
                 onChange={setAddressData} 
                 onAddressComplete={handleAddressComplete}
               />
+
+              <MapPicker
+                latitude={latitude}
+                longitude={longitude}
+                onLocationSelect={({ lat, lng }) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                  const dummyAddress = [addressData.street, addressData.ward, addressData.district, addressData.region].filter(Boolean).join(', ') || 'Selected Pin';
+                  handleAddressComplete(dummyAddress, { lat, lng });
+                }}
+                title="Verify Delivery Location Pin"
+              />
+
               
               {isCalculatingDelivery && (
                 <View style={styles.calculatingBox}>

@@ -223,6 +223,20 @@ export default function DeliveryMapScreen() {
     }
   };
 
+  const handleNavigateVendorToCustomer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!sLat || !sLng || !cLat || !cLng) {
+      Alert.alert('Error', 'Vendor or Customer coordinates are missing.');
+      return;
+    }
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${sLat},${sLng}&destination=${cLat},${cLng}`;
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'Failed to open Google Maps directions.');
+    });
+  };
+
+
+
   const toggleRoutingSource = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRoutingSource(prev => prev === 'my_location' ? 'shop' : 'my_location');
@@ -365,10 +379,18 @@ export default function DeliveryMapScreen() {
           Target: {isHeadingToCustomer ? params.custName : params.shopName}
         </Text>
 
-        <Pressable style={styles.actionBtn} onPress={handleNavigateExternally}>
-          <FontAwesome name="location-arrow" size={16} color="#fff" />
-          <Text style={styles.actionBtnText}>Start External Spoken Navigation</Text>
-        </Pressable>
+        <View style={styles.buttonRow}>
+          <Pressable style={[styles.actionBtn, { flex: 1 }]} onPress={handleNavigateExternally}>
+            <FontAwesome name="location-arrow" size={14} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.actionBtnText}>To Target</Text>
+          </Pressable>
+
+          <Pressable style={[styles.actionBtn, styles.routeBtn, { flex: 1 }]} onPress={handleNavigateVendorToCustomer}>
+            <FontAwesome name="map-signs" size={14} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.actionBtnText}>Shop ➔ Cust</Text>
+          </Pressable>
+        </View>
+
       </View>
     </View>
   );
@@ -415,8 +437,11 @@ const styles = StyleSheet.create({
   guidanceStatusText: { fontSize: 11, fontWeight: '800' },
   guidanceMetrics: { fontSize: 14, fontWeight: '700', color: Theme.text },
   destinationName: { fontSize: 18, fontWeight: '800', color: Theme.text },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#16a34a', paddingVertical: 14, borderRadius: 12, marginTop: 4 },
-  actionBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#16a34a', paddingVertical: 14, borderRadius: 12, marginTop: 4 },
+  actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  buttonRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  routeBtn: { backgroundColor: '#7c3aed' },
+
 
   // Fallback View
   fallbackContainer: { flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', padding: 32, gap: 16 },
