@@ -16,7 +16,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "co.tolatola.tola",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Allow TOLA to access your location to calculate accurate delivery fees and show nearby shops.",
+        "NSCameraUsageDescription": "Allow TOLA to access your camera to take verification photos.",
+        "NSPhotoLibraryUsageDescription": "Allow TOLA to access your photo library to select verification documents."
+      }
     },
     "android": {
       "package": "co.tolata.tolamobile",
@@ -25,6 +30,18 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBiaBqnElMfrziuV-9SLX2mbLIrA5WO754"
+        }
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -41,6 +58,19 @@
           "icon": "./assets/images/icon.png",
           "color": "#6366f1",
           "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow TOLA to access your location to calculate accurate delivery fees and show nearby shops."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow TOLA to access your photos to upload verification documents.",
+          "cameraPermission": "Allow TOLA to access your camera to take verification photos."
         }
       ]
     ],
