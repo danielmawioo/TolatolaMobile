@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Platform, Linking, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Location from 'expo-location';
 import { Theme } from '@/constants/Theme';
@@ -7,12 +7,22 @@ import { Theme } from '@/constants/Theme';
 // Conditionally import react-native-maps to avoid crashes on unsupported platforms (like Web)
 let MapView: any = null;
 let Marker: any = null;
+let _nativeMapsAvailable = false;
 try {
   const RNMaps = require('react-native-maps');
   MapView = RNMaps.default;
   Marker = RNMaps.Marker;
+  _nativeMapsAvailable = !!MapView;
 } catch (e) {
-  console.log('[MapPicker] react-native-maps not natively loaded...');
+  console.log('[MapPicker] react-native-maps not natively loaded, will use WebView fallback.');
+}
+
+// Conditionally import WebView for the Leaflet fallback
+let WebView: any = null;
+try {
+  WebView = require('react-native-webview').WebView;
+} catch (e) {
+  // WebView not available (e.g. on bare web platform)
 }
 
 interface Props {
@@ -29,9 +39,70 @@ const DEFAULT_REGION = {
   longitudeDelta: 0.05,
 };
 
+/**
+ * Generates the HTML for an interactive Leaflet/OpenStreetMap inside a WebView.
+ * Supports tap-to-place and drag-to-move marker.
+ */
+function buildLeafletHtml(lat: number, lng: number, hasPin: boolean): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map', { zoomControl: false }).setView([${lat}, ${lng}], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19,
+    }).addTo(map);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    var marker = ${hasPin ? `L.marker([${lat}, ${lng}], { draggable: true }).addTo(map);` : 'null;'}
+
+    function sendCoords(lat, lng) {
+      window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ lat: lat, lng: lng }));
+    }
+
+    map.on('click', function(e) {
+      var lat = e.latlng.lat;
+      var lng = e.latlng.lng;
+      if (marker) {
+        marker.setLatLng(e.latlng);
+      } else {
+        marker = L.marker(e.latlng, { draggable: true }).addTo(map);
+        marker.on('dragend', function(ev) {
+          var pos = ev.target.getLatLng();
+          sendCoords(pos.lat, pos.lng);
+        });
+      }
+      sendCoords(lat, lng);
+    });
+
+    if (marker) {
+      marker.on('dragend', function(ev) {
+        var pos = ev.target.getLatLng();
+        sendCoords(pos.lat, pos.lng);
+      });
+    }
+  </script>
+</body>
+</html>`;
+}
+
 export default function MapPicker({ latitude, longitude, onLocationSelect, title = 'Pin Location on Map' }: Props) {
   const [isLocating, setIsLocating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const webviewRef = useRef<any>(null);
 
   const region = {
     latitude: latitude || DEFAULT_REGION.latitude,
@@ -54,17 +125,55 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
     }
   };
 
+  /** Handle messages from the WebView Leaflet map */
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.lat !== undefined && data.lng !== undefined) {
+        onLocationSelect({ lat: data.lat, lng: data.lng });
+      }
+    } catch {
+      // ignore malformed messages
+    }
+  };
+
   const requestCurrentLocation = async () => {
     setIsLocating(true);
     setErrorMsg(null);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Location permission was denied');
+      // 1. Check if location services are enabled on the device
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        setErrorMsg('Location services are turned off. Please enable GPS in your device settings.');
         setIsLocating(false);
+        Alert.alert(
+          'Location Services Disabled',
+          'Your device GPS is turned off. Please enable Location Services to use this feature.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
         return;
       }
 
+      // 2. Request foreground location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Location permission is required. Please allow location access in your app settings.');
+        setIsLocating(false);
+        Alert.alert(
+          'Location Permission Required',
+          'TOLA needs access to your location to calculate accurate delivery fees. Please grant location permission.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+
+      // 3. Fetch current position
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -75,13 +184,30 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
       });
     } catch (error: any) {
       console.error('[MapPicker] Error getting location:', error);
-      setErrorMsg('Could not fetch current GPS location');
+      // Provide more specific error messages
+      const msg = error?.message || '';
+      if (msg.includes('denied') || msg.includes('permission')) {
+        setErrorMsg('Location permission was denied. Tap to open Settings and grant access.');
+      } else if (msg.includes('timeout') || msg.includes('timed out')) {
+        setErrorMsg('GPS timed out. Please ensure you are outdoors or near a window, then try again.');
+      } else {
+        setErrorMsg('Could not fetch current GPS location. Please try again.');
+      }
     } finally {
       setIsLocating(false);
     }
   };
 
-  const isMapAvailable = MapView && Marker && Platform.OS !== 'web';
+  // Determine which map renderer to use:
+  // - Native react-native-maps for production Android/iOS builds
+  // - WebView + Leaflet for Expo Go / dev / web where native module is unavailable
+  const useNativeMap = _nativeMapsAvailable && Platform.OS !== 'web';
+  const useWebViewMap = !useNativeMap && WebView && Platform.OS !== 'web';
+  const noMapAvailable = !useNativeMap && !useWebViewMap;
+
+  const mapLat = latitude || DEFAULT_REGION.latitude;
+  const mapLng = longitude || DEFAULT_REGION.longitude;
+  const hasPin = latitude !== null && longitude !== null;
 
   return (
     <View style={styles.container}>
@@ -107,14 +233,24 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
       </View>
 
       {errorMsg && (
-        <View style={styles.errorBanner}>
+        <Pressable
+          style={styles.errorBanner}
+          onPress={() => {
+            if (errorMsg.includes('Settings')) {
+              Linking.openSettings();
+            }
+          }}
+        >
           <FontAwesome name="exclamation-circle" size={14} color="#D32F2F" style={{ marginRight: 6 }} />
           <Text style={styles.errorText}>{errorMsg}</Text>
-        </View>
+          {errorMsg.includes('Settings') && (
+            <FontAwesome name="external-link" size={12} color="#D32F2F" style={{ marginLeft: 6 }} />
+          )}
+        </Pressable>
       )}
 
       <View style={styles.mapContainer}>
-        {isMapAvailable ? (
+        {useNativeMap ? (
           <MapView
             style={styles.map}
             initialRegion={region}
@@ -132,14 +268,26 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
               />
             )}
           </MapView>
+        ) : useWebViewMap ? (
+          <WebView
+            ref={webviewRef}
+            source={{ html: buildLeafletHtml(mapLat, mapLng, hasPin) }}
+            style={styles.map}
+            onMessage={handleWebViewMessage}
+            javaScriptEnabled
+            domStorageEnabled
+            originWhitelist={['*']}
+            scrollEnabled={false}
+            nestedScrollEnabled
+          />
         ) : (
           <View style={styles.placeholderContainer}>
             <FontAwesome name="map-o" size={48} color={Theme.textMuted} style={{ marginBottom: 12 }} />
             <Text style={styles.placeholderText}>
-              Interactive Map is not available in this environment.
+              Interactive Map is loading...
             </Text>
             <Text style={styles.placeholderSubtext}>
-              Please use Search to resolve address coordinates, or press "Current GPS" to fetch your location coordinates automatically.
+              Press "Current GPS" above to fetch your location coordinates automatically, or use the address search to resolve coordinates.
             </Text>
           </View>
         )}
@@ -160,7 +308,7 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
         </View>
       </View>
 
-      {isMapAvailable && (
+      {(useNativeMap || useWebViewMap) && (
         <Text style={styles.instructionText}>
           💡 Tap map or drag the marker to adjust coordinates.
         </Text>
@@ -222,9 +370,10 @@ const styles = StyleSheet.create({
     color: '#D32F2F',
     fontSize: 12,
     fontWeight: '500',
+    flex: 1,
   },
   mapContainer: {
-    height: 200,
+    height: 220,
     borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#F1F5F9',
