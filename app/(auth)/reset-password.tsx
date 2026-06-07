@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { apiPost } from '@/src/services/api';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
@@ -10,6 +11,7 @@ import { scaleByWidth, gap } from '@/constants/layout';
 export default function ResetPasswordScreen() {
   const params = useLocalSearchParams<{ token: string }>();
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,14 +38,29 @@ export default function ResetPasswordScreen() {
         <BackToHomeButton />
       <Text style={styles.title}>Reset password</Text>
       <Text style={styles.subtitle}>Enter your new password.</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="New password"
-        placeholderTextColor={Theme.textMuted}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      <View style={styles.inputWrap}>
+        <FontAwesome name="lock" size={20} color={Theme.textSecondary} style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="New password"
+          placeholderTextColor={Theme.textMuted}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          editable={!loading}
+        />
+        <Pressable
+          style={styles.eyeBtn}
+          onPress={() => setShowPassword((v) => !v)}
+          disabled={loading}
+        >
+          <FontAwesome
+            name={showPassword ? 'eye-slash' : 'eye'}
+            size={20}
+            color={Theme.textSecondary}
+          />
+        </Pressable>
+      </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Pressable style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSubmit} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? 'Saving…' : 'Reset password'}</Text>
@@ -57,7 +74,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: scaleByWidth(24), paddingHorizontal: gap.md, backgroundColor: Theme.background },
   title: { fontSize: scaleByWidth(24), fontWeight: '700', color: Theme.text, marginBottom: scaleByWidth(8) },
   subtitle: { fontSize: scaleByWidth(15), color: Theme.textSecondary, marginBottom: scaleByWidth(24) },
-  input: { borderWidth: 1, borderColor: Theme.inputBorder, borderRadius: Theme.radiusMd, padding: scaleByWidth(14), fontSize: scaleByWidth(16), marginBottom: scaleByWidth(16), backgroundColor: Theme.inputBg, color: Theme.text },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.inputBg,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    borderRadius: Theme.radiusMd,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+  },
+  inputIcon: { marginRight: 12 },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: Theme.text,
+  },
+  eyeBtn: { padding: 8 },
   error: { color: Theme.error, marginBottom: scaleByWidth(12) },
   button: { backgroundColor: Theme.primary, paddingVertical: scaleByWidth(16), borderRadius: Theme.radiusMd, alignItems: 'center' },
   buttonDisabled: { opacity: 0.7 },
