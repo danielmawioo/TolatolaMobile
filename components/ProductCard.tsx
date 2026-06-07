@@ -30,6 +30,11 @@ export function ProductCard({
   const stock = product.stock_quantity ?? product.stock ?? 1;
   const isSoldOut = stock === 0;
 
+  const shop = product.shops as { region?: string; district?: string } | undefined;
+  const locationParts = [shop?.region, shop?.district].filter(Boolean);
+  const locationLabel = locationParts.length > 0 ? locationParts.join(", ") : null;
+  const distanceKm = product.distance_km as number | undefined;
+
   const handlePress = () => {
     router.push(`/(guest)/product/${product.id}`);
   };
@@ -126,6 +131,24 @@ export function ProductCard({
             </Text>
             {(product.compare_at_price ?? 0) > (product.price ?? 0) && (
               <Text style={styles.oldPrice}>{product.compare_at_price?.toLocaleString()} TZS</Text>
+            )}
+          </View>
+          <View style={styles.locationContainer}>
+            {distanceKm !== undefined && distanceKm !== null && distanceKm !== Infinity && (
+              <View style={styles.distanceBadge}>
+                <FontAwesome name="map-marker" size={10} color={Theme.primary} style={{ marginRight: 2 }} />
+                <Text style={styles.distanceText}>
+                  {distanceKm < 1 ? '< 1 km' : `${Math.round(distanceKm)} km`}
+                </Text>
+              </View>
+            )}
+            {locationLabel && (
+              <View style={styles.locationLabelRow}>
+                <FontAwesome name="map-marker" size={10} color={Theme.textMuted} style={{ marginRight: 2 }} />
+                <Text style={styles.locationText} numberOfLines={1}>
+                  {locationLabel}
+                </Text>
+              </View>
             )}
           </View>
         </View>
@@ -317,7 +340,37 @@ const styles = StyleSheet.create({
     color: Theme.textSecondary,
   },
   priceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
     marginBottom: 12,
+  },
+  locationContainer: {
+    alignItems: 'flex-end',
+    gap: 2,
+    maxWidth: 90,
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(26, 86, 219, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  distanceText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: Theme.primary,
+  },
+  locationLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: Theme.textMuted,
   },
   price: {
     fontSize: 16,
