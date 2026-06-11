@@ -6,8 +6,8 @@ import { Theme } from '@/constants/Theme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { apiPost, apiGet } from '@/src/services/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
 
 export default function CreateProductScreen() {
   const insets = useSafeAreaInsets();
@@ -57,16 +57,6 @@ export default function CreateProductScreen() {
       .catch(err => console.error('Failed to load shop', err));
   }, [session?.access_token]);
 
-  const requestPermissions = async () => {
-    const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: libStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (camStatus !== 'granted' || libStatus !== 'granted') {
-      Alert.alert('Permissions Required', 'Camera and photo library access needed to upload product images.');
-      return false;
-    }
-    return true;
-  };
-
   const handleImagePicker = () => {
     Alert.alert('Add Product Image', 'Choose how to upload your product image', [
       { text: 'Take Photo', onPress: () => pickImage(true) },
@@ -76,42 +66,23 @@ export default function CreateProductScreen() {
   };
 
   const pickImage = async (useCamera: boolean) => {
-    const hasPerms = await requestPermissions();
+    const hasPerms = await requestImagePermissions();
     if (!hasPerms) return;
 
     setUploadingImage(true);
     try {
-      const result = useCamera
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, allowsMultipleSelection: true });
+      const picked = await pickImageSafe(useCamera);
+      if (!picked) { setUploadingImage(false); return; }
 
-      if (result.canceled || !result.assets || result.assets.length === 0) {
-        setUploadingImage(false);
-        return;
-      }
+      const ext = picked.fileName.split('.').pop() || 'jpg';
+      const filename = `product_${Date.now()}.${ext}`;
 
-      const assets = result.assets;
-      const uploadedUrls: string[] = [];
+      const uploadRes = await apiPost<any>('/uploads/products', {
+        filename, data: picked.base64, contentType: picked.mimeType,
+      }, session?.access_token);
 
-      for (const asset of assets) {
-        const base64 = asset.base64;
-        if (!base64) continue;
-
-        const ext = asset.uri.split('.').pop() || 'jpg';
-        const contentType = `image/${ext === 'png' ? 'png' : 'jpeg'}`;
-        const filename = `product_${Date.now()}.${ext}`;
-
-        const uploadRes = await apiPost<any>('/uploads/products', {
-          filename, data: base64, contentType,
-        }, session?.access_token);
-
-        if (uploadRes?.url) {
-          uploadedUrls.push(uploadRes.url);
-        }
-      }
-
-      if (uploadedUrls.length > 0) {
-        setImages(prev => [...prev, ...uploadedUrls]);
+      if (uploadRes?.url) {
+        setImages(prev => [...prev, uploadRes.url]);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (e: any) {

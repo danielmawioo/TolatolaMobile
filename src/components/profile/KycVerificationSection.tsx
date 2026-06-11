@@ -4,10 +4,10 @@ import {
   ActivityIndicator, Alert, Image, Platform,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
+import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
 
 const ID_TYPES = [
   { id: 'nida', name: 'NIDA (National ID)' },
@@ -63,38 +63,20 @@ export function KycVerificationSection({ accessToken, userId }: Props) {
   const status = kyc?.kyc_status?.toLowerCase();
   const canEdit = !kyc || status === 'rejected' || status === 'changes_requested';
 
-  const requestPermissions = async () => {
-    const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: libStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (camStatus !== 'granted' || libStatus !== 'granted') {
-      Alert.alert('Permissions Required', 'Camera and photo library access needed for KYC verification.');
-      return false;
-    }
-    return true;
-  };
-
   const pickImage = async (docType: string, useCamera: boolean) => {
-    const hasPerms = await requestPermissions();
+    const hasPerms = await requestImagePermissions();
     if (!hasPerms) return;
 
     setUploadingDoc(docType);
     try {
-      const result = useCamera
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true });
+      const picked = await pickImageSafe(useCamera);
+      if (!picked) { setUploadingDoc(null); return; }
 
-      if (result.canceled || !result.assets?.[0]) { setUploadingDoc(null); return; }
-
-      const asset = result.assets[0];
-      const base64 = asset.base64;
-      if (!base64) { Alert.alert('Error', 'Failed to read image data'); setUploadingDoc(null); return; }
-
-      const ext = asset.uri.split('.').pop() || 'jpg';
-      const contentType = `image/${ext === 'png' ? 'png' : 'jpeg'}`;
+      const ext = picked.fileName.split('.').pop() || 'jpg';
       const filename = `${userId}_${docType}_${Date.now()}.${ext}`;
 
       const uploadRes = await apiPost<any>('/kyc/upload', {
-        filename, data: base64, contentType,
+        filename, data: picked.base64, contentType: picked.mimeType,
       }, accessToken);
 
       if (uploadRes?.url) {

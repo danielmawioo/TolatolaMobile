@@ -8,7 +8,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
+import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
 import { TransporterAssignmentsTab } from '@/src/components/transporter/TransporterAssignmentsTab';
 import { TransporterPaymentsTab } from '@/src/components/transporter/TransporterPaymentsTab';
 import { TransporterWithdrawalsTab } from '@/src/components/transporter/TransporterWithdrawalsTab';
@@ -213,35 +213,16 @@ export default function TransporterDashboardScreen() {
     };
   }, [assignments, session?.access_token]);
 
-  const requestPermissions = async () => {
-    const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: libStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (camStatus !== 'granted' || libStatus !== 'granted') {
-      Alert.alert('Permissions Required', 'Camera and photo library access needed to change profile photo.');
-      return false;
-    }
-    return true;
-  };
-
   const pickImage = async (useCamera: boolean) => {
-    const hasPerms = await requestPermissions();
+    const hasPerms = await requestImagePermissions();
     if (!hasPerms) return;
 
     setIsUploadingImage(true);
     try {
-      const result = useCamera
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true });
+      const picked = await pickImageSafe(useCamera);
+      if (!picked) { setIsUploadingImage(false); return; }
 
-      if (result.canceled || !result.assets?.[0]) { setIsUploadingImage(false); return; }
-
-      const asset = result.assets[0];
-      const base64 = asset.base64;
-      if (!base64) { Alert.alert('Error', 'Failed to read image data'); setIsUploadingImage(false); return; }
-
-      const ext = asset.uri.split('.').pop() || 'jpg';
-      const contentType = `image/${ext === 'png' ? 'png' : 'jpeg'}`;
-      const dataUrl = `data:${contentType};base64,${base64}`;
+      const dataUrl = `data:${picked.mimeType};base64,${picked.base64}`;
 
       await apiPost('/profile/avatar', { image: dataUrl }, session?.access_token);
       

@@ -3,9 +3,11 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndic
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import * as ImagePicker from 'expo-image-picker';
 import { apiFetch } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
+import { pickImageSafe } from '@/src/lib/imagePicker';
+
+type PhotoAsset = { uri: string; mimeType?: string; fileName?: string };
 
 const COMPLAINT_REASONS = [
   'DELAYED_DELIVERY',
@@ -21,20 +23,15 @@ export default function TrackComplaintScreen() {
   
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
-  const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [photo, setPhoto] = useState<PhotoAsset | null>(null);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setPhoto(result.assets[0]);
+    const picked = await pickImageSafe(false);
+    if (picked) {
+      setPhoto({ uri: picked.uri, mimeType: picked.mimeType, fileName: picked.fileName });
     }
   };
 
