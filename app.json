@@ -17,6 +17,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "co.tolatola.tola",
       "buildNumber": "1",
+      "config": {
+        "googleMapsApiKey": "AIzaSyBiaBqnElMfrziuV-9SLX2mbLIrA5WO754"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Allow TOLA to access your location to calculate accurate delivery fees and show nearby shops.",
         "NSCameraUsageDescription": "Allow TOLA to access your camera to take verification photos.",

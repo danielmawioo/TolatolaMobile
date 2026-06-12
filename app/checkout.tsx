@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, TextInput,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Modal,
+  InteractionManager,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +17,9 @@ import { apiGet, apiPost } from '@/src/services/api';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { TanzaniaAddressForm } from '@/src/components/checkout/TanzaniaAddressForm';
 import { PaymentMethodPicker } from '@/src/components/checkout/PaymentMethodPicker';
-import MapPicker from '@/src/components/MapPicker';
+
+// Lazy-load the map picker so it doesn't block checkout page render
+const MapPicker = lazy(() => import('@/src/components/MapPicker'));
 
 import {
   BUYER_PROTECTION_RATE, INITIAL_ADDRESS,
@@ -65,6 +68,8 @@ export default function CheckoutScreen() {
   const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
 
   useEffect(() => {
@@ -72,42 +77,52 @@ export default function CheckoutScreen() {
       router.replace('/(tabs)/cart');
       return;
     }
-    apiGet<{ data: TransportMethod[] }>('/transport-methods')
-      .then((res) => {
-        const methods = (res as any).data || (Array.isArray(res) ? res : []);
-        setTransportMethods(methods);
-        if (methods.length > 0) setSelectedTransportId(methods[0].id);
-      })
-      .catch(() => {});
 
-    // Fetch shop coordinates for cart items that are missing them (backward compat)
-    const itemsMissingCoords = items.filter(i => i.shop_id && (!i.shop_latitude || !i.shop_longitude));
-    if (itemsMissingCoords.length > 0) {
-      const uniqueProductIds = [...new Set(itemsMissingCoords.map(i => i.product_id))];
-      Promise.all(
-        uniqueProductIds.map(pid =>
-          apiGet<any>(`/products/${pid}`).catch(() => null)
-        )
-      ).then(results => {
-        const coordsMap: Record<string, { lat: number; lng: number }> = {};
-        results.forEach(res => {
-          const product = res?.data || res;
-          if (product?.shop_id && product?.shops?.latitude && product?.shops?.longitude) {
-            coordsMap[product.shop_id] = {
-              lat: product.shops.latitude,
-              lng: product.shops.longitude,
-            };
-          }
+    // Mark page as ready immediately so UI renders fast
+    setIsReady(true);
+
+    // Defer heavy API work until after the navigation animation completes
+    const handle = InteractionManager.runAfterInteractions(() => {
+      // Load transport methods
+      apiGet<{ data: TransportMethod[] }>('/transport-methods')
+        .then((res) => {
+          const methods = (res as any).data || (Array.isArray(res) ? res : []);
+          setTransportMethods(methods);
+          if (methods.length > 0) setSelectedTransportId(methods[0].id);
+        })
+        .catch(() => {});
+
+      // Fetch shop coordinates for cart items that are missing them (backward compat)
+      const itemsMissingCoords = items.filter(i => i.shop_id && (!i.shop_latitude || !i.shop_longitude));
+      if (itemsMissingCoords.length > 0) {
+        const uniqueProductIds = [...new Set(itemsMissingCoords.map(i => i.product_id))];
+        Promise.all(
+          uniqueProductIds.map(pid =>
+            apiGet<any>(`/products/${pid}`).catch(() => null)
+          )
+        ).then(results => {
+          const coordsMap: Record<string, { lat: number; lng: number }> = {};
+          results.forEach(res => {
+            const product = res?.data || res;
+            if (product?.shop_id && product?.shops?.latitude && product?.shops?.longitude) {
+              coordsMap[product.shop_id] = {
+                lat: product.shops.latitude,
+                lng: product.shops.longitude,
+              };
+            }
+          });
+          // Update items in-place (they are mutable refs from context)
+          items.forEach(item => {
+            if (item.shop_id && coordsMap[item.shop_id]) {
+              item.shop_latitude = coordsMap[item.shop_id].lat;
+              item.shop_longitude = coordsMap[item.shop_id].lng;
+            }
+          });
         });
-        // Update items in-place (they are mutable refs from context)
-        items.forEach(item => {
-          if (item.shop_id && coordsMap[item.shop_id]) {
-            item.shop_latitude = coordsMap[item.shop_id].lat;
-            item.shop_longitude = coordsMap[item.shop_id].lng;
-          }
-        });
-      });
-    }
+      }
+    });
+
+    return () => handle.cancel();
   }, []);
 
   // Calculate derived fees per shop based on distances
@@ -415,17 +430,41 @@ export default function CheckoutScreen() {
                 onAddressComplete={handleAddressComplete}
               />
 
-              <MapPicker
-                latitude={latitude}
-                longitude={longitude}
-                onLocationSelect={({ lat, lng }) => {
-                  setLatitude(lat);
-                  setLongitude(lng);
-                  const dummyAddress = [addressData.street, addressData.ward, addressData.district, addressData.region].filter(Boolean).join(', ') || 'Selected Pin';
-                  handleAddressComplete(dummyAddress, { lat, lng });
-                }}
-                title="Verify Delivery Location Pin"
-              />
+              {/* Map section — only rendered when user requests it */}
+              {!showMap ? (
+                <Pressable
+                  style={styles.showMapBtn}
+                  onPress={() => setShowMap(true)}
+                >
+                  <View style={styles.showMapIcon}>
+                    <FontAwesome name="map-marker" size={18} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.showMapTitle}>Verify on Map</Text>
+                    <Text style={styles.showMapSub}>Tap to open interactive map and pin your exact delivery location</Text>
+                  </View>
+                  <FontAwesome name="chevron-right" size={14} color={Theme.textMuted} />
+                </Pressable>
+              ) : (
+                <Suspense fallback={
+                  <View style={styles.mapLoading}>
+                    <ActivityIndicator size="small" color={Theme.primary} />
+                    <Text style={styles.mapLoadingText}>Loading map...</Text>
+                  </View>
+                }>
+                  <MapPicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    onLocationSelect={({ lat, lng }) => {
+                      setLatitude(lat);
+                      setLongitude(lng);
+                      const dummyAddress = [addressData.street, addressData.ward, addressData.district, addressData.region].filter(Boolean).join(', ') || 'Selected Pin';
+                      handleAddressComplete(dummyAddress, { lat, lng });
+                    }}
+                    title="Verify Delivery Location Pin"
+                  />
+                </Suspense>
+              )}
 
               
               {isCalculatingDelivery && (
@@ -795,4 +834,52 @@ const styles = StyleSheet.create({
     borderRadius: Theme.radiusMd,
   },
   overlaySecureText: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary, textTransform: 'uppercase' },
+  // Show Map Button Styles
+  showMapBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.backgroundSecondary,
+    borderWidth: 1.5,
+    borderColor: Theme.inputBorder,
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 8,
+    gap: 12,
+  },
+  showMapIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  showMapTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Theme.text,
+  },
+  showMapSub: {
+    fontSize: 11,
+    color: Theme.textMuted,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  mapLoading: {
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Theme.backgroundSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    marginTop: 8,
+    gap: 8,
+  },
+  mapLoadingText: {
+    fontSize: 12,
+    color: Theme.textMuted,
+    fontWeight: '600',
+  },
 });
+
