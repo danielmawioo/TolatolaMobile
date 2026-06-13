@@ -276,17 +276,16 @@ export default function CreateProductScreen() {
             numberOfLines={4}
           />
 
-          <Pressable 
-            style={styles.deliveryToggle} 
-            onPress={() => setFormData(f => ({ ...f, delivery_available: !f.delivery_available }))}
+          <View 
+            style={[styles.deliveryToggle, { opacity: 0.8 }]} 
           >
             <FontAwesome 
-              name={formData.delivery_available ? "check-square" : "square-o"} 
+              name="check-square" 
               size={24} 
-              color={formData.delivery_available ? Theme.primary : Theme.textMuted} 
+              color={Theme.primary} 
             />
-            <Text style={styles.deliveryText}>Delivery handled by Tola</Text>
-          </Pressable>
+            <Text style={styles.deliveryText}>Delivery handled by Tola (Always Enabled)</Text>
+          </View>
 
           <Pressable 
             style={[styles.submitBtn, (loading || uploadingImage) && { opacity: 0.7 }]} 

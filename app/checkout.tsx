@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, TextInput,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Modal,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
   InteractionManager,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -61,6 +61,7 @@ export default function CheckoutScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAwaitingPayment, setIsAwaitingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   // Delivery fee & Logistics
   const [deliveryFee, setDeliveryFee] = useState(0);
@@ -198,9 +199,10 @@ export default function CheckoutScreen() {
         }
       }
       setShopDeliveries(newDeliveries);
-    } catch (error) {
-      console.error('Failed to calculate delivery', error);
-      Alert.alert('Delivery Error', 'Could not calculate delivery routes');
+    } catch (err) {
+      console.error('Failed to calculate delivery', err);
+      setError('Could not calculate delivery routes. Please check your connection and try again.');
+      setShowErrorModal(true);
     } finally {
       setIsCalculatingDelivery(false);
     }
@@ -236,7 +238,9 @@ export default function CheckoutScreen() {
   const handleSubmit = async () => {
     const validationError = validate();
     if (validationError) {
-      Alert.alert('Missing Information', validationError);
+      setError(validationError);
+      setShowErrorModal(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
 
@@ -339,8 +343,10 @@ export default function CheckoutScreen() {
         throw new Error(payRes.message || 'Failed to initiate payment');
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during checkout');
-      Alert.alert('Checkout Error', err.message || 'Something went wrong');
+      const msg = err.message || 'An error occurred during checkout';
+      setError(msg);
+      setShowErrorModal(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setIsAwaitingPayment(false);
     } finally {
       setIsLoading(false);
@@ -370,6 +376,59 @@ export default function CheckoutScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Custom Error Modal */}
+      <Modal visible={showErrorModal} transparent animationType="fade">
+        <Pressable
+          style={styles.errModalBg}
+          onPress={() => setShowErrorModal(false)}
+        >
+          <Pressable style={styles.errModalCard}>
+            {/* Red header strip */}
+            <View style={styles.errModalHeader}>
+              <View style={styles.errModalIconCircle}>
+                <FontAwesome name="exclamation-triangle" size={28} color="#fff" />
+              </View>
+              <Text style={styles.errModalTitle}>Checkout Error</Text>
+              <Text style={styles.errModalSubtitle}>We couldn't complete your request</Text>
+            </View>
+
+            {/* Body */}
+            <View style={styles.errModalBody}>
+              <Text style={styles.errModalMessage}>{error}</Text>
+
+              {/* Show helpful tip for ClickPesa amount range errors */}
+              {error && (error.toLowerCase().includes('amount must be between') || error.toLowerCase().includes('500') && error.toLowerCase().includes('3000000')) && (
+                <View style={styles.errModalTipCard}>
+                  <View style={styles.errModalTipHeader}>
+                    <FontAwesome name="info-circle" size={16} color={Theme.primary} />
+                    <Text style={styles.errModalTipTitle}>Payment Tip</Text>
+                  </View>
+                  <Text style={styles.errModalTipText}>
+                    Our payment provider accepts amounts between{' '}
+                    <Text style={styles.errModalTipBold}>TSh 500</Text> and{' '}
+                    <Text style={styles.errModalTipBold}>TSh 3,000,000</Text>.{' '}
+                    Try adjusting item quantities or splitting into multiple orders.
+                  </Text>
+                </View>
+              )}
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.errModalBtn,
+                  pressed && styles.errModalBtnPressed,
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowErrorModal(false);
+                }}
+              >
+                <Text style={styles.errModalBtnText}>Got It</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <KeyboardAvoidingView
@@ -880,6 +939,107 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Theme.textMuted,
     fontWeight: '600',
+  },
+  // Error Modal
+  errModalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: 380,
+    ...Theme.shadowLg,
+  },
+  errModalHeader: {
+    backgroundColor: Theme.error,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    gap: 10,
+  },
+  errModalIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  errModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  errModalSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  errModalBody: {
+    padding: 24,
+    gap: 20,
+  },
+  errModalMessage: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Theme.text,
+    lineHeight: 23,
+    textAlign: 'center',
+  },
+  errModalTipCard: {
+    backgroundColor: Theme.primary + '08',
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: Theme.primary + '18',
+  },
+  errModalTipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errModalTipTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Theme.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  errModalTipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Theme.textSecondary,
+    lineHeight: 20,
+  },
+  errModalTipBold: {
+    fontWeight: '800',
+    color: Theme.text,
+  },
+  errModalBtn: {
+    backgroundColor: Theme.error,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    ...Theme.shadowMd,
+  },
+  errModalBtnPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+  },
+  errModalBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
   },
 });
 
