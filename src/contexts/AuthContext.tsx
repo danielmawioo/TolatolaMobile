@@ -59,6 +59,7 @@ type AuthContextValue = AuthState & {
   }) => Promise<void>;
   logout: () => Promise<void>;
   setSession: (session: Session | null) => Promise<void>;
+  switchRole: (role: 'customer' | 'vendor' | 'transporter') => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -388,6 +389,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshSession]);
 
+  const switchRole = useCallback(async (role: 'customer' | 'vendor' | 'transporter') => {
+    if (!state.session?.access_token) throw new Error('Not authenticated');
+    await apiPost('/profile/switch-role', { role }, state.session.access_token);
+    const updatedSession: Session = {
+      ...state.session,
+      user: { ...state.session.user, user_type: role },
+    };
+    await setSession(updatedSession);
+  }, [state.session, setSession]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ...state,
@@ -396,8 +407,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signup,
       logout,
       setSession,
+      switchRole,
     }),
-    [state, login, signup, logout, setSession]
+    [state, login, signup, logout, setSession, switchRole]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

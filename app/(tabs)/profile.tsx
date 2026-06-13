@@ -30,7 +30,8 @@ const NAV_ITEMS: { id: ProfileTab; label: string; icon: string }[] = [
 ];
 
 export default function ProfileScreen() {
-  const { session, logout, setSession } = useAuth();
+  const { session, logout, setSession, switchRole } = useAuth();
+  const [switchingRole, setSwitchingRole] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ProfileTab>('personal');
   const [refreshing, setRefreshing] = useState(false);
@@ -382,35 +383,201 @@ export default function ProfileScreen() {
         {renderKycBadge()}
       </View>
 
-      {/* Dashboard Shortcut Card */}
-      {(userType === 'vendor' || userType === 'transporter' || userType === 'admin') && (
+      {/* Admin Dashboard Shortcut */}
+      {userType === 'admin' && (
         <View style={styles.dashboardCard}>
           <View style={styles.dashboardCardLeft}>
-            <View style={[styles.dashboardIconBox, { backgroundColor: userType === 'transporter' ? '#10b981' : Theme.primary }]}>
-              <FontAwesome 
-                name={(userType === 'transporter' ? 'truck' : userType === 'admin' ? 'gears' : 'store') as any} 
-                size={20} 
-                color="#fff" 
-              />
+            <View style={[styles.dashboardIconBox, { backgroundColor: Theme.primary }]}>
+              <FontAwesome name={'gears' as any} size={20} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.dashboardCardTitle}>
-                {userType === 'vendor' ? 'Seller Center' : userType === 'transporter' ? 'Delivery Center' : 'System Administration'}
-              </Text>
-              <Text style={styles.dashboardCardSubtitle}>
-                Manage your listings, orders, and payouts
-              </Text>
+              <Text style={styles.dashboardCardTitle}>System Administration</Text>
+              <Text style={styles.dashboardCardSubtitle}>Manage the platform</Text>
             </View>
           </View>
-          <Pressable 
+          <Pressable
             style={({ pressed }) => [styles.dashboardActionBtn, pressed && { opacity: 0.85 }]}
-            onPress={() => router.push(getRoleRedirectPath(userType) as any)}
+            onPress={() => router.push(getRoleRedirectPath('admin') as any)}
           >
             <Text style={styles.dashboardActionBtnText}>Go to Dashboard</Text>
             <FontAwesome name="arrow-right" size={12} color="#fff" />
           </Pressable>
         </View>
       )}
+
+      {/* Your Business Roles Section */}
+      <View style={styles.rolesSection}>
+        <Text style={styles.rolesSectionTitle}>Your Business Roles</Text>
+        <Text style={styles.rolesSectionSubtitle}>Expand your account — sell products or deliver orders</Text>
+
+        {/* Seller Role Card */}
+        {(() => {
+          const vendorProfile = (session.user as any)?.vendor;
+          const vendorStatus = vendorProfile?.kyc_status;
+          const isApproved = vendorStatus === 'approved';
+          const isPending = vendorStatus === 'pending';
+          const isRejected = vendorStatus === 'rejected';
+
+          return (
+            <View style={[styles.roleCard, isApproved && styles.roleCardApproved, isPending && styles.roleCardPending, isRejected && styles.roleCardRejected]}>
+              <View style={styles.roleCardHeader}>
+                <View style={[styles.roleIconBox, { backgroundColor: isApproved ? '#16a34a' : isPending ? '#d97706' : isRejected ? '#dc2626' : Theme.primary }]}>
+                  <FontAwesome name="store" size={18} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.roleCardTitle}>Seller</Text>
+                  <Text style={styles.roleCardDesc}>
+                    {isApproved ? 'Your seller account is active' : isPending ? 'Application under review' : isRejected ? 'Application was not approved' : 'Sell your products on TOLA'}
+                  </Text>
+                </View>
+                {isApproved && (
+                  <View style={styles.roleApprovedBadge}>
+                    <FontAwesome name="check-circle" size={12} color="#16a34a" />
+                    <Text style={styles.roleApprovedBadgeText}>Active</Text>
+                  </View>
+                )}
+                {isPending && (
+                  <View style={[styles.roleApprovedBadge, { backgroundColor: '#fef3c7', borderColor: '#fcd34d' }]}>
+                    <FontAwesome name="clock-o" size={12} color="#d97706" />
+                    <Text style={[styles.roleApprovedBadgeText, { color: '#92400e' }]}>Pending</Text>
+                  </View>
+                )}
+                {isRejected && (
+                  <View style={[styles.roleApprovedBadge, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
+                    <FontAwesome name="times-circle" size={12} color="#dc2626" />
+                    <Text style={[styles.roleApprovedBadgeText, { color: '#991b1b' }]}>Rejected</Text>
+                  </View>
+                )}
+              </View>
+              {isRejected && vendorProfile?.kyc_notes && (
+                <View style={styles.rejectionReasonBox}>
+                  <Text style={styles.rejectionReasonLabel}>Reason:</Text>
+                  <Text style={styles.rejectionReasonText}>{vendorProfile.kyc_notes}</Text>
+                </View>
+              )}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.roleActionBtn,
+                  isApproved ? { backgroundColor: '#16a34a' } : isRejected ? { backgroundColor: '#dc2626' } : isPending ? { backgroundColor: '#9ca3af' } : { backgroundColor: Theme.primary },
+                  (pressed || switchingRole === 'vendor') && { opacity: 0.7 },
+                ]}
+                disabled={isPending || switchingRole === 'vendor'}
+                onPress={async () => {
+                  if (isApproved) {
+                    try {
+                      setSwitchingRole('vendor');
+                      await switchRole('vendor');
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      router.push('/(vendor)/dashboard' as any);
+                    } catch (e: any) {
+                      Alert.alert('Error', e.message || 'Failed to switch role');
+                    } finally {
+                      setSwitchingRole(null);
+                    }
+                  } else {
+                    router.push('/(vendor)/register' as any);
+                  }
+                }}
+              >
+                {switchingRole === 'vendor' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.roleActionBtnText}>
+                      {isApproved ? 'Switch to Seller Dashboard' : isPending ? 'Under Review' : isRejected ? 'Reapply' : 'Become a Seller'}
+                    </Text>
+                    {!isPending && <FontAwesome name="arrow-right" size={12} color="#fff" />}
+                  </>
+                )}
+              </Pressable>
+            </View>
+          );
+        })()}
+
+        {/* Transporter Role Card */}
+        {(() => {
+          const transporterProfile = (session.user as any)?.transporter;
+          const transporterStatus = transporterProfile?.kyc_status;
+          const isApproved = transporterStatus === 'approved';
+          const isPending = transporterStatus === 'pending';
+          const isRejected = transporterStatus === 'rejected';
+
+          return (
+            <View style={[styles.roleCard, isApproved && styles.roleCardApproved, isPending && styles.roleCardPending, isRejected && styles.roleCardRejected]}>
+              <View style={styles.roleCardHeader}>
+                <View style={[styles.roleIconBox, { backgroundColor: isApproved ? '#16a34a' : isPending ? '#d97706' : isRejected ? '#dc2626' : '#10b981' }]}>
+                  <FontAwesome name="truck" size={18} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.roleCardTitle}>Transporter</Text>
+                  <Text style={styles.roleCardDesc}>
+                    {isApproved ? 'Your transporter account is active' : isPending ? 'Application under review' : isRejected ? 'Application was not approved' : 'Deliver orders across Tanzania'}
+                  </Text>
+                </View>
+                {isApproved && (
+                  <View style={styles.roleApprovedBadge}>
+                    <FontAwesome name="check-circle" size={12} color="#16a34a" />
+                    <Text style={styles.roleApprovedBadgeText}>Active</Text>
+                  </View>
+                )}
+                {isPending && (
+                  <View style={[styles.roleApprovedBadge, { backgroundColor: '#fef3c7', borderColor: '#fcd34d' }]}>
+                    <FontAwesome name="clock-o" size={12} color="#d97706" />
+                    <Text style={[styles.roleApprovedBadgeText, { color: '#92400e' }]}>Pending</Text>
+                  </View>
+                )}
+                {isRejected && (
+                  <View style={[styles.roleApprovedBadge, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
+                    <FontAwesome name="times-circle" size={12} color="#dc2626" />
+                    <Text style={[styles.roleApprovedBadgeText, { color: '#991b1b' }]}>Rejected</Text>
+                  </View>
+                )}
+              </View>
+              {isRejected && transporterProfile?.kyc_notes && (
+                <View style={styles.rejectionReasonBox}>
+                  <Text style={styles.rejectionReasonLabel}>Reason:</Text>
+                  <Text style={styles.rejectionReasonText}>{transporterProfile.kyc_notes}</Text>
+                </View>
+              )}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.roleActionBtn,
+                  isApproved ? { backgroundColor: '#16a34a' } : isRejected ? { backgroundColor: '#dc2626' } : isPending ? { backgroundColor: '#9ca3af' } : { backgroundColor: '#10b981' },
+                  (pressed || switchingRole === 'transporter') && { opacity: 0.7 },
+                ]}
+                disabled={isPending || switchingRole === 'transporter'}
+                onPress={async () => {
+                  if (isApproved) {
+                    try {
+                      setSwitchingRole('transporter');
+                      await switchRole('transporter');
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      router.push('/(transporter)/dashboard' as any);
+                    } catch (e: any) {
+                      Alert.alert('Error', e.message || 'Failed to switch role');
+                    } finally {
+                      setSwitchingRole(null);
+                    }
+                  } else {
+                    router.push('/(transporter)/register' as any);
+                  }
+                }}
+              >
+                {switchingRole === 'transporter' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.roleActionBtnText}>
+                      {isApproved ? 'Switch to Transporter Dashboard' : isPending ? 'Under Review' : isRejected ? 'Reapply' : 'Become a Transporter'}
+                    </Text>
+                    {!isPending && <FontAwesome name="arrow-right" size={12} color="#fff" />}
+                  </>
+                )}
+              </Pressable>
+            </View>
+          );
+        })()}  
+      </View>
 
       {/* Market Validation Survey Card */}
       <Pressable
@@ -772,6 +939,114 @@ const styles = StyleSheet.create({
     ...Theme.shadowSm,
   },
   dashboardActionBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  // Role cards
+  rolesSection: {
+    marginBottom: 20,
+    gap: 12,
+  },
+  rolesSectionTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: Theme.text,
+    letterSpacing: -0.3,
+  },
+  rolesSectionSubtitle: {
+    fontSize: 13,
+    color: Theme.textMuted,
+    marginBottom: 4,
+  },
+  roleCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.06)',
+    padding: 16,
+    gap: 12,
+    ...Theme.shadowSm,
+  },
+  roleCardApproved: {
+    borderColor: '#bbf7d0',
+    backgroundColor: '#f0fdf4',
+  },
+  roleCardPending: {
+    borderColor: '#fde68a',
+    backgroundColor: '#fffbeb',
+  },
+  roleCardRejected: {
+    borderColor: '#fecaca',
+    backgroundColor: '#fef2f2',
+  },
+  roleCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  roleIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Theme.shadowSm,
+  },
+  roleCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Theme.text,
+  },
+  roleCardDesc: {
+    fontSize: 12,
+    color: Theme.textMuted,
+    marginTop: 2,
+  },
+  roleApprovedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#86efac',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  roleApprovedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  rejectionReasonBox: {
+    backgroundColor: '#fff5f5',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  rejectionReasonLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#991b1b',
+    marginBottom: 2,
+  },
+  rejectionReasonText: {
+    fontSize: 12,
+    color: '#7f1d1d',
+    lineHeight: 18,
+  },
+  roleActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    ...Theme.shadowSm,
+  },
+  roleActionBtnText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',

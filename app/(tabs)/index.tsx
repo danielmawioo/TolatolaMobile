@@ -260,20 +260,35 @@ export default function GuestHomeScreen() {
             </View>
           </Pressable>
           <View style={styles.headerRight}>
-             {(userType === 'vendor' || userType === 'transporter' || userType === 'admin') && (
+             {/* Show dashboard buttons for ALL approved roles */}
+             {((session?.user as any)?.vendor?.kyc_status === 'approved' || userType === 'vendor') && (
                <Pressable 
                  style={({ pressed }) => [styles.dashboardBtn, pressed && { opacity: 0.75 }]} 
-                 onPress={() => router.push(getRoleRedirectPath(userType) as any)}
+                 onPress={() => router.push('/(vendor)/dashboard' as any)}
                  hitSlop={10}
                >
-                 <FontAwesome 
-                   name={userType === 'transporter' ? 'truck' : userType === 'admin' ? 'gears' : 'dashboard'} 
-                   size={13} 
-                   color="#fff" 
-                 />
-                 <Text style={styles.dashboardBtnLabel}>
-                   {userType === 'vendor' ? 'Seller Hub' : userType === 'transporter' ? 'Transporter' : 'Admin'}
-                 </Text>
+                 <FontAwesome name="dashboard" size={13} color="#fff" />
+                 <Text style={styles.dashboardBtnLabel}>Seller Hub</Text>
+               </Pressable>
+             )}
+             {((session?.user as any)?.transporter?.kyc_status === 'approved' || userType === 'transporter') && (
+               <Pressable 
+                 style={({ pressed }) => [styles.dashboardBtn, { backgroundColor: '#10b981' }, pressed && { opacity: 0.75 }]} 
+                 onPress={() => router.push('/(transporter)/dashboard' as any)}
+                 hitSlop={10}
+               >
+                 <FontAwesome name="truck" size={13} color="#fff" />
+                 <Text style={styles.dashboardBtnLabel}>Transporter</Text>
+               </Pressable>
+             )}
+             {userType === 'admin' && (
+               <Pressable 
+                 style={({ pressed }) => [styles.dashboardBtn, pressed && { opacity: 0.75 }]} 
+                 onPress={() => router.push(getRoleRedirectPath('admin') as any)}
+                 hitSlop={10}
+               >
+                 <FontAwesome name="gears" size={13} color="#fff" />
+                 <Text style={styles.dashboardBtnLabel}>Admin</Text>
                </Pressable>
              )}
              <Pressable 
