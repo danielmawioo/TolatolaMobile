@@ -23,8 +23,8 @@ export function TransactionHistorySection({ accessToken }: Props) {
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiGet<any>('/transactions/my', accessToken);
-        setTxns(Array.isArray(res) ? res : res?.transactions || []);
+        const res = await apiGet<any>('/profile/transactions', accessToken);
+        setTxns(Array.isArray(res) ? res : res?.data || res?.transactions || []);
       } catch (e) { console.error('Txn load error', e); }
       setLoading(false);
     })();

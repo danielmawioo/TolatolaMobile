@@ -17,6 +17,9 @@ import { gap, scaleByWidth, scaleByHeight } from '@/constants/layout';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
 import { apiGet } from '@/src/services/api';
+import { getCachedData, setCachedData, CACHE_KEYS } from '@/src/services/cache';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { OfflineMessage } from '@/components/OfflineMessage';
 
 type Category = {
   id: string;
@@ -65,6 +68,7 @@ export default function CategoriesScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -74,21 +78,30 @@ export default function CategoriesScreen() {
   const cardGap = gap.sm;
   const cardWidth = (width - padding * 2 - cardGap * (numColumns - 1)) / numColumns;
 
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const res = await apiGet<{ data: Category[] }>('/categories');
-        if (res?.data) {
-          // Sort alphabetically by name
-          const sorted = res.data.sort((a, b) => a.name.localeCompare(b.name));
-          setCategories(sorted);
-        }
-      } catch (error) {
-        console.error('Failed to load categories', error);
-      } finally {
-        setLoading(false);
+  async function loadCategories() {
+    setLoading(true);
+    try {
+      const res = await apiGet<{ data: Category[] }>('/categories');
+      if (res?.data) {
+        // Sort alphabetically by name
+        const sorted = res.data.sort((a, b) => a.name.localeCompare(b.name));
+        setCategories(sorted);
+        setIsOffline(false);
+        await setCachedData(CACHE_KEYS.CATEGORIES, sorted);
       }
+    } catch (error) {
+      console.error('Failed to load categories, trying cache', error);
+      setIsOffline(true);
+      const cached = await getCachedData<Category[]>(CACHE_KEYS.CATEGORIES);
+      if (cached) {
+        setCategories(cached);
+      }
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     loadCategories();
   }, []);
 
@@ -121,9 +134,15 @@ export default function CategoriesScreen() {
           </View>
         </View>
 
+        {isOffline && <OfflineBanner onRetry={loadCategories} />}
+
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Theme.primary} />
+          </View>
+        ) : isOffline && categories.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <OfflineMessage type="categories" onRetry={loadCategories} />
           </View>
         ) : (
           <ScrollView

@@ -21,8 +21,8 @@ export function OrderHistorySection({ accessToken }: Props) {
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiGet<any>('/orders/my', accessToken);
-        setOrders(Array.isArray(res) ? res : res?.orders || []);
+        const res = await apiGet<any>('/orders', accessToken);
+        setOrders(Array.isArray(res) ? res : res?.data || res?.orders || []);
       } catch (e) { console.error('Orders load error', e); }
       setLoading(false);
     })();

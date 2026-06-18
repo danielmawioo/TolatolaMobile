@@ -14,6 +14,9 @@ import { useCart } from '@/src/contexts/CartContext';
 import { getRoleRedirectPath } from '@/src/lib/roleRedirect';
 import type { Product } from '@/src/types';
 import { COPY } from '@/constants/copy';
+import { getCachedData, setCachedData, CACHE_KEYS } from '@/src/services/cache';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { OfflineMessage } from '@/components/OfflineMessage';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +50,7 @@ export default function GuestShopScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     params.categoryId || params.category || null
   );
@@ -83,8 +87,8 @@ export default function GuestShopScreen() {
       const prodUrl = queryParams.toString() ? `/products?${queryParams.toString()}` : '/products';
 
       const [catRes, prodRes] = await Promise.all([
-        apiGet<{ categories?: any[]; data?: any[] }>('/categories').catch(() => ({ data: [] })),
-        apiGet<{ products?: Product[]; data?: Product[] } | Product[]>(prodUrl).catch(() => []),
+        apiGet<{ categories?: any[]; data?: any[] }>('/categories'),
+        apiGet<{ products?: Product[]; data?: Product[] } | Product[]>(prodUrl),
       ]);
 
       const cats = (catRes as any)?.data || (catRes as any)?.categories || [];
@@ -92,9 +96,34 @@ export default function GuestShopScreen() {
 
       setCategories(cats);
       setProducts(prods);
-    } catch {
-      setProducts([]);
-      setCategories([]);
+      setIsOffline(false);
+
+      if (!selectedCategory && !searchQuery) {
+        await setCachedData(CACHE_KEYS.SHOP_PRODUCTS, prods);
+      }
+      await setCachedData(CACHE_KEYS.CATEGORIES, cats);
+    } catch (err) {
+      console.log('Failed to fetch shop data, trying cache...', err);
+      setIsOffline(true);
+
+      const cachedCats = await getCachedData<any[]>(CACHE_KEYS.CATEGORIES);
+      const cachedProds = await getCachedData<Product[]>(CACHE_KEYS.SHOP_PRODUCTS);
+
+      if (cachedCats) setCategories(cachedCats);
+
+      if (cachedProds) {
+        let filtered = [...cachedProds];
+        if (selectedCategory) {
+          filtered = filtered.filter(p => (p as any).category_id === selectedCategory || (p as any).category?.id === selectedCategory);
+        }
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          filtered = filtered.filter(p => p.name?.toLowerCase().includes(query) || p.description?.toLowerCase().includes(query));
+        }
+        setProducts(filtered);
+      } else {
+        setProducts([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -220,6 +249,8 @@ export default function GuestShopScreen() {
         </View>
       </View>
 
+      {isOffline && <OfflineBanner onRetry={fetchData} />}
+
       {/* ===== Categories Nav Bar (same as home/website) ===== */}
       <ScrollView
         horizontal
@@ -253,6 +284,10 @@ export default function GuestShopScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Theme.primary} />
           <Text style={styles.loadingText}>Loading products...</Text>
+        </View>
+      ) : isOffline && products.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <OfflineMessage type="products" onRetry={fetchData} />
         </View>
       ) : (
         <FlatList

@@ -12,6 +12,9 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { getRoleRedirectPath } from '@/src/lib/roleRedirect';
 import { useCart } from '@/src/contexts/CartContext';
 import * as Location from 'expo-location';
+import { getCachedData, setCachedData, CACHE_KEYS } from '@/src/services/cache';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { OfflineMessage } from '@/components/OfflineMessage';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +43,7 @@ export default function GuestHomeScreen() {
   const [promotions, setPromotions] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   // Smart Supply Chain matching states
@@ -75,18 +79,18 @@ export default function GuestHomeScreen() {
         coords = await fetchLocation();
       }
 
-      const catPromise = apiGet<any>('/categories').catch(() => ({ data: [] }));
-      const promoPromise = apiGet<any>('/promotions').catch(() => ({ data: [] }));
+      const catPromise = apiGet<any>('/categories');
+      const promoPromise = apiGet<any>('/promotions');
       
       let prodPromise: Promise<any>;
       let notifPromise: Promise<any> = Promise.resolve(null);
 
       if (isAuthenticated && session?.access_token) {
         const queryStr = coords ? `/products/for-you?userLat=${coords.latitude}&userLng=${coords.longitude}` : '/products/for-you';
-        prodPromise = apiGet<any>(queryStr, session.access_token).catch(() => null);
-        notifPromise = apiGet<any>('/notifications/supply-chain', session.access_token).catch(() => null);
+        prodPromise = apiGet<any>(queryStr, session.access_token);
+        notifPromise = apiGet<any>('/notifications/supply-chain', session.access_token);
       } else {
-        prodPromise = apiGet<any>('/products').catch(() => []);
+        prodPromise = apiGet<any>('/products');
       }
 
       const [catRes, promoRes, prodRes, notifRes] = await Promise.all([
@@ -100,17 +104,25 @@ export default function GuestHomeScreen() {
       const promos = promoRes?.data || [];
       setCategories(cats);
       setPromotions(promos);
+      setIsOffline(false);
 
+      // Save to cache
+      await setCachedData(CACHE_KEYS.CATEGORIES, cats);
+      await setCachedData(CACHE_KEYS.HOME_PROMOTIONS, promos);
+
+      let prodsList: Product[] = [];
       if (isAuthenticated && prodRes?.data) {
         const matched = prodRes.data.matched || [];
         const others = prodRes.data.others || [];
         setScProducts({ matched, others });
-        setProducts([...matched, ...others]);
+        prodsList = [...matched, ...others];
+        setProducts(prodsList);
       } else {
-        const prods = (prodRes as any)?.data || (prodRes as any)?.products || (Array.isArray(prodRes) ? prodRes : []);
-        setProducts(prods);
+        prodsList = (prodRes as any)?.data || (prodRes as any)?.products || (Array.isArray(prodRes) ? prodRes : []);
+        setProducts(prodsList);
         setScProducts({ matched: [], others: [] });
       }
+      await setCachedData(CACHE_KEYS.HOME_PRODUCTS, prodsList);
 
       if (notifRes?.data && notifRes.data.length > 0) {
         setScNotification(notifRes.data[0]);
@@ -118,7 +130,19 @@ export default function GuestHomeScreen() {
         setScNotification(null);
       }
     } catch (e) {
-      console.log('Error fetching home data', e);
+      console.log('Error fetching home data, trying cache...', e);
+      setIsOffline(true);
+
+      const cachedCats = await getCachedData(CACHE_KEYS.CATEGORIES);
+      const cachedPromos = await getCachedData(CACHE_KEYS.HOME_PROMOTIONS);
+      const cachedProds = await getCachedData(CACHE_KEYS.HOME_PRODUCTS);
+
+      if (cachedCats) setCategories(cachedCats);
+      if (cachedPromos) setPromotions(cachedPromos);
+      if (cachedProds) {
+        setProducts(cachedProds);
+        setScProducts({ matched: [], others: [] });
+      }
     } finally {
       setLoading(false);
     }
@@ -127,18 +151,18 @@ export default function GuestHomeScreen() {
   const fetchDataSilent = useCallback(async () => {
     try {
       let coords = userLocation;
-      const catPromise = apiGet<any>('/categories').catch(() => ({ data: [] }));
-      const promoPromise = apiGet<any>('/promotions').catch(() => ({ data: [] }));
+      const catPromise = apiGet<any>('/categories');
+      const promoPromise = apiGet<any>('/promotions');
       
       let prodPromise: Promise<any>;
       let notifPromise: Promise<any> = Promise.resolve(null);
 
       if (isAuthenticated && session?.access_token) {
         const queryStr = coords ? `/products/for-you?userLat=${coords.latitude}&userLng=${coords.longitude}` : '/products/for-you';
-        prodPromise = apiGet<any>(queryStr, session.access_token).catch(() => null);
-        notifPromise = apiGet<any>('/notifications/supply-chain', session.access_token).catch(() => null);
+        prodPromise = apiGet<any>(queryStr, session.access_token);
+        notifPromise = apiGet<any>('/notifications/supply-chain', session.access_token);
       } else {
-        prodPromise = apiGet<any>('/products').catch(() => []);
+        prodPromise = apiGet<any>( '/products');
       }
 
       const [catRes, promoRes, prodRes, notifRes] = await Promise.all([
@@ -152,17 +176,25 @@ export default function GuestHomeScreen() {
       const promos = promoRes?.data || [];
       setCategories(cats);
       setPromotions(promos);
+      setIsOffline(false);
 
+      // Save to cache
+      await setCachedData(CACHE_KEYS.CATEGORIES, cats);
+      await setCachedData(CACHE_KEYS.HOME_PROMOTIONS, promos);
+
+      let prodsList: Product[] = [];
       if (isAuthenticated && prodRes?.data) {
         const matched = prodRes.data.matched || [];
         const others = prodRes.data.others || [];
         setScProducts({ matched, others });
-        setProducts([...matched, ...others]);
+        prodsList = [...matched, ...others];
+        setProducts(prodsList);
       } else {
-        const prods = (prodRes as any)?.data || (prodRes as any)?.products || (Array.isArray(prodRes) ? prodRes : []);
-        setProducts(prods);
+        prodsList = (prodRes as any)?.data || (prodRes as any)?.products || (Array.isArray(prodRes) ? prodRes : []);
+        setProducts(prodsList);
         setScProducts({ matched: [], others: [] });
       }
+      await setCachedData(CACHE_KEYS.HOME_PRODUCTS, prodsList);
 
       if (notifRes?.data && notifRes.data.length > 0) {
         setScNotification(notifRes.data[0]);
@@ -171,6 +203,7 @@ export default function GuestHomeScreen() {
       }
     } catch (e) {
       console.log('Silent refresh failed:', e);
+      setIsOffline(true);
     }
   }, [isAuthenticated, session?.access_token, userLocation]);
 
@@ -334,7 +367,14 @@ export default function GuestHomeScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      {isOffline && <OfflineBanner onRetry={fetchData} />}
+
+      {isOffline && categories.length === 0 && products.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <OfflineMessage type="general" onRetry={fetchData} />
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
         {/* Supply Chain Real-Time Notification Banner */}
         {isAuthenticated && scNotification && (
@@ -651,6 +691,7 @@ export default function GuestHomeScreen() {
         </View>
 
       </ScrollView>
+      )}
     </View>
   );
 }
