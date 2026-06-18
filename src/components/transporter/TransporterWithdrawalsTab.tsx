@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
 
-const COMMISSION_RATE = 0.035;
+const COMMISSION_RATE = 0.10;
 const PAYOUT_METHODS = [
   { id: 'm-pesa', name: 'Vodacom M-Pesa' },
   { id: 'airtel-money', name: 'Airtel Money' },
@@ -105,7 +105,7 @@ export function TransporterWithdrawalsTab({ transporterId, accessToken, availabl
         {amt > 0 && (
           <View style={st.breakdownCard}>
             <View style={st.breakdownRow}><Text style={st.breakdownLabel}>Requested</Text><Text style={st.breakdownVal}>TSh {amt.toLocaleString()}</Text></View>
-            <View style={st.breakdownRow}><Text style={st.breakdownLabel}>Service Fee (3.5%)</Text><Text style={[st.breakdownVal, { color: Theme.error }]}>- TSh {fee.toLocaleString()}</Text></View>
+            <View style={st.breakdownRow}><Text style={st.breakdownLabel}>Service Fee (10%)</Text><Text style={[st.breakdownVal, { color: Theme.error }]}>- TSh {fee.toLocaleString()}</Text></View>
             <View style={[st.breakdownRow, st.breakdownTotal]}><Text style={st.breakdownTotalLabel}>You Receive</Text><Text style={st.breakdownTotalVal}>TSh {net.toLocaleString()}</Text></View>
           </View>
         )}

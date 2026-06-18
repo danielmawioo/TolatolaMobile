@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
 
-const COMMISSION_RATE = 0.035;
+const COMMISSION_RATE = 0.05;
 const PAYOUT_METHODS = [
   { id: 'airtel-money', name: 'Airtel Money' },
   { id: 'tigo-pesa', name: 'Tigo Pesa' },
@@ -127,7 +127,7 @@ export function VendorWalletTab({ vendorId, accessToken }: Props) {
           {amt > 0 && (
             <View style={s.breakdownCard}>
               <View style={s.breakdownRow}><Text style={s.breakdownLabel}>Requested</Text><Text style={s.breakdownVal}>TSh {amt.toLocaleString()}</Text></View>
-              <View style={s.breakdownRow}><Text style={s.breakdownLabel}>Service Fee (3.5%)</Text><Text style={[s.breakdownVal, { color: Theme.error }]}>- TSh {fee.toLocaleString()}</Text></View>
+              <View style={s.breakdownRow}><Text style={s.breakdownLabel}>Service Fee (5%)</Text><Text style={[s.breakdownVal, { color: Theme.error }]}>- TSh {fee.toLocaleString()}</Text></View>
               <View style={[s.breakdownRow, s.breakdownTotal]}><Text style={s.breakdownTotalLabel}>You Receive</Text><Text style={s.breakdownTotalVal}>TSh {net.toLocaleString()}</Text></View>
             </View>
           )}

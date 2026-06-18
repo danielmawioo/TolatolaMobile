@@ -771,15 +771,15 @@ export default function AgentDashboardScreen() {
                             <Text style={styles.feeVal}>{formatTzs(Number(withdrawAmount))}</Text>
                           </View>
                           <View style={styles.feeLine}>
-                            <Text style={[styles.feeLabel, { color: '#e11d48' }]}>Makato (3.5%):</Text>
+                            <Text style={[styles.feeLabel, { color: '#e11d48' }]}>Makato (10%):</Text>
                             <Text style={[styles.feeVal, { color: '#e11d48' }]}>
-                              -{formatTzs(Math.round(Number(withdrawAmount) * 0.035))}
+                              -{formatTzs(Math.round(Number(withdrawAmount) * 0.10))}
                             </Text>
                           </View>
                           <View style={[styles.feeLine, { borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 8, marginTop: 4 }]}>
                             <Text style={[styles.feeLabel, { fontWeight: 'bold', color: '#1e293b' }]}>Utapokea (Net):</Text>
                             <Text style={[styles.feeVal, { fontWeight: 'black', color: '#16a34a', fontSize: 13 }]}>
-                              {formatTzs(Math.max(0, Number(withdrawAmount) - Math.round(Number(withdrawAmount) * 0.035)))}
+                              {formatTzs(Math.max(0, Number(withdrawAmount) - Math.round(Number(withdrawAmount) * 0.10)))}
                             </Text>
                           </View>
                         </View>
