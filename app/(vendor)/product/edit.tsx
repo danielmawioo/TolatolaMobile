@@ -24,6 +24,14 @@ export default function EditProductScreen() {
   // Picker Modal states
   const [activeModal, setActiveModal] = useState<'category' | 'grade' | null>(null);
 
+  // Fashion variation states
+  const [colors, setColors] = useState<{ name: string; image: string }[]>([]);
+  const [newColorName, setNewColorName] = useState('');
+  const [newColorImageUri, setNewColorImageUri] = useState('');
+  const [uploadingColorImage, setUploadingColorImage] = useState(false);
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [newSize, setNewSize] = useState('');
+
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -65,6 +73,8 @@ export default function EditProductScreen() {
         });
 
         setImages(product.images || []);
+        setColors(product.colors || []);
+        setSizes(product.sizes || []);
       } catch (error: any) {
         console.error('Failed to load edit product details', error);
         Alert.alert('Error', 'Failed to fetch product details');
@@ -132,6 +142,8 @@ export default function EditProductScreen() {
         images: images,
         category_id: formData.category_id || null,
         quality_grade: formData.quality_grade || null,
+        colors: isFashion ? colors : null,
+        sizes: isFashion ? sizes : null,
         updated_at: new Date().toISOString(),
       }, session?.access_token);
       
@@ -155,9 +167,65 @@ export default function EditProductScreen() {
   }
 
   const selectedCategoryName = categories.find(c => c.id === formData.category_id)?.name;
+  const isFashion = selectedCategoryName?.toLowerCase() === 'fashion';
   const selectedGradeLabel = formData.quality_grade === 'A' ? 'Grade A (Premium)' :
                              formData.quality_grade === 'B' ? 'Grade B (Standard)' :
                              formData.quality_grade === 'C' ? 'Grade C (Basic)' : '';
+
+  const handlePickColorImage = () => {
+    Alert.alert('Color Image', 'Choose how to upload', [
+      { text: 'Take Photo', onPress: () => pickColorImage(true) },
+      { text: 'Gallery', onPress: () => pickColorImage(false) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const pickColorImage = async (useCamera: boolean) => {
+    const hasPerms = await requestImagePermissions();
+    if (!hasPerms) return;
+    setUploadingColorImage(true);
+    try {
+      const picked = await pickImageSafe(useCamera);
+      if (!picked) { setUploadingColorImage(false); return; }
+      const ext = picked.fileName.split('.').pop() || 'jpg';
+      const filename = `color_${Date.now()}.${ext}`;
+      const uploadRes = await apiPost<any>('/uploads/products', {
+        filename, data: picked.base64, contentType: picked.mimeType,
+      }, session?.access_token);
+      if (uploadRes?.url) {
+        setNewColorImageUri(uploadRes.url);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (e: any) {
+      Alert.alert('Upload Error', e.message || 'Failed to upload color image');
+    } finally {
+      setUploadingColorImage(false);
+    }
+  };
+
+  const handleAddColor = () => {
+    if (!newColorName.trim()) return;
+    setColors(prev => [...prev, { name: newColorName.trim(), image: newColorImageUri }]);
+    setNewColorName('');
+    setNewColorImageUri('');
+  };
+
+  const handleRemoveColor = (index: number) => {
+    setColors(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddSize = () => {
+    if (!newSize.trim()) return;
+    const formatted = newSize.trim().toUpperCase();
+    if (!sizes.includes(formatted)) {
+      setSizes(prev => [...prev, formatted]);
+    }
+    setNewSize('');
+  };
+
+  const handleRemoveSize = (index: number) => {
+    setSizes(prev => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <View style={styles.container}>
@@ -296,6 +364,97 @@ export default function EditProductScreen() {
             multiline
             numberOfLines={4}
           />
+
+          {/* Fashion Variations — only shown when Fashion category is selected */}
+          {isFashion && (
+            <View style={styles.variationsSection}>
+              <Text style={styles.variationsTitle}>Fashion Variations</Text>
+
+              {/* Sizes */}
+              <View style={styles.varBlock}>
+                <Text style={styles.label}>Available Sizes</Text>
+                <View style={styles.varInputRow}>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    value={newSize}
+                    onChangeText={setNewSize}
+                    placeholder="e.g. S, M, L, XL, 42"
+                    placeholderTextColor={Theme.textMuted}
+                    onSubmitEditing={handleAddSize}
+                    returnKeyType="done"
+                  />
+                  <Pressable style={styles.varAddBtn} onPress={handleAddSize}>
+                    <FontAwesome name="plus" size={14} color="#fff" />
+                  </Pressable>
+                </View>
+                {sizes.length > 0 && (
+                  <View style={styles.chipRow}>
+                    {sizes.map((s, i) => (
+                      <View key={i} style={styles.chip}>
+                        <Text style={styles.chipText}>{s}</Text>
+                        <Pressable onPress={() => handleRemoveSize(i)} hitSlop={6}>
+                          <FontAwesome name="times" size={10} color={Theme.textMuted} />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Colors */}
+              <View style={styles.varBlock}>
+                <Text style={styles.label}>Color Variations (with Image)</Text>
+                <View style={styles.varColorForm}>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    value={newColorName}
+                    onChangeText={setNewColorName}
+                    placeholder="e.g. Cherry Red"
+                    placeholderTextColor={Theme.textMuted}
+                  />
+                  <Pressable
+                    style={styles.varImageBtn}
+                    onPress={handlePickColorImage}
+                    disabled={uploadingColorImage}
+                  >
+                    {uploadingColorImage ? (
+                      <ActivityIndicator size="small" color={Theme.primary} />
+                    ) : newColorImageUri ? (
+                      <Image source={{ uri: newColorImageUri }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+                    ) : (
+                      <FontAwesome name="camera" size={16} color={Theme.textMuted} />
+                    )}
+                  </Pressable>
+                  <Pressable
+                    style={[styles.varAddBtn, !newColorName.trim() && { opacity: 0.5 }]}
+                    onPress={handleAddColor}
+                    disabled={!newColorName.trim()}
+                  >
+                    <FontAwesome name="plus" size={14} color="#fff" />
+                  </Pressable>
+                </View>
+                {colors.length > 0 && (
+                  <View style={styles.colorChipRow}>
+                    {colors.map((c, i) => (
+                      <View key={i} style={styles.colorChip}>
+                        <View style={styles.colorChipPreview}>
+                          {c.image ? (
+                            <Image source={{ uri: c.image }} style={{ width: 28, height: 28, borderRadius: 14 }} />
+                          ) : (
+                            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.name.toLowerCase() }} />
+                          )}
+                        </View>
+                        <Text style={styles.colorChipText} numberOfLines={1}>{c.name}</Text>
+                        <Pressable onPress={() => handleRemoveColor(i)} hitSlop={6}>
+                          <FontAwesome name="times" size={10} color={Theme.textMuted} />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           <Pressable 
             style={styles.deliveryToggle} 
@@ -480,4 +639,52 @@ const styles = StyleSheet.create({
   modalItemActive: { backgroundColor: Theme.primary + '10' },
   modalItemText: { fontSize: 16, color: Theme.text },
   modalItemTextActive: { color: Theme.primary, fontWeight: '600' },
+
+  // Fashion Variations
+  variationsSection: {
+    backgroundColor: Theme.backgroundSecondary,
+    borderRadius: 16,
+    padding: 16,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+  },
+  variationsTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Theme.text,
+    letterSpacing: -0.3,
+  },
+  varBlock: { gap: 8 },
+  varInputRow: { flexDirection: 'row', gap: 8 },
+  varAddBtn: {
+    width: 44, height: 48, borderRadius: 12,
+    backgroundColor: Theme.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#fff', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderWidth: 1, borderColor: Theme.inputBorder,
+  },
+  chipText: { fontSize: 12, fontWeight: '700', color: Theme.text },
+  varColorForm: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  varImageBtn: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: Theme.inputBorder,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  colorChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  colorChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#fff', borderRadius: 12,
+    paddingRight: 10, paddingVertical: 4, paddingLeft: 4,
+    borderWidth: 1, borderColor: Theme.inputBorder,
+  },
+  colorChipPreview: {
+    width: 28, height: 28, borderRadius: 14, overflow: 'hidden',
+  },
+  colorChipText: { fontSize: 11, fontWeight: '700', color: Theme.text, maxWidth: 80 },
 });

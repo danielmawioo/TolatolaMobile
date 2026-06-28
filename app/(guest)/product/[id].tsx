@@ -29,6 +29,8 @@ export default function GuestProductDetailScreen() {
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState<any>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   const insets = useSafeAreaInsets();
   const { addItem, items } = useCart();
@@ -45,6 +47,13 @@ export default function GuestProductDetailScreen() {
         setProduct(actualProduct);
         setReviews(reviewsData?.data || []);
         setQuantity(actualProduct?.moq ? Number(actualProduct.moq) : 1);
+
+        if (actualProduct?.colors && Array.isArray(actualProduct.colors) && actualProduct.colors.length > 0) {
+          setSelectedColor(actualProduct.colors[0]);
+        }
+        if (actualProduct?.sizes && Array.isArray(actualProduct.sizes) && actualProduct.sizes.length > 0) {
+          setSelectedSize(actualProduct.sizes[0]);
+        }
       } catch {
         setProduct(null);
       } finally {
@@ -53,11 +62,15 @@ export default function GuestProductDetailScreen() {
     })();
   }, [id]);
 
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [selectedColor]);
+
   const handleAddToCart = async () => {
     if (!product) return;
     setAdding(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await addItem(product, quantity);
+    await addItem(product, quantity, selectedColor, selectedSize || undefined);
     setAdding(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.push('/(tabs)/cart');
@@ -84,11 +97,20 @@ export default function GuestProductDetailScreen() {
     ? product.images
     : [product.image_url];
 
+  const galleryImages = [...images];
+  if (selectedColor?.image && !galleryImages.includes(selectedColor.image)) {
+    galleryImages.unshift(selectedColor.image);
+  }
+
   const averageRating = reviews.length > 0 
     ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length 
     : 5.0;
 
-  const isInCart = items.some(item => item.product_id === product.id);
+  const isInCart = items.some(item => 
+    item.product_id === product.id &&
+    (!product.colors || !Array.isArray(product.colors) || product.colors.length === 0 || item.selected_color?.name === selectedColor?.name) &&
+    (!product.sizes || !Array.isArray(product.sizes) || product.sizes.length === 0 || item.selected_size === selectedSize)
+  );
   const isSoldOut = product.stock_quantity === 0;
 
   return (
@@ -112,7 +134,7 @@ export default function GuestProductDetailScreen() {
             }}
             scrollEventThrottle={16}
           >
-            {images.map((img, idx) => (
+            {galleryImages.map((img, idx) => (
               <View key={idx} style={{ width: width - 32, aspectRatio: 1 }}>
                 <OptimizedImage source={img} width="100%" aspectRatio={1} />
               </View>
@@ -177,6 +199,70 @@ export default function GuestProductDetailScreen() {
           </View>
 
           <Text style={styles.desc}>{product.description}</Text>
+
+          {/* Color & Size Selector */}
+          {(product.colors && Array.isArray(product.colors) && product.colors.length > 0) && (
+            <View style={styles.selectorSection}>
+              <Text style={styles.selectorTitle}>CHOOSE COLOR</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorList}>
+                {product.colors.map((color: any, idx: number) => {
+                  const isSelected = selectedColor?.name === color.name;
+                  return (
+                    <Pressable
+                      key={idx}
+                      onPress={() => {
+                        setSelectedColor(color);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      style={[
+                        styles.colorBubbleContainer,
+                        isSelected && styles.colorBubbleSelected
+                      ]}
+                    >
+                      <View style={styles.colorImageWrapper}>
+                        {color.image ? (
+                          <OptimizedImage source={color.image} width={40} aspectRatio={1} style={styles.colorRoundImage} />
+                        ) : (
+                          <View style={[styles.colorRoundPlaceholder, { backgroundColor: color.name.toLowerCase() }]} />
+                        )}
+                      </View>
+                      <Text style={[styles.colorBubbleText, isSelected && styles.colorBubbleTextActive]} numberOfLines={1}>
+                        {color.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {(product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) && (
+            <View style={styles.selectorSection}>
+              <Text style={styles.selectorTitle}>CHOOSE SIZE</Text>
+              <View style={styles.sizeGrid}>
+                {product.sizes.map((size: string, idx: number) => {
+                  const isSelected = selectedSize === size;
+                  return (
+                    <Pressable
+                      key={idx}
+                      onPress={() => {
+                        setSelectedSize(size);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      style={[
+                        styles.sizeBadge,
+                        isSelected && styles.sizeBadgeSelected
+                      ]}
+                    >
+                      <Text style={[styles.sizeBadgeText, isSelected && styles.sizeBadgeTextActive]}>
+                        {size}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {isSoldOut && (
             <View style={styles.soldOutBox}>
@@ -447,4 +533,21 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: '#0c0a09', height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 6 },
   btnContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   addBtnText: { color: '#ffffff', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
+
+  selectorSection: { gap: 10, marginTop: 8 },
+  selectorTitle: { fontSize: 10, fontWeight: '900', color: '#a8a29e', letterSpacing: 2 },
+  colorList: { gap: 12, paddingVertical: 4 },
+  colorBubbleContainer: { alignItems: 'center', gap: 4, width: 64 },
+  colorBubbleSelected: { opacity: 1 },
+  colorImageWrapper: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: 'transparent', borderStyle: 'solid', padding: 2, alignItems: 'center', justifyContent: 'center' },
+  colorRoundImage: { borderRadius: 20 },
+  colorRoundPlaceholder: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: '#e5e7eb' },
+  colorBubbleText: { fontSize: 9, fontWeight: '700', color: '#78716c', textAlign: 'center' },
+  colorBubbleTextActive: { fontWeight: '900', color: Theme.primary },
+  
+  sizeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  sizeBadge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff' },
+  sizeBadgeSelected: { borderColor: Theme.primary, backgroundColor: '#fafaf9' },
+  sizeBadgeText: { fontSize: 12, fontWeight: '700', color: '#57534e' },
+  sizeBadgeTextActive: { fontWeight: '900', color: Theme.primary },
 });

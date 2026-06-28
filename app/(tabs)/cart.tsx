@@ -77,6 +77,27 @@ export default function CartScreen() {
         </View>
         <Text style={styles.vendorLabel}>by TOLA Verified Vendor</Text>
 
+        {(item.selected_color || item.selected_size) && (
+          <View style={styles.badgeRow}>
+            {item.selected_color && (
+              <View style={styles.itemBadge}>
+                <View 
+                  style={[
+                    styles.colorDot, 
+                    { backgroundColor: item.selected_color.name.toLowerCase() }
+                  ]} 
+                />
+                <Text style={styles.badgeText}>{item.selected_color.name}</Text>
+              </View>
+            )}
+            {item.selected_size && (
+              <View style={styles.itemBadge}>
+                <Text style={styles.badgeText}>{item.selected_size}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.qtyPriceRow}>
           <View style={styles.qtyControls}>
             <Pressable
@@ -386,5 +407,34 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     marginBottom: 12,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  itemBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fafaf9',
+    borderColor: '#e7e5e4',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 4,
+  },
+  colorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderColor: '#d6d3d1',
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#57534e',
   },
 });

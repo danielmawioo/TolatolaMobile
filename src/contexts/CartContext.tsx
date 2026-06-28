@@ -15,6 +15,8 @@ export type CartItem = {
   shop_id?: string;
   shop_latitude?: number;
   shop_longitude?: number;
+  selected_color?: { name: string; image?: string } | null;
+  selected_size?: string | null;
 };
 
 type CartState = {
@@ -23,7 +25,7 @@ type CartState = {
 };
 
 type CartContextValue = CartState & {
-  addItem: (product: any, quantity?: number) => Promise<void>;
+  addItem: (product: any, quantity?: number, selectedColor?: any, selectedSize?: string) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -61,26 +63,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   };
 
-  const addItem = useCallback(async (product: any, quantity = 1) => {
+  const addItem = useCallback(async (product: any, quantity = 1, selectedColor?: any, selectedSize?: string) => {
     try {
-      // Optional: still acknowledge to backend if needed, but don't block or reload from it
       if (isAuthenticated && session?.access_token) {
-        apiPost('/cart/items', { product_id: product.id, quantity }, session.access_token).catch(() => {});
+        apiPost('/cart/items', { product_id: product.id, quantity, selected_color: selectedColor, selected_size: selectedSize }, session.access_token).catch(() => {});
       }
       
       setState(prev => {
-        const existingIndex = prev.items.findIndex(i => i.product_id === product.id);
+        const existingIndex = prev.items.findIndex(i => 
+          i.product_id === product.id && 
+          i.selected_color?.name === selectedColor?.name && 
+          i.selected_size === selectedSize
+        );
         let newItems;
         if (existingIndex > -1) {
           newItems = [...prev.items];
           newItems[existingIndex].quantity += quantity;
         } else {
-          const imgUrl = (product.images && Array.isArray(product.images) && product.images.length > 0) 
+          const imgUrl = selectedColor?.image || ((product.images && Array.isArray(product.images) && product.images.length > 0) 
             ? product.images[0] 
-            : product.image_url;
+            : product.image_url);
             
           const newItem: CartItem = {
-            id: Date.now().toString(),
+            id: `${product.id}-${selectedColor?.name || ''}-${selectedSize || ''}`,
             product_id: product.id,
             name: product.name,
             price: product.price || 0,
@@ -89,6 +94,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             shop_id: product.shop_id,
             shop_latitude: product.shops?.latitude ?? product.shop_latitude,
             shop_longitude: product.shops?.longitude ?? product.shop_longitude,
+            selected_color: selectedColor || null,
+            selected_size: selectedSize || null,
           };
           newItems = [...prev.items, newItem];
         }

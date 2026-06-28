@@ -8,6 +8,7 @@ export interface Product {
   price?: number;
   description?: string;
   image_url?: string | null;
+  images?: string[];
   shop_id?: string;
   location?: string;
   moq?: string | number;
@@ -16,6 +17,12 @@ export interface Product {
   currency?: string;
   discount?: number;
   stock?: number;
+  stock_quantity?: number;
+  quality_grade?: string;
+  sku?: string;
+  categories?: { name: string };
+  colors?: { name: string; image?: string }[];
+  sizes?: string[];
   [key: string]: unknown;
 }
 

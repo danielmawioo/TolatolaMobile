@@ -258,6 +258,8 @@ export default function CheckoutScreen() {
           price: item.price,
           shop_id: item.shop_id || '',
           delivery_fee: shopFees[sId] || 0,
+          selected_color: item.selected_color || null,
+          selected_size: item.selected_size || null,
         };
       });
 
@@ -648,7 +650,20 @@ export default function CheckoutScreen() {
                     <OptimizedImage source={item.image_url} width={44} height={44} style={styles.summaryItemImg} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.summaryItemName} numberOfLines={1}>{item.name}</Text>
-                      <Text style={styles.summaryItemQty}>Qty: {item.quantity}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Text style={styles.summaryItemQty}>Qty: {item.quantity}</Text>
+                        {item.selected_color && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f4', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1, gap: 3 }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: item.selected_color.name.toLowerCase() }} />
+                            <Text style={{ fontSize: 8, fontWeight: '700', color: '#78716c' }}>{item.selected_color.name}</Text>
+                          </View>
+                        )}
+                        {item.selected_size && (
+                          <View style={{ backgroundColor: '#f5f5f4', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 }}>
+                            <Text style={{ fontSize: 8, fontWeight: '700', color: '#78716c' }}>{item.selected_size}</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                     <Text style={styles.summaryItemPrice}>
                       TSh {(item.price * item.quantity).toLocaleString()}
