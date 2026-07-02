@@ -81,10 +81,10 @@ export function ProductCard({
             </View>
           ) : <View />}
 
-          {(product.compare_at_price ?? 0) > (product.price ?? 0) && (
+          {Number(product.compare_at_price ?? 0) > Number(product.price ?? 0) && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>
-                {Math.round((((product.compare_at_price ?? 0) - (product.price ?? 0)) / (product.compare_at_price ?? 1)) * 100)}% OFF
+                {Math.round((((Number(product.compare_at_price ?? 0)) - Number(product.price ?? 0)) / Number(product.compare_at_price ?? 1)) * 100)}% OFF
               </Text>
             </View>
           )}
@@ -98,14 +98,14 @@ export function ProductCard({
             <Text style={styles.verifiedText}>Verified by TOLA</Text>
           </View>
           <View style={styles.statsRow}>
-            {((product.sales_count as number) || 0) > 0 && !isSoldOut && (
+            {(Number(product.sales_count) || 0) > 0 && !isSoldOut && (
               <View style={styles.soldBadge}>
-                <Text style={styles.soldBadgeText}>{product.sales_count} Sold</Text>
+                <Text style={styles.soldBadgeText}>{String(product.sales_count)} Sold</Text>
               </View>
             )}
             {product.quality_grade && (
               <View style={styles.gradeBadge}>
-                <Text style={styles.gradeText}>Grade {product.quality_grade}</Text>
+                <Text style={styles.gradeText}>Grade {String(product.quality_grade)}</Text>
               </View>
             )}
           </View>
@@ -129,8 +129,8 @@ export function ProductCard({
             <Text style={styles.price}>
               {product.price?.toLocaleString()} <Text style={styles.currency}>TZS{product.weight_unit ? ` / ${product.weight_unit}` : ''}</Text>
             </Text>
-            {(product.compare_at_price ?? 0) > (product.price ?? 0) && (
-              <Text style={styles.oldPrice}>{product.compare_at_price?.toLocaleString()} TZS</Text>
+            {Number(product.compare_at_price ?? 0) > Number(product.price ?? 0) && (
+              <Text style={styles.oldPrice}>{Number(product.compare_at_price)?.toLocaleString()} TZS</Text>
             )}
           </View>
           <View style={styles.locationContainer}>
