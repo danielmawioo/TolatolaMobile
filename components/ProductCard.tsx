@@ -116,7 +116,7 @@ export function ProductCard({
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
             <FontAwesome name="shopping-bag" size={10} color="#2563EB" />
-            <Text style={styles.metaText}>MOQ: {product.moq || 1}</Text>
+            <Text style={styles.metaText}>MOQ: {product.moq || 1} {product.weight_unit || product.unit || 'Units'}</Text>
           </View>
           <View style={styles.metaItem}>
             <FontAwesome name="truck" size={10} color={Theme.success} />
@@ -127,7 +127,7 @@ export function ProductCard({
         <View style={styles.priceContainer}>
           <View>
             <Text style={styles.price}>
-              {product.price?.toLocaleString()} <Text style={styles.currency}>TZS</Text>
+              {product.price?.toLocaleString()} <Text style={styles.currency}>TZS{product.weight_unit ? ` / ${product.weight_unit}` : ''}</Text>
             </Text>
             {(product.compare_at_price ?? 0) > (product.price ?? 0) && (
               <Text style={styles.oldPrice}>{product.compare_at_price?.toLocaleString()} TZS</Text>

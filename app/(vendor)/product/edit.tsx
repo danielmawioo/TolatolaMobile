@@ -22,7 +22,7 @@ export default function EditProductScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   
   // Picker Modal states
-  const [activeModal, setActiveModal] = useState<'category' | 'grade' | null>(null);
+  const [activeModal, setActiveModal] = useState<'category' | 'grade' | 'weight_unit' | null>(null);
 
   // Fashion variation states
   const [colors, setColors] = useState<{ name: string; image: string }[]>([]);
@@ -42,6 +42,7 @@ export default function EditProductScreen() {
     category_id: '',
     quality_grade: '',
     delivery_available: true,
+    weight_unit: '',
   });
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export default function EditProductScreen() {
           category_id: product.category_id || '',
           quality_grade: product.quality_grade || '',
           delivery_available: product.delivery_available ?? true,
+          weight_unit: product.weight_unit || '',
         });
 
         setImages(product.images || []);
@@ -131,6 +133,16 @@ export default function EditProductScreen() {
       return;
     }
 
+    if (!formData.category_id) {
+      Alert.alert('Error', 'Please select a product category before uploading.');
+      return;
+    }
+
+    if (isAgriculture && !formData.weight_unit) {
+      Alert.alert('Error', 'Please select a weight unit for agricultural products.');
+      return;
+    }
+
     setSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
@@ -144,6 +156,7 @@ export default function EditProductScreen() {
         quality_grade: formData.quality_grade || null,
         colors: isFashion ? colors : null,
         sizes: isFashion ? sizes : null,
+        weight_unit: isAgriculture && formData.weight_unit ? formData.weight_unit : null,
         updated_at: new Date().toISOString(),
       }, session?.access_token);
       
@@ -168,6 +181,14 @@ export default function EditProductScreen() {
 
   const selectedCategoryName = categories.find(c => c.id === formData.category_id)?.name;
   const isFashion = selectedCategoryName?.toLowerCase() === 'fashion';
+  const isAgriculture = selectedCategoryName?.toLowerCase() === 'agriculture';
+
+  useEffect(() => {
+    if (!isAgriculture && formData.weight_unit) {
+      setFormData(prev => ({ ...prev, weight_unit: '' }));
+    }
+  }, [isAgriculture]);
+
   const selectedGradeLabel = formData.quality_grade === 'A' ? 'Grade A (Premium)' :
                              formData.quality_grade === 'B' ? 'Grade B (Standard)' :
                              formData.quality_grade === 'C' ? 'Grade C (Basic)' : '';
@@ -303,7 +324,7 @@ export default function EditProductScreen() {
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Category</Text>
+              <Text style={styles.label}>Category *</Text>
               <Pressable style={styles.pickerButton} onPress={() => setActiveModal('category')}>
                 <Text 
                   style={selectedCategoryName ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
@@ -328,6 +349,25 @@ export default function EditProductScreen() {
               </Pressable>
             </View>
           </View>
+
+          {isAgriculture && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.label}>Sold by Weight (Weight Unit) *</Text>
+              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('weight_unit')}>
+                <Text 
+                  style={formData.weight_unit ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
+                  numberOfLines={1}
+                >
+                  {formData.weight_unit ? (
+                    formData.weight_unit === 'Kg' ? 'Kilograms (Kg)' :
+                    formData.weight_unit === 'g' ? 'Grams (g)' :
+                    formData.weight_unit === 'Tons' ? 'Tons (Tons)' : formData.weight_unit
+                  ) : 'Select Weight Unit'}
+                </Text>
+                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>

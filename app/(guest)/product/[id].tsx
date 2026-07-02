@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions, ActivityIndicator, FlatList } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet } from '@/src/services/api';
@@ -31,6 +31,9 @@ export default function GuestProductDetailScreen() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState<any>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<Product[]>([]);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [testimonyY, setTestimonyY] = useState(0);
 
   const insets = useSafeAreaInsets();
   const { addItem, items } = useCart();
@@ -63,8 +66,22 @@ export default function GuestProductDetailScreen() {
   }, [id]);
 
   useEffect(() => {
+    if (!id) return;
+    apiGet<{ data: Product[] }>(`/products/${id}/recommendations`)
+      .then(res => setRecommendations(res?.data || []))
+      .catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
     setActiveImageIndex(0);
   }, [selectedColor]);
+
+  const scrollToTestimony = () => {
+    if (scrollViewRef.current && testimonyY > 0) {
+      scrollViewRef.current.scrollTo({ y: testimonyY - 20, animated: true });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -116,6 +133,7 @@ export default function GuestProductDetailScreen() {
   return (
     <View style={styles.container}>
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={[
           styles.content,
           { paddingTop: Math.max(insets.top, 16), paddingBottom: 100 + insets.bottom },
@@ -170,7 +188,7 @@ export default function GuestProductDetailScreen() {
 
         {/* Elite Buy Box */}
         <View style={styles.infoContainer}>
-          <View style={styles.ratingRow}>
+          <Pressable onPress={scrollToTestimony} style={styles.ratingRow}>
             <View style={styles.stars}>
               {[...Array(5)].map((_, i) => (
                 <FontAwesome 
@@ -189,7 +207,7 @@ export default function GuestProductDetailScreen() {
                 <Text style={styles.gradeText}>GRADE {product.quality_grade}</Text>
               </View>
             )}
-          </View>
+          </Pressable>
 
           <Text style={styles.name}>{product.name}</Text>
 
@@ -279,7 +297,7 @@ export default function GuestProductDetailScreen() {
           <View style={styles.priceCard}>
             <View style={styles.priceRow}>
               <Text style={styles.price}>{product.price?.toLocaleString() || '0'}</Text>
-              <Text style={styles.currency}>{product.currency || 'TZS'}</Text>
+              <Text style={styles.currency}>{(product.currency || 'TZS') + (product.weight_unit ? ` / ${product.weight_unit}` : '')}</Text>
             </View>
 
             <View style={styles.quantitySection}>
@@ -302,8 +320,8 @@ export default function GuestProductDetailScreen() {
                 </View>
               </View>
               <View style={styles.stockInfo}>
-                <Text style={styles.stockText}>Min Order: {product.moq || 1} {product.unit || 'Units'}</Text>
-                <Text style={styles.stockText}>{product.stock_quantity || 0} Units in inventory</Text>
+                <Text style={styles.stockText}>Min Order: {product.moq || 1} {product.weight_unit || product.unit || 'Units'}</Text>
+                <Text style={styles.stockText}>{product.stock_quantity || 0} {product.weight_unit || product.unit || 'Units'} in inventory</Text>
               </View>
             </View>
 
@@ -366,7 +384,7 @@ export default function GuestProductDetailScreen() {
           </View>
 
           {/* Reviews */}
-          <View style={styles.reviewsSection}>
+          <View style={styles.reviewsSection} onLayout={(e) => setTestimonyY(e.nativeEvent.layout.y)}>
             <View style={styles.reviewsHeader}>
               <FontAwesome name="comments" size={24} color={Theme.primary} />
               <Text style={styles.reviewsTitle}>Client Testimony</Text>
@@ -404,6 +422,49 @@ export default function GuestProductDetailScreen() {
               ))
             )}
           </View>
+
+          {/* Cross-Selling Recommendations */}
+          {recommendations.length > 0 && (
+            <View style={styles.recsSection}>
+              <View style={styles.recsHeader}>
+                <FontAwesome name="line-chart" size={20} color={Theme.primary} />
+                <Text style={styles.recsTitle}>You May Also Like</Text>
+              </View>
+              <View style={styles.divider} />
+              <FlatList
+                data={recommendations}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ gap: 12, paddingRight: 16 }}
+                renderItem={({ item: rec }) => (
+                  <Pressable
+                    style={styles.recCard}
+                    onPress={() => router.push(`/(guest)/product/${rec.id}`)}
+                  >
+                    <View style={styles.recImageContainer}>
+                      <OptimizedImage
+                        source={(rec.images && Array.isArray(rec.images) && rec.images.length > 0) ? rec.images[0] as string : rec.image_url}
+                        width={160}
+                        aspectRatio={4 / 3}
+                        style={styles.recImage}
+                      />
+                    </View>
+                    <View style={styles.recContent}>
+                      <View style={styles.recVerifiedTag}>
+                        <FontAwesome name="check-circle" size={10} color={Theme.success} />
+                        <Text style={styles.recVerifiedText}>Verified</Text>
+                      </View>
+                      <Text style={styles.recName} numberOfLines={2}>{rec.name}</Text>
+                      <Text style={styles.recPrice}>
+                        {rec.price?.toLocaleString()} <Text style={styles.recCurrency}>TZS{rec.weight_unit ? ` / ${rec.weight_unit}` : ''}</Text>
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
+              />
+            </View>
+          )}
 
         </View>
       </ScrollView>
@@ -550,4 +611,17 @@ const styles = StyleSheet.create({
   sizeBadgeSelected: { borderColor: Theme.primary, backgroundColor: '#fafaf9' },
   sizeBadgeText: { fontSize: 12, fontWeight: '700', color: '#57534e' },
   sizeBadgeTextActive: { fontWeight: '900', color: Theme.primary },
+
+  recsSection: { gap: 16, marginTop: 32 },
+  recsHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  recsTitle: { fontSize: 22, fontWeight: '900', color: '#0c0a09', letterSpacing: -0.5 },
+  recCard: { width: 160, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#f5f5f4', ...Theme.shadowSm },
+  recImageContainer: { width: 160, aspectRatio: 4 / 3, backgroundColor: '#fafaf9' },
+  recImage: { width: '100%', height: '100%' },
+  recContent: { padding: 10, gap: 4 },
+  recVerifiedTag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  recVerifiedText: { fontSize: 8, fontWeight: '700', color: Theme.success, textTransform: 'uppercase' },
+  recName: { fontSize: 12, fontWeight: '600', color: '#1c1917', lineHeight: 16 },
+  recPrice: { fontSize: 14, fontWeight: '800', color: '#0B5ED7' },
+  recCurrency: { fontSize: 9, fontWeight: '600' },
 });

@@ -21,7 +21,7 @@ export default function CreateProductScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   
   // Picker Modal states
-  const [activeModal, setActiveModal] = useState<'category' | 'grade' | null>(null);
+  const [activeModal, setActiveModal] = useState<'category' | 'grade' | 'weight_unit' | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -33,6 +33,7 @@ export default function CreateProductScreen() {
     category_id: '',
     quality_grade: '',
     delivery_available: true,
+    weight_unit: '',
   });
 
   // Fashion variation states
@@ -111,6 +112,16 @@ export default function CreateProductScreen() {
       return;
     }
 
+    if (!formData.category_id) {
+      Alert.alert('Error', 'Please select a product category before uploading.');
+      return;
+    }
+
+    if (isAgriculture && !formData.weight_unit) {
+      Alert.alert('Error', 'Please select a weight unit for agricultural products.');
+      return;
+    }
+
     if (!shopId) {
       Alert.alert('Error', 'Vendor shop details could not be resolved. Please try again.');
       return;
@@ -130,6 +141,7 @@ export default function CreateProductScreen() {
         quality_grade: formData.quality_grade || null,
         colors: isFashion ? colors : null,
         sizes: isFashion ? sizes : null,
+        weight_unit: isAgriculture && formData.weight_unit ? formData.weight_unit : null,
       }, session?.access_token);
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -145,6 +157,14 @@ export default function CreateProductScreen() {
 
   const selectedCategoryName = categories.find(c => c.id === formData.category_id)?.name;
   const isFashion = selectedCategoryName?.toLowerCase() === 'fashion';
+  const isAgriculture = selectedCategoryName?.toLowerCase() === 'agriculture';
+
+  useEffect(() => {
+    if (!isAgriculture && formData.weight_unit) {
+      setFormData(prev => ({ ...prev, weight_unit: '' }));
+    }
+  }, [isAgriculture]);
+
   const selectedGradeLabel = formData.quality_grade === 'A' ? 'Grade A (Premium)' :
                              formData.quality_grade === 'B' ? 'Grade B (Standard)' :
                              formData.quality_grade === 'C' ? 'Grade C (Basic)' : '';
@@ -280,7 +300,7 @@ export default function CreateProductScreen() {
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Category</Text>
+              <Text style={styles.label}>Category *</Text>
               <Pressable style={styles.pickerButton} onPress={() => setActiveModal('category')}>
                 <Text 
                   style={selectedCategoryName ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
@@ -305,6 +325,25 @@ export default function CreateProductScreen() {
               </Pressable>
             </View>
           </View>
+
+          {isAgriculture && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.label}>Sold by Weight (Weight Unit) *</Text>
+              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('weight_unit')}>
+                <Text 
+                  style={formData.weight_unit ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
+                  numberOfLines={1}
+                >
+                  {formData.weight_unit ? (
+                    formData.weight_unit === 'Kg' ? 'Kilograms (Kg)' :
+                    formData.weight_unit === 'g' ? 'Grams (g)' :
+                    formData.weight_unit === 'Tons' ? 'Tons (Tons)' : formData.weight_unit
+                  ) : 'Select Weight Unit'}
+                </Text>
+                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -465,7 +504,8 @@ export default function CreateProductScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {activeModal === 'category' ? 'Select Category' : 'Select Quality Grade'}
+                {activeModal === 'category' ? 'Select Category' : 
+                 activeModal === 'grade' ? 'Select Quality Grade' : 'Select Weight Unit'}
               </Text>
               <Pressable onPress={() => setActiveModal(null)}>
                 <FontAwesome name="times-circle" size={24} color={Theme.textMuted} />
@@ -517,7 +557,7 @@ export default function CreateProductScreen() {
                     </Pressable>
                   ))}
                 </>
-              ) : (
+              ) : activeModal === 'grade' ? (
                 <>
                   <Pressable
                     style={[
@@ -560,6 +600,54 @@ export default function CreateProductScreen() {
                         {g.label}
                       </Text>
                       {formData.quality_grade === g.value && (
+                        <FontAwesome name="check" size={16} color={Theme.primary} />
+                      )}
+                    </Pressable>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    style={[
+                      styles.modalItem,
+                      !formData.weight_unit && styles.modalItemActive
+                    ]}
+                    onPress={() => {
+                      setFormData(f => ({ ...f, weight_unit: '' }));
+                      setActiveModal(null);
+                    }}
+                  >
+                    <Text style={[
+                      styles.modalItemText,
+                      !formData.weight_unit && styles.modalItemTextActive,
+                      { color: Theme.textMuted }
+                    ]}>
+                      No Weight Unit
+                    </Text>
+                  </Pressable>
+                  {[
+                    { value: 'Kg', label: 'Kilograms (Kg)' },
+                    { value: 'g', label: 'Grams (g)' },
+                    { value: 'Tons', label: 'Tons (Tons)' },
+                  ].map((u) => (
+                    <Pressable
+                      key={u.value}
+                      style={[
+                        styles.modalItem,
+                        formData.weight_unit === u.value && styles.modalItemActive
+                      ]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, weight_unit: u.value }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[
+                        styles.modalItemText,
+                        formData.weight_unit === u.value && styles.modalItemTextActive
+                      ]}>
+                        {u.label}
+                      </Text>
+                      {formData.weight_unit === u.value && (
                         <FontAwesome name="check" size={16} color={Theme.primary} />
                       )}
                     </Pressable>

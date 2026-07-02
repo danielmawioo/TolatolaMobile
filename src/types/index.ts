@@ -23,6 +23,8 @@ export interface Product {
   categories?: { name: string };
   colors?: { name: string; image?: string }[];
   sizes?: string[];
+  weight_unit?: string;
+  unit?: string;
   [key: string]: unknown;
 }
 
