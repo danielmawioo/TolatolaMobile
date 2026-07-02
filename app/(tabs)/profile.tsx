@@ -18,12 +18,13 @@ import { SupportSection } from '@/src/components/profile/SupportSection';
 import { KycVerificationSection } from '@/src/components/profile/KycVerificationSection';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
-type ProfileTab = 'personal' | 'kyc' | 'orders' | 'transactions' | 'support' | 'settings';
+type ProfileTab = 'personal' | 'kyc' | 'orders' | 'transactions' | 'support' | 'settings' | 'wishlist';
 
 const NAV_ITEMS: { id: ProfileTab; label: string; icon: string }[] = [
   { id: 'personal', label: 'Personal Info', icon: 'user' },
   { id: 'kyc', label: 'KYC Verification', icon: 'shield' },
   { id: 'orders', label: 'Order History', icon: 'shopping-bag' },
+  { id: 'wishlist', label: 'Wishlist', icon: 'heart-o' },
   { id: 'transactions', label: 'Transactions', icon: 'credit-card' },
   { id: 'support', label: 'Support Tickets', icon: 'headphones' },
   { id: 'settings', label: 'Settings', icon: 'cog' },
@@ -607,7 +608,13 @@ export default function ProfileScreen() {
             <View key={item.id}>
               <Pressable
                 style={[styles.navItemBtn, isActive && styles.navItemBtnActive]}
-                onPress={() => setActiveTab(item.id)}
+                onPress={() => {
+                  if (item.id === 'wishlist') {
+                    router.push('/(tabs)/favorites');
+                  } else {
+                    setActiveTab(item.id);
+                  }
+                }}
               >
                 <FontAwesome 
                   name={item.icon as any} 

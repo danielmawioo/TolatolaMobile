@@ -210,6 +210,13 @@ export default function GuestShopScreen() {
               <Text style={styles.shopTextBtnLabel}>Shop</Text>
             </Pressable>
             <Pressable
+              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }, { marginRight: 12 }]}
+              onPress={() => router.push('/(tabs)/favorites')}
+              hitSlop={10}
+            >
+              <FontAwesome name="heart-o" size={20} color={Theme.primary} />
+            </Pressable>
+            <Pressable
               style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]}
               onPress={() => router.push('/(tabs)/cart')}
               hitSlop={10}

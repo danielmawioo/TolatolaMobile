@@ -333,17 +333,24 @@ export default function GuestHomeScreen() {
                <Text style={styles.shopTextBtnLabel}>Shop</Text>
              </Pressable>
              <Pressable 
-               style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]} 
-               onPress={() => router.push('/(tabs)/cart')}
-               hitSlop={10}
-             >
-               <FontAwesome name="shopping-cart" size={22} color={Theme.primary} />
-               {cartItems.length > 0 && (
-                 <View style={styles.badge}>
-                   <Text style={styles.badgeText}>{cartItems.length > 99 ? '99+' : cartItems.length}</Text>
-                 </View>
-               )}
-             </Pressable>
+                style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }, { marginRight: 12 }]} 
+                onPress={() => router.push('/(tabs)/favorites')}
+                hitSlop={10}
+              >
+                <FontAwesome name="heart-o" size={20} color={Theme.primary} />
+              </Pressable>
+              <Pressable 
+                style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]} 
+                onPress={() => router.push('/(tabs)/cart')}
+                hitSlop={10}
+              >
+                <FontAwesome name="shopping-cart" size={22} color={Theme.primary} />
+                {cartItems.length > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{cartItems.length > 99 ? '99+' : cartItems.length}</Text>
+                  </View>
+                )}
+              </Pressable>
 
           </View>
         </View>
