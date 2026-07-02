@@ -423,7 +423,7 @@ export default function ProfileScreen() {
             <View style={[styles.roleCard, isApproved && styles.roleCardApproved, isPending && styles.roleCardPending, isRejected && styles.roleCardRejected]}>
               <View style={styles.roleCardHeader}>
                 <View style={[styles.roleIconBox, { backgroundColor: isApproved ? '#16a34a' : isPending ? '#d97706' : isRejected ? '#dc2626' : Theme.primary }]}>
-                  <FontAwesome name="store" size={18} color="#fff" />
+                  <FontAwesome name="shopping-bag" size={18} color="#fff" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.roleCardTitle}>Seller</Text>

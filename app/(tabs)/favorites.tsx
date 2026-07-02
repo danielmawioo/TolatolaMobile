@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '900',
     color: '#1E293B',
-    tracking: -0.5,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 13,

@@ -19,7 +19,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
   delivery_assignment: { icon: 'truck', color: '#ea580c', bg: '#fff7ed' },
   delivery_update: { icon: 'truck', color: '#0891b2', bg: '#ecfeff' },
   delivery_completed: { icon: 'check', color: '#16a34a', bg: '#dcfce7' },
-  vendor_order: { icon: 'store', color: '#7c3aed', bg: '#f3e8ff' },
+  vendor_order: { icon: 'shopping-bag', color: '#7c3aed', bg: '#f3e8ff' },
   payout: { icon: 'money', color: '#16a34a', bg: '#dcfce7' },
   subscription: { icon: 'star', color: '#eab308', bg: '#fefce8' },
   support_ticket: { icon: 'headphones', color: '#6366f1', bg: '#eef2ff' },
@@ -139,7 +139,7 @@ export default function NotificationsScreen() {
         </View>
         {unreadCount > 0 && (
           <Pressable style={s.markAllBtn} onPress={handleMarkAllRead}>
-            <FontAwesome name="check-double" size={12} color={Theme.primary} />
+            <FontAwesome name="check" size={12} color={Theme.primary} />
             <Text style={s.markAllText}>Mark all read</Text>
           </Pressable>
         )}

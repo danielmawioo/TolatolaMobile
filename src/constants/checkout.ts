@@ -11,13 +11,13 @@ export const TANZANIA_REGIONS = [
   "Zanzibar South and Central", "Zanzibar West",
 ];
 
-export const MOBILE_MONEY_PROVIDERS = [
+export const MOBILE_MONEY_PROVIDERS: readonly { id: string; name: string; provider: string; maintenance?: boolean }[] = [
   { id: 'airtel-money', name: 'Airtel Money', provider: 'Airtel' },
   { id: 'mixx-by-yas', name: 'Mixx by Yas', provider: 'Tigo Pesa' },
   { id: 'halopesa', name: 'HaloPesa', provider: 'Halotel' },
   { id: 'ezypesa', name: 'EzyPesa', provider: 'Zantel' },
   { id: 'm-pesa', name: 'M-Pesa', provider: 'Vodacom', maintenance: true },
-] as const;
+];
 
 export const CARD_PROVIDERS = [
   { id: 'visa', name: 'Visa' },

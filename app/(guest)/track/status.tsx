@@ -323,7 +323,7 @@ export default function TrackStatusScreen() {
       <View style={styles.actionsGrid}>
         <Pressable 
           style={[styles.actionBtn, styles.actionBtnOutline]}
-          onPress={() => router.push('/(guest)/contact')}
+          onPress={() => router.push('/(guest)/contact' as any)}
         >
           <FontAwesome name="comments-o" size={16} color={Theme.text} />
           <Text style={styles.actionBtnOutlineText}>Contact Support</Text>

@@ -169,7 +169,7 @@ export default function GuestProductDetailScreen() {
               <FontAwesome name="star" size={10} color={Theme.primary} style={{ marginRight: 6 }} />
               <Text style={styles.premiumBadgeText}>POPULAR</Text>
             </View>
-            {product.stock_quantity > 0 && (
+            {Number(product?.stock_quantity ?? product?.stock ?? 0) > 0 && (
               <View style={styles.dispatchBadge}>
                 <FontAwesome name="bolt" size={10} color={Theme.primary} style={{ marginRight: 6 }} />
                 <Text style={styles.dispatchBadgeText}>INSTANT DISPATCH</Text>
