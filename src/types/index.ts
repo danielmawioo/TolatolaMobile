@@ -21,8 +21,10 @@ export interface Product {
   quality_grade?: string;
   sku?: string;
   categories?: { name: string };
-  colors?: { name: string; image?: string }[];
+  category_name?: string;
+  colors?: { name: string; image?: string; price?: number }[];
   sizes?: string[];
+  size_prices?: Record<string, number> | null;
   weight_unit?: string;
   unit?: string;
   [key: string]: unknown;

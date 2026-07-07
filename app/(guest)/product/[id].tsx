@@ -83,11 +83,24 @@ export default function GuestProductDetailScreen() {
     }
   };
 
+  const isFashion = product?.categories?.name?.toLowerCase() === "fashion" ||
+                    product?.category_name?.toLowerCase() === "fashion" ||
+                    (product?.colors && product.colors.length > 0) ||
+                    (product?.sizes && product.sizes.length > 0);
+
+  const resolvedPrice = (isFashion && selectedSize && product?.size_prices?.[selectedSize])
+    ? Number(product.size_prices[selectedSize])
+    : ((isFashion && selectedColor?.price) ? Number(selectedColor.price) : Number(product?.price || 0));
+
   const handleAddToCart = async () => {
     if (!product) return;
     setAdding(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await addItem(product, quantity, selectedColor, selectedSize || undefined);
+    const productWithResolvedPrice = {
+      ...product,
+      price: resolvedPrice
+    };
+    await addItem(productWithResolvedPrice, quantity, selectedColor, selectedSize || undefined);
     setAdding(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.push('/(tabs)/cart');
@@ -221,7 +234,7 @@ export default function GuestProductDetailScreen() {
           {/* Color & Size Selector */}
           {(product.colors && Array.isArray(product.colors) && product.colors.length > 0) && (
             <View style={styles.selectorSection}>
-              <Text style={styles.selectorTitle}>CHOOSE COLOR</Text>
+              <Text style={styles.selectorTitle}>CHOOSE COLOR{selectedColor?.price ? ` (TZS ${selectedColor.price.toLocaleString()})` : ""}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorList}>
                 {product.colors.map((color: any, idx: number) => {
                   const isSelected = selectedColor?.name === color.name;
@@ -239,7 +252,7 @@ export default function GuestProductDetailScreen() {
                     >
                       <View style={styles.colorImageWrapper}>
                         {color.image ? (
-                          <OptimizedImage source={color.image} width={40} aspectRatio={1} style={styles.colorRoundImage} />
+                           <OptimizedImage source={color.image} width={40} aspectRatio={1} style={styles.colorRoundImage} />
                         ) : (
                           <View style={[styles.colorRoundPlaceholder, { backgroundColor: color.name.toLowerCase() }]} />
                         )}
@@ -269,12 +282,22 @@ export default function GuestProductDetailScreen() {
                       }}
                       style={[
                         styles.sizeBadge,
-                        isSelected && styles.sizeBadgeSelected
+                        isSelected && styles.sizeBadgeSelected,
+                        { flexDirection: 'column', alignItems: 'center', gap: 2 }
                       ]}
                     >
                       <Text style={[styles.sizeBadgeText, isSelected && styles.sizeBadgeTextActive]}>
                         {size}
                       </Text>
+                      {product.size_prices?.[size] && (
+                        <Text style={{
+                          fontSize: 8,
+                          fontWeight: 'bold',
+                          color: isSelected ? Theme.primary : '#64748b'
+                        }}>
+                          TZS {product.size_prices[size].toLocaleString()}
+                        </Text>
+                      )}
                     </Pressable>
                   );
                 })}
@@ -296,7 +319,7 @@ export default function GuestProductDetailScreen() {
 
           <View style={styles.priceCard}>
             <View style={styles.priceRow}>
-              <Text style={styles.price}>{product.price?.toLocaleString() || '0'}</Text>
+              <Text style={styles.price}>{resolvedPrice?.toLocaleString() || '0'}</Text>
               <Text style={styles.currency}>{(product.currency || 'TZS') + (product.weight_unit ? ` / ${product.weight_unit}` : '')}</Text>
             </View>
 
