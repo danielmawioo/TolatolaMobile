@@ -506,6 +506,16 @@ export default function GuestProductDetailScreen() {
                 )}
               </>
             )}
+
+            {/* Drinks Specifications */}
+            {product.drink_section && (
+              <View style={styles.metadataRow}>
+                <Text style={styles.metadataLabel}>Drink Type</Text>
+                <Text style={styles.metadataValue}>
+                  {product.drink_section === 'alcoholic' ? 'Alcoholic' : 'Non-Alcoholic'}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Reviews */}

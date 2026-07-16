@@ -27,6 +27,27 @@ export interface Product {
   size_prices?: Record<string, number> | null;
   weight_unit?: string;
   unit?: string;
+  
+  // Vehicles metadata
+  vehicle_section?: string;
+  brand?: string;
+  model?: string;
+  year?: number | string;
+  mileage?: number;
+  transmission?: string;
+  fuel_type?: string;
+  engine_size?: string;
+  part_number?: string;
+  compatibility?: string;
+  condition?: string;
+
+  // Ready to Eat metadata
+  dietary_info?: string;
+  prep_time?: string;
+
+  // Drinks metadata
+  drink_section?: string;
+
   [key: string]: unknown;
 }
 

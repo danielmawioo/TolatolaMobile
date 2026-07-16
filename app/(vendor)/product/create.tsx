@@ -19,7 +19,15 @@ export default function CreateProductScreen() {
   // Image states
   const [images, setImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
-  
+  const [formData, setFormData] = useState({
+    name: '',
+    price: '',
+    description: '',
+    stock_quantity: '',
+    moq: '1',
+    category_id: '',
+    quality_grade: '',
+    location: '',
     weight_unit: '',
     // Vehicles fields
     vehicle_section: '', // vehicle | spare_part
@@ -36,10 +44,12 @@ export default function CreateProductScreen() {
     // Ready to eat
     dietary_info: '',
     prep_time: '',
+    // Drinks
+    drink_section: '',
   });
 
   // Picker Modal states
-  const [activeModal, setActiveModal] = useState<'category' | 'grade' | 'weight_unit' | 'vehicle_section' | 'transmission' | 'fuel_type' | 'condition' | 'dietary_info' | 'prep_time' | null>(null);
+  const [activeModal, setActiveModal] = useState<'category' | 'grade' | 'weight_unit' | 'vehicle_section' | 'transmission' | 'fuel_type' | 'condition' | 'dietary_info' | 'prep_time' | 'drink_section' | null>(null);
 
   // Fashion variation states
   const [colors, setColors] = useState<{ name: string; image: string }[]>([]);
@@ -160,6 +170,7 @@ export default function CreateProductScreen() {
         compatibility: (isVehicles && formData.vehicle_section === 'spare_part') ? (formData.compatibility || null) : null,
         dietary_info: isReadyToEat ? (formData.dietary_info || null) : null,
         prep_time: isReadyToEat ? (formData.prep_time || null) : null,
+        drink_section: isDrinks ? (formData.drink_section || null) : null,
       }, session?.access_token);
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -178,6 +189,7 @@ export default function CreateProductScreen() {
   const isAgriculture = selectedCategoryName?.toLowerCase() === 'agriculture';
   const isVehicles = selectedCategoryName?.toLowerCase() === 'vehicles';
   const isReadyToEat = selectedCategoryName?.toLowerCase() === 'ready to eat' || selectedCategoryName?.toLowerCase() === 'ready-to-eat';
+  const isDrinks = selectedCategoryName?.toLowerCase() === 'drinks';
 
   useEffect(() => {
     if (!isAgriculture && formData.weight_unit) {
@@ -498,6 +510,20 @@ export default function CreateProductScreen() {
             </View>
           )}
 
+          {isDrinks && (
+            <View style={[styles.variationsSection, { marginTop: 12 }]}>
+              <Text style={styles.variationsTitle}>Drinks Details</Text>
+
+              <Text style={styles.label}>Section *</Text>
+              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('drink_section')}>
+                <Text style={formData.drink_section ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                  {formData.drink_section === 'alcoholic' ? 'Alcoholic' : formData.drink_section === 'non_alcoholic' ? 'Non-Alcoholic' : 'Select Section'}
+                </Text>
+                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
+
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>Min Order Quantity (MOQ)</Text>
@@ -658,7 +684,10 @@ export default function CreateProductScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {activeModal === 'category' ? 'Select Category' : 
-                 activeModal === 'grade' ? 'Select Quality Grade' : 'Select Weight Unit'}
+                 activeModal === 'grade' ? 'Select Quality Grade' : 
+                 activeModal === 'weight_unit' ? 'Select Weight Unit' :
+                 activeModal === 'drink_section' ? 'Select Drink Type' :
+                 'Select Option'}
               </Text>
               <Pressable onPress={() => setActiveModal(null)}>
                 <FontAwesome name="times-circle" size={24} color={Theme.textMuted} />
@@ -758,7 +787,7 @@ export default function CreateProductScreen() {
                     </Pressable>
                   ))}
                 </>
-              ) : (
+              ) : activeModal === 'weight_unit' ? (
                 <>
                   <Pressable
                     style={[
@@ -914,7 +943,27 @@ export default function CreateProductScreen() {
                     </Pressable>
                   ))}
                 </>
-              )}
+              ) : activeModal === 'drink_section' ? (
+                <>
+                  {[
+                    { label: 'Alcoholic', value: 'alcoholic' },
+                    { label: 'Non-Alcoholic', value: 'non_alcoholic' }
+                  ].map((item) => (
+                    <Pressable
+                      key={item.value}
+                      style={[styles.modalItem, formData.drink_section === item.value && styles.modalItemActive]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, drink_section: item.value }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, formData.drink_section === item.value && styles.modalItemTextActive]}>
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : null}
             </ScrollView>
           </View>
         </Pressable>
