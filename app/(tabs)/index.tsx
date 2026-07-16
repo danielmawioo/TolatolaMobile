@@ -291,10 +291,7 @@ export default function GuestHomeScreen() {
             <View style={styles.logoBox}>
                <OptimizedImage source="https://tolatola.co/logo-new.png" width="100%" height="100%" resizeMode="contain" />
             </View>
-            <View>
-              <Text style={styles.logoTitle}>TOLA.</Text>
-              <Text style={styles.logoSubtitle}>YOUR TRADE PARTNER</Text>
-            </View>
+            <Text style={styles.logoTitle}>TOLA.</Text>
           </Pressable>
           <View style={styles.headerRight}>
              {/* Show dashboard buttons for ALL approved roles */}
@@ -337,7 +334,7 @@ export default function GuestHomeScreen() {
                <Text style={styles.shopTextBtnLabel}>Shop</Text>
              </Pressable>
              <Pressable 
-                style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }, { marginRight: 12 }]} 
+                style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }, { marginRight: 4 }]} 
                 onPress={() => router.push('/(tabs)/favorites')}
                 hitSlop={10}
               >
@@ -726,12 +723,12 @@ const styles = StyleSheet.create({
   logoGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   logoBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#fff',
     borderWidth: 2,
@@ -753,13 +750,13 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 10,
   },
   iconButton: {
     position: 'relative',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Theme.inputBg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -787,11 +784,11 @@ const styles = StyleSheet.create({
   shopTextBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: Theme.primary + '15',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 18,
     borderWidth: 1.5,
     borderColor: Theme.primary + '40',
   },
