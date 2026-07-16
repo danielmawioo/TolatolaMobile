@@ -317,15 +317,25 @@ export default function CheckoutScreen() {
       setIsAwaitingPayment(true);
 
       // Use the mobile-specific payment endpoint
+      const payBody: any = {
+        orderId,
+        provider: paymentMethod,
+        amount: total,
+        currency: 'TZS',
+      };
+      if (isCard) {
+        payBody.paymentDetails = {
+          cardNumber: cardDetails.number || '',
+          expiryDate: cardDetails.expiry || '',
+          cvv: cardDetails.cvv || '',
+        };
+      } else {
+        payBody.phone = paymentPhone;
+      }
+
       const payRes = await apiPost<any>(
         '/payments/mobile/initiate',
-        {
-          orderId,
-          provider: paymentMethod,
-          phone: paymentPhone,
-          amount: total,
-          currency: 'TZS',
-        },
+        payBody,
         session?.access_token
       );
 

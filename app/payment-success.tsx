@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as WebBrowser from 'expo-web-browser';
 import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
 import { apiGet } from '@/src/services/api';
@@ -42,6 +43,19 @@ export default function PaymentSuccessScreen() {
   const pmMethod = params.paymentMethod || '';
   const isCod = pmMethod === 'cash-on-delivery';
   const isBank = ['crdb-simbanking', 'crdb-internet-banking', 'crdb-wakala', 'crdb-branch-otc'].includes(pmMethod);
+  const isCard = ['visa', 'mastercard', 'unionpay'].includes(pmMethod);
+  const cardBrowserOpened = useRef(false);
+
+  // Auto-open ClickPesa hosted payment page for card payments
+  useEffect(() => {
+    const paymentUrl = params.controlNumber || order?.stripe_payment_intent_id;
+    if (isCard && paymentStatus !== 'paid' && paymentUrl && paymentUrl.startsWith('http') && !cardBrowserOpened.current) {
+      cardBrowserOpened.current = true;
+      WebBrowser.openBrowserAsync(paymentUrl).catch((err) => {
+        console.error('[PAYMENT_SUCCESS] Failed to open card payment browser:', err);
+      });
+    }
+  }, [isCard, paymentStatus, params.controlNumber, order?.stripe_payment_intent_id]);
 
   // Fetch order details
   useEffect(() => {
@@ -138,6 +152,7 @@ export default function PaymentSuccessScreen() {
                 {['m-pesa', 'airtel-money', 'halopesa', 'mixx-by-yas', 'ezypesa'].includes(pmMethod)
                   ? 'Please check your phone and approve the USSD prompt.'
                   : isBank ? 'Use the control number to complete payment.'
+                  : isCard ? 'Please complete your payment on the secure payment page.'
                   : 'Your payment is being verified.'}
               </Text>
             </View>
@@ -184,6 +199,33 @@ export default function PaymentSuccessScreen() {
             </View>
           </View>
         )}
+
+        {/* Card Payment Link */}
+        {paymentStatus !== 'paid' && isCard && (() => {
+          const paymentUrl = params.controlNumber || order?.stripe_payment_intent_id;
+          return paymentUrl && paymentUrl.startsWith('http') ? (
+            <View style={styles.controlNumberCard}>
+              <View style={styles.controlNumberHeader}>
+                <FontAwesome name="credit-card" size={16} color={Theme.primary} />
+                <Text style={styles.controlNumberTitle}>Complete Card Payment</Text>
+              </View>
+              <Text style={styles.cardPaymentDesc}>
+                Tap the button below to open the secure payment gateway and complete your card transaction.
+              </Text>
+              <Pressable
+                style={styles.cardPaymentBtn}
+                onPress={() => {
+                  WebBrowser.openBrowserAsync(paymentUrl).catch((err) => {
+                    console.error('[PAYMENT_SUCCESS] Failed to open card payment browser:', err);
+                  });
+                }}
+              >
+                <FontAwesome name="external-link" size={16} color="#fff" />
+                <Text style={styles.cardPaymentBtnText}>Pay Securely with Card</Text>
+              </Pressable>
+            </View>
+          ) : null;
+        })()}
 
         {/* Order Tracking Progress */}
         <View style={styles.trackingCard}>
@@ -409,4 +451,12 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: Theme.inputBorder, backgroundColor: Theme.background,
   },
   secondaryActionText: { fontSize: 15, fontWeight: '700', color: Theme.text },
+  // Card payment
+  cardPaymentDesc: { fontSize: 12, color: Theme.textMuted, lineHeight: 18 },
+  cardPaymentBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: Theme.radiusMd,
+    ...Theme.shadowMd,
+  },
+  cardPaymentBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });
