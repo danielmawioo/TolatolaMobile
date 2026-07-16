@@ -22,7 +22,7 @@ export default function EditProductScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   
   // Picker Modal states
-  const [activeModal, setActiveModal] = useState<'category' | 'grade' | 'weight_unit' | null>(null);
+  const [activeModal, setActiveModal] = useState<'category' | 'grade' | 'weight_unit' | 'vehicle_section' | 'transmission' | 'fuel_type' | 'condition' | 'dietary_info' | 'prep_time' | null>(null);
 
   // Fashion variation states
   const [colors, setColors] = useState<{ name: string; image: string }[]>([]);
@@ -32,17 +32,22 @@ export default function EditProductScreen() {
   const [sizes, setSizes] = useState<string[]>([]);
   const [newSize, setNewSize] = useState('');
 
-  const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    description: '',
-    location: '',
-    moq: '1',
-    stock_quantity: '',
-    category_id: '',
-    quality_grade: '',
-    delivery_available: true,
     weight_unit: '',
+    // Vehicles fields
+    vehicle_section: '', // vehicle | spare_part
+    brand: '',
+    model: '',
+    year: '',
+    mileage: '',
+    transmission: '',
+    fuel_type: '',
+    engine_size: '',
+    part_number: '',
+    compatibility: '',
+    condition: '',
+    // Ready to eat
+    dietary_info: '',
+    prep_time: '',
   });
 
   useEffect(() => {
@@ -72,6 +77,19 @@ export default function EditProductScreen() {
           quality_grade: product.quality_grade || '',
           delivery_available: product.delivery_available ?? true,
           weight_unit: product.weight_unit || '',
+          vehicle_section: product.vehicle_section || '',
+          brand: product.brand || '',
+          model: product.model || '',
+          year: product.year?.toString() || '',
+          mileage: product.mileage?.toString() || '',
+          transmission: product.transmission || '',
+          fuel_type: product.fuel_type || '',
+          engine_size: product.engine_size || '',
+          part_number: product.part_number || '',
+          compatibility: product.compatibility || '',
+          condition: product.condition || '',
+          dietary_info: product.dietary_info || '',
+          prep_time: product.prep_time || '',
         });
 
         setImages(product.images || []);
@@ -157,6 +175,19 @@ export default function EditProductScreen() {
         colors: isFashion ? colors : null,
         sizes: isFashion ? sizes : null,
         weight_unit: isAgriculture && formData.weight_unit ? formData.weight_unit : null,
+        vehicle_section: isVehicles ? (formData.vehicle_section || null) : null,
+        brand: isVehicles ? (formData.brand || null) : null,
+        condition: isVehicles ? (formData.condition || null) : null,
+        model: (isVehicles && formData.vehicle_section === 'vehicle') ? (formData.model || null) : null,
+        year: (isVehicles && formData.vehicle_section === 'vehicle' && formData.year) ? parseInt(formData.year) : null,
+        mileage: (isVehicles && formData.vehicle_section === 'vehicle' && formData.mileage) ? parseInt(formData.mileage) : null,
+        transmission: (isVehicles && formData.vehicle_section === 'vehicle') ? (formData.transmission || null) : null,
+        fuel_type: (isVehicles && formData.vehicle_section === 'vehicle') ? (formData.fuel_type || null) : null,
+        engine_size: (isVehicles && formData.vehicle_section === 'vehicle') ? (formData.engine_size || null) : null,
+        part_number: (isVehicles && formData.vehicle_section === 'spare_part') ? (formData.part_number || null) : null,
+        compatibility: (isVehicles && formData.vehicle_section === 'spare_part') ? (formData.compatibility || null) : null,
+        dietary_info: isReadyToEat ? (formData.dietary_info || null) : null,
+        prep_time: isReadyToEat ? (formData.prep_time || null) : null,
         updated_at: new Date().toISOString(),
       }, session?.access_token);
       
@@ -182,6 +213,8 @@ export default function EditProductScreen() {
   const selectedCategoryName = categories.find(c => c.id === formData.category_id)?.name;
   const isFashion = selectedCategoryName?.toLowerCase() === 'fashion';
   const isAgriculture = selectedCategoryName?.toLowerCase() === 'agriculture';
+  const isVehicles = selectedCategoryName?.toLowerCase() === 'vehicles';
+  const isReadyToEat = selectedCategoryName?.toLowerCase() === 'ready to eat' || selectedCategoryName?.toLowerCase() === 'ready-to-eat';
 
   useEffect(() => {
     if (!isAgriculture && formData.weight_unit) {
@@ -369,6 +402,139 @@ export default function EditProductScreen() {
             </View>
           )}
 
+          {isVehicles && (
+            <View style={[styles.variationsSection, { marginTop: 12 }]}>
+              <Text style={styles.variationsTitle}>Vehicles / Spare Parts Details</Text>
+              
+              <Text style={styles.label}>Section *</Text>
+              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('vehicle_section')}>
+                <Text style={formData.vehicle_section ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                  {formData.vehicle_section === 'vehicle' ? 'Vehicle' : formData.vehicle_section === 'spare_part' ? 'Spare Part' : 'Select Section'}
+                </Text>
+                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+              </Pressable>
+
+              <Text style={styles.label}>Brand / Make</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.brand}
+                onChangeText={(t) => setFormData(f => ({ ...f, brand: t }))}
+                placeholder="e.g. Toyota, Honda"
+                placeholderTextColor={Theme.textMuted}
+              />
+
+              <Text style={styles.label}>Condition</Text>
+              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('condition')}>
+                <Text style={formData.condition ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                  {formData.condition || 'Select Condition'}
+                </Text>
+                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+              </Pressable>
+
+              {formData.vehicle_section === 'vehicle' && (
+                <View style={{ gap: 12 }}>
+                  <Text style={styles.label}>Model</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.model}
+                    onChangeText={(t) => setFormData(f => ({ ...f, model: t }))}
+                    placeholder="e.g. Corolla, Civic"
+                    placeholderTextColor={Theme.textMuted}
+                  />
+
+                  <Text style={styles.label}>Year</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.year}
+                    onChangeText={(t) => setFormData(f => ({ ...f, year: t }))}
+                    placeholder="e.g. 2020"
+                    placeholderTextColor={Theme.textMuted}
+                    keyboardType="numeric"
+                  />
+
+                  <Text style={styles.label}>Mileage (km)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.mileage}
+                    onChangeText={(t) => setFormData(f => ({ ...f, mileage: t }))}
+                    placeholder="e.g. 50000"
+                    placeholderTextColor={Theme.textMuted}
+                    keyboardType="numeric"
+                  />
+
+                  <Text style={styles.label}>Transmission</Text>
+                  <Pressable style={styles.pickerButton} onPress={() => setActiveModal('transmission')}>
+                    <Text style={formData.transmission ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                      {formData.transmission || 'Select Transmission'}
+                    </Text>
+                    <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+                  </Pressable>
+
+                  <Text style={styles.label}>Fuel Type</Text>
+                  <Pressable style={styles.pickerButton} onPress={() => setActiveModal('fuel_type')}>
+                    <Text style={formData.fuel_type ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                      {formData.fuel_type || 'Select Fuel Type'}
+                    </Text>
+                    <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+                  </Pressable>
+
+                  <Text style={styles.label}>Engine Size</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.engine_size}
+                    onChangeText={(t) => setFormData(f => ({ ...f, engine_size: t }))}
+                    placeholder="e.g. 2.0L, 1500cc"
+                    placeholderTextColor={Theme.textMuted}
+                  />
+                </View>
+              )}
+
+              {formData.vehicle_section === 'spare_part' && (
+                <View style={{ gap: 12 }}>
+                  <Text style={styles.label}>Part Number</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.part_number}
+                    onChangeText={(t) => setFormData(f => ({ ...f, part_number: t }))}
+                    placeholder="OEM / Manufacturer Part #"
+                    placeholderTextColor={Theme.textMuted}
+                  />
+
+                  <Text style={styles.label}>Compatible Vehicles</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.compatibility}
+                    onChangeText={(t) => setFormData(f => ({ ...f, compatibility: t }))}
+                    placeholder="e.g. Toyota Corolla 2015-2020"
+                    placeholderTextColor={Theme.textMuted}
+                  />
+                </View>
+              )}
+            </View>
+          )}
+
+          {isReadyToEat && (
+            <View style={[styles.variationsSection, { marginTop: 12 }]}>
+              <Text style={styles.variationsTitle}>Ready to Eat Details</Text>
+
+              <Text style={styles.label}>Dietary Information</Text>
+              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('dietary_info')}>
+                <Text style={formData.dietary_info ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                  {formData.dietary_info || 'Select Dietary Info'}
+                </Text>
+                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+              </Pressable>
+
+              <Text style={styles.label}>Preparation Time</Text>
+              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('prep_time')}>
+                <Text style={formData.prep_time ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                  {formData.prep_time || 'Select Prep Time'}
+                </Text>
+                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
+
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>Min Order Quantity (MOQ)</Text>
@@ -529,7 +695,15 @@ export default function EditProductScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {activeModal === 'category' ? 'Select Category' : 'Select Quality Grade'}
+                {activeModal === 'category' ? 'Select Category' :
+                 activeModal === 'grade' ? 'Select Quality Grade' :
+                 activeModal === 'weight_unit' ? 'Select Weight Unit' :
+                 activeModal === 'vehicle_section' ? 'Select Section' :
+                 activeModal === 'transmission' ? 'Select Transmission' :
+                 activeModal === 'fuel_type' ? 'Select Fuel Type' :
+                 activeModal === 'condition' ? 'Select Condition' :
+                 activeModal === 'dietary_info' ? 'Select Dietary Info' :
+                 activeModal === 'prep_time' ? 'Select Prep Time' : 'Select Option'}
               </Text>
               <Pressable onPress={() => setActiveModal(null)}>
                 <FontAwesome name="times-circle" size={24} color={Theme.textMuted} />
@@ -626,6 +800,135 @@ export default function EditProductScreen() {
                       {formData.quality_grade === g.value && (
                         <FontAwesome name="check" size={16} color={Theme.primary} />
                       )}
+                    </Pressable>
+                  ))}
+                </>
+              ) : activeModal === 'weight_unit' ? (
+                <>
+                  {[
+                    { value: 'Kg', label: 'Kilograms (Kg)' },
+                    { value: 'g', label: 'Grams (g)' },
+                    { value: 'Tons', label: 'Tons (Tons)' },
+                  ].map((u) => (
+                    <Pressable
+                      key={u.value}
+                      style={[styles.modalItem, formData.weight_unit === u.value && styles.modalItemActive]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, weight_unit: u.value }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, formData.weight_unit === u.value && styles.modalItemTextActive]}>
+                        {u.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : activeModal === 'vehicle_section' ? (
+                <>
+                  {[
+                    { value: 'vehicle', label: 'Vehicle' },
+                    { value: 'spare_part', label: 'Spare Part' },
+                  ].map((x) => (
+                    <Pressable
+                      key={x.value}
+                      style={[styles.modalItem, formData.vehicle_section === x.value && styles.modalItemActive]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, vehicle_section: x.value }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, formData.vehicle_section === x.value && styles.modalItemTextActive]}>
+                        {x.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : activeModal === 'transmission' ? (
+                <>
+                  {[
+                    { value: 'Automatic', label: 'Automatic' },
+                    { value: 'Manual', label: 'Manual' },
+                  ].map((x) => (
+                    <Pressable
+                      key={x.value}
+                      style={[styles.modalItem, formData.transmission === x.value && styles.modalItemActive]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, transmission: x.value }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, formData.transmission === x.value && styles.modalItemTextActive]}>
+                        {x.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : activeModal === 'fuel_type' ? (
+                <>
+                  {['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Other'].map((fType) => (
+                    <Pressable
+                      key={fType}
+                      style={[styles.modalItem, formData.fuel_type === fType && styles.modalItemActive]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, fuel_type: fType }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, formData.fuel_type === fType && styles.modalItemTextActive]}>
+                        {fType}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : activeModal === 'condition' ? (
+                <>
+                  {['New', 'Used', 'Reconditioned'].map((cond) => (
+                    <Pressable
+                      key={cond}
+                      style={[styles.modalItem, formData.condition === cond && styles.modalItemActive]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, condition: cond }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, formData.condition === cond && styles.modalItemTextActive]}>
+                        {cond}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : activeModal === 'dietary_info' ? (
+                <>
+                  {['Halal', 'Vegetarian', 'Vegan', 'Gluten-Free', 'None'].map((dInfo) => (
+                    <Pressable
+                      key={dInfo}
+                      style={[styles.modalItem, formData.dietary_info === dInfo && styles.modalItemActive]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, dietary_info: dInfo }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, formData.dietary_info === dInfo && styles.modalItemTextActive]}>
+                        {dInfo}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : activeModal === 'prep_time' ? (
+                <>
+                  {['Ready Now', '5-10 min', '10-20 min', '20-30 min', '30-60 min', '1+ hour'].map((pTime) => (
+                    <Pressable
+                      key={pTime}
+                      style={[styles.modalItem, formData.prep_time === pTime && styles.modalItemActive]}
+                      onPress={() => {
+                        setFormData(f => ({ ...f, prep_time: pTime }));
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, formData.prep_time === pTime && styles.modalItemTextActive]}>
+                        {pTime}
+                      </Text>
                     </Pressable>
                   ))}
                 </>

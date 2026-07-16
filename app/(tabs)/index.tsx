@@ -31,6 +31,8 @@ const categoryImages: Record<string, string> = {
   "health-beauty": "https://tolatola.co/beauty-and-skincare-products.jpg",
   services: "https://tolatola.co/professional-services-and-business.jpg",
   vehicles: "https://tolatola.co/category-vehicles.jpg",
+  "ready-to-eat": "https://tolatola.co/delicious-food-and-beverages.jpg",
+  "spare-parts": "https://tolatola.co/category-vehicles.jpg",
   default: "https://tolatola.co/placeholder.jpg",
 };
 
@@ -245,6 +247,8 @@ export default function GuestHomeScreen() {
       return categoryImages[cat.slug];
     }
     const nameLower = (cat.name || '').toLowerCase();
+    if (nameLower.includes('ready to eat') || nameLower.includes('ready-to-eat')) return categoryImages["ready-to-eat"];
+    if (nameLower.includes('spare') || nameLower.includes('part')) return categoryImages["spare-parts"];
     if (nameLower.includes('agri') || nameLower.includes('farm')) return categoryImages.agriculture;
     if (nameLower.includes('food') || nameLower.includes('bev') || nameLower.includes('beverage')) return categoryImages["food-beverages"];
     if (nameLower.includes('construct') || nameLower.includes('hard') || nameLower.includes('hardware')) return categoryImages["construction-hardware"];

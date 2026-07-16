@@ -404,6 +404,108 @@ export default function GuestProductDetailScreen() {
               <Text style={styles.metadataLabel}>Category Node</Text>
               <Text style={styles.metadataValue}>{product.categories?.name || 'Inventory'}</Text>
             </View>
+
+            {/* Vehicle Specifications */}
+            {product.vehicle_section === 'vehicle' && (
+              <>
+                {product.brand && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Brand / Make</Text>
+                    <Text style={styles.metadataValue}>{product.brand}</Text>
+                  </View>
+                )}
+                {product.model && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Model</Text>
+                    <Text style={styles.metadataValue}>{product.model}</Text>
+                  </View>
+                )}
+                {product.year && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Year</Text>
+                    <Text style={styles.metadataValue}>{product.year}</Text>
+                  </View>
+                )}
+                {product.mileage != null && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Mileage</Text>
+                    <Text style={styles.metadataValue}>{product.mileage.toLocaleString()} km</Text>
+                  </View>
+                )}
+                {product.transmission && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Transmission</Text>
+                    <Text style={styles.metadataValue}>{product.transmission}</Text>
+                  </View>
+                )}
+                {product.fuel_type && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Fuel Type</Text>
+                    <Text style={styles.metadataValue}>{product.fuel_type}</Text>
+                  </View>
+                )}
+                {product.engine_size && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Engine Size</Text>
+                    <Text style={styles.metadataValue}>{product.engine_size}</Text>
+                  </View>
+                )}
+                {product.condition && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Condition</Text>
+                    <Text style={styles.metadataValue}>{product.condition}</Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Spare Parts Specifications */}
+            {product.vehicle_section === 'spare_part' && (
+              <>
+                {product.brand && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Brand</Text>
+                    <Text style={styles.metadataValue}>{product.brand}</Text>
+                  </View>
+                )}
+                {product.part_number && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Part Number</Text>
+                    <Text style={styles.metadataValue}>{product.part_number}</Text>
+                  </View>
+                )}
+                {product.compatibility && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Compatible Vehicles</Text>
+                    <Text style={styles.metadataValue}>{product.compatibility}</Text>
+                  </View>
+                )}
+                {product.condition && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Condition</Text>
+                    <Text style={styles.metadataValue}>{product.condition}</Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Ready to Eat Specifications */}
+            {(product.dietary_info || product.prep_time) && (
+              <>
+                {product.dietary_info && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Dietary Info</Text>
+                    <Text style={styles.metadataValue}>{product.dietary_info}</Text>
+                  </View>
+                )}
+                {product.prep_time && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Prep Time</Text>
+                    <Text style={styles.metadataValue}>{product.prep_time}</Text>
+                  </View>
+                )}
+              </>
+            )}
           </View>
 
           {/* Reviews */}
