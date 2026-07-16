@@ -87,11 +87,10 @@ export default function CategoriesScreen() {
     try {
       const res = await apiGet<{ data: Category[] }>('/categories');
       if (res?.data) {
-        // Sort alphabetically by name
-        const sorted = res.data.sort((a, b) => a.name.localeCompare(b.name));
-        setCategories(sorted);
+        // Use categories in the order returned by the API
+        setCategories(res.data);
         setIsOffline(false);
-        await setCachedData(CACHE_KEYS.CATEGORIES, sorted);
+        await setCachedData(CACHE_KEYS.CATEGORIES, res.data);
       }
     } catch (error) {
       console.error('Failed to load categories, trying cache', error);
