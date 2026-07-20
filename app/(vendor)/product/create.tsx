@@ -548,12 +548,21 @@ export default function CreateProductScreen() {
               <Text style={styles.variationsTitle}>Drinks Details</Text>
 
               <Text style={styles.label}>Section *</Text>
-              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('drink_section')}>
-                <Text style={formData.drink_section ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
-                  {formData.drink_section === 'alcoholic' ? 'Alcoholic' : formData.drink_section === 'non_alcoholic' ? 'Non-Alcoholic' : 'Select Section'}
-                </Text>
-                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
-              </Pressable>
+              {formData.drink_section ? (
+                <View style={[styles.pickerButton, { backgroundColor: Theme.backgroundSecondary }]}>
+                  <Text style={styles.pickerButtonText}>
+                    {formData.drink_section === 'alcoholic' ? '🍹 Alcoholic' : '🥤 Non-Alcoholic'}
+                  </Text>
+                  <Text style={[styles.pickerButtonPlaceholder, { fontSize: 10 }]}>(from subcategory)</Text>
+                </View>
+              ) : (
+                <Pressable style={styles.pickerButton} onPress={() => setActiveModal('drink_section')}>
+                  <Text style={formData.drink_section ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                    {formData.drink_section === 'alcoholic' ? 'Alcoholic' : formData.drink_section === 'non_alcoholic' ? 'Non-Alcoholic' : 'Select Section'}
+                  </Text>
+                  <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+                </Pressable>
+              )}
             </View>
           )}
 
@@ -793,12 +802,15 @@ export default function CreateProductScreen() {
                       ]}
                       onPress={() => {
                         setSubCategoryId(cat.id);
-                        setFormData(f => ({ ...f, category_id: cat.id }));
-                        // Auto-derive vehicle_section from subcategory slug
+                        // Auto-derive vehicle_section / drink_section from subcategory slug
                         if (cat.slug === 'spare-parts') {
                           setFormData(f => ({ ...f, category_id: cat.id, vehicle_section: 'spare_part' }));
                         } else if (cat.slug === 'vehicles-sub') {
                           setFormData(f => ({ ...f, category_id: cat.id, vehicle_section: 'vehicle' }));
+                        } else if (cat.slug === 'non-alcoholic') {
+                          setFormData(f => ({ ...f, category_id: cat.id, drink_section: 'non_alcoholic' }));
+                        } else if (cat.slug === 'alcoholic') {
+                          setFormData(f => ({ ...f, category_id: cat.id, drink_section: 'alcoholic' }));
                         } else {
                           setFormData(f => ({ ...f, category_id: cat.id }));
                         }
