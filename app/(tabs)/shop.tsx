@@ -27,6 +27,7 @@ const categoryImages: Record<string, string> = {
   handicrafts: "https://tolatola.co/category-handicrafts.jpg",
   "food-beverages": "https://tolatola.co/category-food-beverages.jpg",
   textiles: "https://tolatola.co/category-textiles.jpg",
+  fashion: "https://tolatola.co/category-textiles.jpg",
   electronics: "https://tolatola.co/category-electronics.jpg",
   "home-garden": "https://tolatola.co/category-home-garden.jpg",
   "health-beauty": "https://tolatola.co/category-health-beauty.jpg",
@@ -84,7 +85,7 @@ export default function GuestShopScreen() {
     if (nameLower.includes('vehicle') || nameLower.includes('car') || nameLower.includes('auto') || nameLower.includes('motor')) return categoryImages.vehicles;
     if (nameLower.includes('handicraft') || nameLower.includes('craft')) return categoryImages.handicrafts;
     if (nameLower.includes('home') || nameLower.includes('garden')) return categoryImages["home-garden"];
-    if (nameLower.includes('textile') || nameLower.includes('fabric') || nameLower.includes('cloth')) return categoryImages.textiles;
+    if (nameLower.includes('textile') || nameLower.includes('fabric') || nameLower.includes('cloth') || nameLower.includes('fashion')) return categoryImages.textiles;
     return categoryImages.default;
   };
 
