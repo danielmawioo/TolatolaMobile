@@ -26,6 +26,7 @@ type Category = {
   name: string;
   slug: string;
   image_url?: string;
+  parent_id?: string | null;
 };
 
 // Fallback category images (exactly matching the website)
@@ -44,6 +45,7 @@ const categoryImages: Record<string, string> = {
   "ready-to-eat": "https://tolatola.co/delicious-food-and-beverages.jpg",
   "spare-parts": "https://tolatola.co/category-vehicles.jpg",
   drinks: "https://tolatola.co/delicious-food-and-beverages.jpg",
+  motorcycles: "https://tolatola.co/category-vehicles.jpg",
   default: "https://tolatola.co/placeholder.jpg",
 };
 
@@ -63,6 +65,7 @@ function getCategoryImage(cat: Category): string {
   if (nameLower.includes('health') || nameLower.includes('beauty')) return categoryImages["health-beauty"];
   if (nameLower.includes('service')) return categoryImages.services;
   if (nameLower.includes('fmcg') || nameLower.includes('fast') || nameLower.includes('moving')) return categoryImages["fast-moving-consumer-goods"];
+  if (nameLower.includes('motorcycle')) return categoryImages.motorcycles;
   if (nameLower.includes('vehicle') || nameLower.includes('car') || nameLower.includes('auto') || nameLower.includes('motor')) return categoryImages.vehicles;
   if (nameLower.includes('handicraft') || nameLower.includes('craft')) return categoryImages.handicrafts;
   if (nameLower.includes('home') || nameLower.includes('garden')) return categoryImages["home-garden"];
@@ -111,7 +114,7 @@ export default function CategoriesScreen() {
   }, []);
 
   const filteredCategories = categories.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+    !c.parent_id && c.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (

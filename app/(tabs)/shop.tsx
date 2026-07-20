@@ -35,6 +35,7 @@ const categoryImages: Record<string, string> = {
   "ready-to-eat": "https://tolatola.co/delicious-food-and-beverages.jpg",
   "spare-parts": "https://tolatola.co/category-vehicles.jpg",
   drinks: "https://tolatola.co/delicious-food-and-beverages.jpg",
+  motorcycles: "https://tolatola.co/category-vehicles.jpg",
   default: "https://tolatola.co/placeholder.jpg",
 };
 
@@ -76,6 +77,7 @@ export default function GuestShopScreen() {
     if (nameLower.includes('health') || nameLower.includes('beauty')) return categoryImages["health-beauty"];
     if (nameLower.includes('service')) return categoryImages.services;
     if (nameLower.includes('fmcg') || nameLower.includes('fast') || nameLower.includes('moving')) return categoryImages["fast-moving-consumer-goods"];
+    if (nameLower.includes('motorcycle')) return categoryImages.motorcycles;
     if (nameLower.includes('vehicle') || nameLower.includes('car') || nameLower.includes('auto') || nameLower.includes('motor')) return categoryImages.vehicles;
     if (nameLower.includes('handicraft') || nameLower.includes('craft')) return categoryImages.handicrafts;
     if (nameLower.includes('home') || nameLower.includes('garden')) return categoryImages["home-garden"];
@@ -277,7 +279,7 @@ export default function GuestShopScreen() {
           <FontAwesome name="th-large" size={12} color={!selectedCategory ? '#fff' : Theme.textSecondary} />
           <Text style={[styles.catPillText, !selectedCategory && styles.catPillTextActive]}>ALL CATEGORIES</Text>
         </Pressable>
-        {categories.map(c => (
+        {categories.filter((c: any) => !c.parent_id).map(c => (
           <Pressable
             key={c.id}
             style={[styles.catPill, selectedCategory === c.id && styles.catPillActive]}
@@ -290,6 +292,40 @@ export default function GuestShopScreen() {
           </Pressable>
         ))}
       </ScrollView>
+
+      {/* Subcategory pills bar */}
+      {(() => {
+        const activeCat = categories.find(c => c.id === selectedCategory);
+        const parentCat = activeCat?.parent_id
+          ? categories.find(c => c.id === activeCat.parent_id)
+          : activeCat;
+        const subCats = parentCat ? categories.filter(c => c.parent_id === parentCat.id) : [];
+        if (subCats.length === 0 || !parentCat) return null;
+        return (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={[styles.catNav, { paddingTop: 0, paddingBottom: 8, borderBottomWidth: 0 }]}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            <Pressable
+              style={[styles.catPill, selectedCategory === parentCat.id && styles.catPillActive]}
+              onPress={() => handleCategorySelect(parentCat.id)}
+            >
+              <Text style={[styles.catPillText, selectedCategory === parentCat.id && styles.catPillTextActive]}>All {parentCat.name}</Text>
+            </Pressable>
+            {subCats.map((sub: any) => (
+              <Pressable
+                key={sub.id}
+                style={[styles.catPill, selectedCategory === sub.id && styles.catPillActive]}
+                onPress={() => handleCategorySelect(sub.id)}
+              >
+                <Text style={[styles.catPillText, selectedCategory === sub.id && styles.catPillTextActive]}>{sub.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        );
+      })()}
 
       {/* ===== Products Grid ===== */}
       {loading ? (

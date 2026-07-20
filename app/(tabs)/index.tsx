@@ -34,6 +34,7 @@ const categoryImages: Record<string, string> = {
   "ready-to-eat": "https://tolatola.co/delicious-food-and-beverages.jpg",
   "spare-parts": "https://tolatola.co/category-vehicles.jpg",
   drinks: "https://tolatola.co/delicious-food-and-beverages.jpg",
+  motorcycles: "https://tolatola.co/category-vehicles.jpg",
   default: "https://tolatola.co/placeholder.jpg",
 };
 
@@ -258,6 +259,7 @@ export default function GuestHomeScreen() {
     if (nameLower.includes('health') || nameLower.includes('beauty')) return categoryImages["health-beauty"];
     if (nameLower.includes('service')) return categoryImages.services;
     if (nameLower.includes('fmcg') || nameLower.includes('fast') || nameLower.includes('moving')) return categoryImages["fast-moving-consumer-goods"];
+    if (nameLower.includes('motorcycle')) return categoryImages.motorcycles;
     if (nameLower.includes('vehicle') || nameLower.includes('car') || nameLower.includes('auto') || nameLower.includes('motor')) return categoryImages.vehicles;
     if (nameLower.includes('handicraft') || nameLower.includes('craft')) return categoryImages.handicrafts;
     if (nameLower.includes('home') || nameLower.includes('garden')) return categoryImages["home-garden"];
@@ -638,7 +640,7 @@ export default function GuestHomeScreen() {
           <Text style={styles.sectionSub}>Selections for you</Text>
           <Text style={styles.sectionTitle}>Shop by <Text style={styles.italicPrimary}>Category</Text></Text>
           <View style={styles.categoryGrid}>
-            {categories.slice(0, 12).map((cat) => (
+            {categories.filter((c: any) => !c.parent_id).slice(0, 12).map((cat) => (
               <Pressable key={cat.id} style={styles.categoryCard} onPress={() => router.push(`(tabs)/shop?category=${cat.id}` as any)}>
                 <OptimizedImage source={getCategoryImage(cat)} width="100%" aspectRatio={1.5} style={styles.categoryCardImg} />
                 <View style={styles.categoryCardOverlay}>

@@ -22,7 +22,9 @@ export default function EditProductScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   
   // Picker Modal states
-  const [activeModal, setActiveModal] = useState<'category' | 'grade' | 'weight_unit' | 'vehicle_section' | 'transmission' | 'fuel_type' | 'condition' | 'dietary_info' | 'prep_time' | 'drink_section' | null>(null);
+  const [activeModal, setActiveModal] = useState<'category' | 'subcategory' | 'grade' | 'weight_unit' | 'vehicle_section' | 'transmission' | 'fuel_type' | 'condition' | 'dietary_info' | 'prep_time' | 'drink_section' | null>(null);
+  const [parentCategoryId, setParentCategoryId] = useState('');
+  const [subCategoryId, setSubCategoryId] = useState('');
 
   // Fashion variation states
   const [colors, setColors] = useState<{ name: string; image: string }[]>([]);
@@ -107,6 +109,21 @@ export default function EditProductScreen() {
         setImages(product.images || []);
         setColors(product.colors || []);
         setSizes(product.sizes || []);
+
+        // Resolve parent and subcategory
+        const cat = cats.find((c: any) => c.id === product.category_id);
+        if (cat) {
+          if (cat.parent_id) {
+            setParentCategoryId(cat.parent_id);
+            setSubCategoryId(cat.id);
+          } else {
+            setParentCategoryId(cat.id);
+            setSubCategoryId('');
+          }
+        } else {
+          setParentCategoryId('');
+          setSubCategoryId('');
+        }
       } catch (error: any) {
         console.error('Failed to load edit product details', error);
         Alert.alert('Error', 'Failed to fetch product details');
@@ -223,12 +240,19 @@ export default function EditProductScreen() {
     );
   }
 
-  const selectedCategoryName = categories.find(c => c.id === formData.category_id)?.name;
-  const isFashion = selectedCategoryName?.toLowerCase() === 'fashion';
-  const isAgriculture = selectedCategoryName?.toLowerCase() === 'agriculture';
-  const isVehicles = selectedCategoryName?.toLowerCase() === 'vehicles';
-  const isReadyToEat = selectedCategoryName?.toLowerCase() === 'ready to eat' || selectedCategoryName?.toLowerCase() === 'ready-to-eat';
-  const isDrinks = selectedCategoryName?.toLowerCase() === 'drinks';
+  const selectedCategory = categories.find(c => c.id === formData.category_id);
+  const selectedParentCategory = selectedCategory?.parent_id
+    ? categories.find(c => c.id === selectedCategory.parent_id)
+    : selectedCategory;
+
+  const selectedCategoryName = selectedParentCategory?.name;
+  const isFashion = selectedParentCategory?.name?.toLowerCase() === 'fashion';
+  const isAgriculture = selectedParentCategory?.name?.toLowerCase() === 'agriculture';
+  const isVehicles = selectedParentCategory?.name?.toLowerCase() === 'vehicles' ||
+                     selectedParentCategory?.name?.toLowerCase() === 'motorcycles' ||
+                     selectedParentCategory?.name?.toLowerCase() === 'motorcyles';
+  const isReadyToEat = selectedParentCategory?.name?.toLowerCase() === 'ready to eat' || selectedParentCategory?.slug === 'ready-to-eat';
+  const isDrinks = selectedParentCategory?.name?.toLowerCase() === 'drinks';
 
   useEffect(() => {
     if (!isAgriculture && formData.weight_unit) {
@@ -374,10 +398,10 @@ export default function EditProductScreen() {
               <Text style={styles.label}>Category *</Text>
               <Pressable style={styles.pickerButton} onPress={() => setActiveModal('category')}>
                 <Text 
-                  style={selectedCategoryName ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
+                  style={parentCategoryId ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
                   numberOfLines={1}
                 >
-                  {selectedCategoryName || 'Select Category'}
+                  {categories.find(c => c.id === parentCategoryId)?.name || 'Select Category'}
                 </Text>
                 <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
               </Pressable>
@@ -396,6 +420,21 @@ export default function EditProductScreen() {
               </Pressable>
             </View>
           </View>
+
+          {categories.filter(c => c.parent_id === parentCategoryId).length > 0 && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.label}>Subcategory *</Text>
+              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('subcategory')}>
+                <Text 
+                  style={subCategoryId ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
+                  numberOfLines={1}
+                >
+                  {categories.find(c => c.id === subCategoryId)?.name || 'Select Subcategory'}
+                </Text>
+                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
 
           {isAgriculture && (
             <View style={{ marginTop: 12 }}>
@@ -745,40 +784,77 @@ export default function EditProductScreen() {
                   <Pressable
                     style={[
                       styles.modalItem,
-                      !formData.category_id && styles.modalItemActive
+                      !parentCategoryId && styles.modalItemActive
                     ]}
                     onPress={() => {
+                      setParentCategoryId('');
+                      setSubCategoryId('');
                       setFormData(f => ({ ...f, category_id: '' }));
                       setActiveModal(null);
                     }}
                   >
                     <Text style={[
                       styles.modalItemText,
-                      !formData.category_id && styles.modalItemTextActive,
+                      !parentCategoryId && styles.modalItemTextActive,
                       { color: Theme.textMuted }
                     ]}>
                       No Category
                     </Text>
                   </Pressable>
-                  {categories.map((cat) => (
+                  {categories.filter(c => !c.parent_id).map((cat) => (
                     <Pressable
                       key={cat.id}
                       style={[
                         styles.modalItem,
-                        formData.category_id === cat.id && styles.modalItemActive
+                        parentCategoryId === cat.id && styles.modalItemActive
                       ]}
                       onPress={() => {
+                        setParentCategoryId(cat.id);
+                        const subs = categories.filter(c => c.parent_id === cat.id);
+                        if (subs.length > 0) {
+                          setSubCategoryId(subs[0].id);
+                          setFormData(f => ({ ...f, category_id: subs[0].id }));
+                        } else {
+                          setSubCategoryId('');
+                          setFormData(f => ({ ...f, category_id: cat.id }));
+                        }
+                        setActiveModal(null);
+                      }}
+                    >
+                      <Text style={[
+                        styles.modalItemText,
+                        parentCategoryId === cat.id && styles.modalItemTextActive
+                      ]}>
+                        {cat.name}
+                      </Text>
+                      {parentCategoryId === cat.id && (
+                        <FontAwesome name="check" size={16} color={Theme.primary} />
+                      )}
+                    </Pressable>
+                  ))}
+                </>
+              ) : activeModal === 'subcategory' ? (
+                <>
+                  {categories.filter(c => c.parent_id === parentCategoryId).map((cat) => (
+                    <Pressable
+                      key={cat.id}
+                      style={[
+                        styles.modalItem,
+                        subCategoryId === cat.id && styles.modalItemActive
+                      ]}
+                      onPress={() => {
+                        setSubCategoryId(cat.id);
                         setFormData(f => ({ ...f, category_id: cat.id }));
                         setActiveModal(null);
                       }}
                     >
                       <Text style={[
                         styles.modalItemText,
-                        formData.category_id === cat.id && styles.modalItemTextActive
+                        subCategoryId === cat.id && styles.modalItemTextActive
                       ]}>
                         {cat.name}
                       </Text>
-                      {formData.category_id === cat.id && (
+                      {subCategoryId === cat.id && (
                         <FontAwesome name="check" size={16} color={Theme.primary} />
                       )}
                     </Pressable>
