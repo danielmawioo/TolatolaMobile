@@ -245,6 +245,7 @@ export default function GuestHomeScreen() {
   }, [promotions]);
 
   const featuredProducts = products.slice(0, 10);
+  const bestSelling = [...products].sort((a, b) => (Number(b.sales_count) || 0) - (Number(a.sales_count) || 0)).filter(p => (Number(p.sales_count) || 0) > 0).slice(0, 10);
   const bestDeals = products.filter((p) => p.compare_at_price && (p.compare_at_price as number) > (p.price ?? 0)).slice(0, 10);
 
   const getCategoryImage = (cat: any) => {
@@ -587,7 +588,30 @@ export default function GuestHomeScreen() {
                     <ProductCard
                       key={p.id}
                       product={p}
-                      badge={{ text: 'HOT', variant: 'new' }}
+                      badge={{ text: 'NEW', variant: 'new' }}
+                      isLiked={likedIds.has(p.id)}
+                      isInCart={cartItems.some(i => i.product_id === p.id)}
+                      onAddToCart={addItem}
+                      onToggleLike={toggleLike}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Most Selling Section */}
+            {bestSelling.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Most <Text style={[styles.italicPrimary, { color: '#F59E0B' }]}>Selling</Text></Text>
+                  <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                  {bestSelling.map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      badge={{ text: 'HOT', variant: 'hot' }}
                       isLiked={likedIds.has(p.id)}
                       isInCart={cartItems.some(i => i.product_id === p.id)}
                       onAddToCart={addItem}

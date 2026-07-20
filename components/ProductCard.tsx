@@ -8,7 +8,7 @@ import type { Product } from '@/src/types';
 
 interface ProductCardProps {
   product: Product;
-  badge?: { text: string; variant: 'new' | 'deal' };
+  badge?: { text: string; variant: 'new' | 'deal' | 'hot' };
   isLiked?: boolean;
   isInCart?: boolean;
   onAddToCart?: (product: Product) => void;
@@ -76,7 +76,7 @@ export function ProductCard({
 
         <View style={styles.badgesContainer}>
           {badge ? (
-            <View style={[styles.badge, badge.variant === 'new' ? styles.badgeNew : styles.badgeDeal]}>
+            <View style={[styles.badge, badge.variant === 'new' ? styles.badgeNew : badge.variant === 'hot' ? styles.badgeHot : styles.badgeDeal]}>
               <Text style={styles.badgeText}>{badge.text}</Text>
             </View>
           ) : <View />}
@@ -249,6 +249,9 @@ const styles = StyleSheet.create({
   },
   badgeNew: {
     backgroundColor: 'rgba(26, 86, 219, 0.9)',
+  },
+  badgeHot: {
+    backgroundColor: 'rgba(245, 158, 11, 0.9)',
   },
   badgeDeal: {
     backgroundColor: 'rgba(220, 38, 38, 0.9)',
