@@ -470,6 +470,12 @@ export default function GuestProductDetailScreen() {
               {/* Spare Parts Specifications */}
               {product.vehicle_section === 'spare_part' && (
                 <>
+                  {product.model && (
+                    <View style={styles.metadataRow}>
+                      <Text style={styles.metadataLabel}>Part Name</Text>
+                      <Text style={styles.metadataValue}>{product.model}</Text>
+                    </View>
+                  )}
                   {product.brand && (
                     <View style={styles.metadataRow}>
                       <Text style={styles.metadataLabel}>Brand</Text>

@@ -162,7 +162,7 @@ export default function CreateProductScreen() {
         vehicle_section: isVehicles ? (formData.vehicle_section || null) : null,
         brand: isVehicles ? (formData.brand || null) : null,
         condition: isVehicles ? (formData.condition || null) : null,
-        model: (isVehicles && formData.vehicle_section === 'vehicle') ? (formData.model || null) : null,
+        model: (isVehicles && (formData.vehicle_section === 'vehicle' || formData.vehicle_section === 'spare_part')) ? (formData.model || null) : null,
         year: (isVehicles && formData.vehicle_section === 'vehicle' && formData.year) ? parseInt(formData.year) : null,
         mileage: (isVehicles && formData.vehicle_section === 'vehicle' && formData.mileage) ? parseInt(formData.mileage) : null,
         transmission: (isVehicles && formData.vehicle_section === 'vehicle') ? (formData.transmission || null) : null,
@@ -403,7 +403,13 @@ export default function CreateProductScreen() {
 
           {isVehicles && (
             <View style={[styles.variationsSection, { marginTop: 12 }]}>
-              <Text style={styles.variationsTitle}>Vehicles / Spare Parts Details</Text>
+              <Text style={styles.variationsTitle}>{(() => {
+                const subCat = categories.find(c => c.id === subCategoryId);
+                const sectionLabel = formData.vehicle_section === 'vehicle' ? 'Vehicle' : formData.vehicle_section === 'spare_part' ? 'Spare Part' : '';
+                if (subCat?.name && sectionLabel) return `${subCat.name} / ${sectionLabel} Details`;
+                if (subCat?.name) return `${subCat.name} Details`;
+                return 'Vehicles / Spare Parts Details';
+              })()}</Text>
               
               <Text style={styles.label}>Section *</Text>
               {formData.vehicle_section ? (
@@ -499,6 +505,15 @@ export default function CreateProductScreen() {
 
               {formData.vehicle_section === 'spare_part' && (
                 <View style={{ gap: 12 }}>
+                  <Text style={styles.label}>Spare Part Name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.model}
+                    onChangeText={(t) => setFormData(f => ({ ...f, model: t }))}
+                    placeholder="e.g. Brake Pad, Oil Filter, Chain"
+                    placeholderTextColor={Theme.textMuted}
+                  />
+
                   <Text style={styles.label}>Part Number</Text>
                   <TextInput
                     style={styles.input}
@@ -812,7 +827,7 @@ export default function CreateProductScreen() {
                         } else if (cat.slug === 'alcoholic') {
                           setFormData(f => ({ ...f, category_id: cat.id, drink_section: 'alcoholic' }));
                         } else {
-                          setFormData(f => ({ ...f, category_id: cat.id }));
+                          setFormData(f => ({ ...f, category_id: cat.id, vehicle_section: '' }));
                         }
                         setActiveModal(null);
                       }}
