@@ -437,7 +437,7 @@ export default function GuestHomeScreen() {
             <FontAwesome name="th-large" size={12} color="#fff" />
             <Text style={[styles.catPillText, styles.catPillTextActive]}>ALL CATEGORIES</Text>
           </Pressable>
-          {categories.map(c => (
+          {categories.filter((c: any) => !c.parent_id).map(c => (
             <Pressable key={c.id} style={styles.catPill} onPress={() => router.push(`(tabs)/shop?category=${c.id}` as any)}>
               <View style={styles.catPillImgBox}>
                 <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" />
