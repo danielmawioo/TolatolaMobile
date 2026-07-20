@@ -31,6 +31,7 @@ const categoryImages: Record<string, string> = {
   "health-beauty": "https://tolatola.co/beauty-and-skincare-products.jpg",
   services: "https://tolatola.co/professional-services-and-business.jpg",
   vehicles: "https://tolatola.co/category-vehicles.jpg",
+  "vehicles-sub": "https://tolatola.co/category-vehicles.jpg",
   "ready-to-eat": "https://tolatola.co/delicious-food-and-beverages.jpg",
   "spare-parts": "https://tolatola.co/category-vehicles.jpg",
   drinks: "https://tolatola.co/delicious-food-and-beverages.jpg",

@@ -116,6 +116,12 @@ export default function EditProductScreen() {
           if (cat.parent_id) {
             setParentCategoryId(cat.parent_id);
             setSubCategoryId(cat.id);
+            // Auto-derive vehicle_section from subcategory slug on load
+            if (cat.slug === 'spare-parts') {
+              setFormData(f => ({ ...f, vehicle_section: 'spare_part' }));
+            } else if (cat.slug === 'vehicles-sub') {
+              setFormData(f => ({ ...f, vehicle_section: 'vehicle' }));
+            }
           } else {
             setParentCategoryId(cat.id);
             setSubCategoryId('');
@@ -460,12 +466,21 @@ export default function EditProductScreen() {
               <Text style={styles.variationsTitle}>Vehicles / Spare Parts Details</Text>
               
               <Text style={styles.label}>Section *</Text>
-              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('vehicle_section')}>
-                <Text style={formData.vehicle_section ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
-                  {formData.vehicle_section === 'vehicle' ? 'Vehicle' : formData.vehicle_section === 'spare_part' ? 'Spare Part' : 'Select Section'}
-                </Text>
-                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
-              </Pressable>
+              {formData.vehicle_section ? (
+                <View style={[styles.pickerButton, { backgroundColor: Theme.backgroundSecondary }]}>
+                  <Text style={styles.pickerButtonText}>
+                    {formData.vehicle_section === 'vehicle' ? '🚗 Vehicle' : '🔧 Spare Part'}
+                  </Text>
+                  <Text style={[styles.pickerButtonPlaceholder, { fontSize: 10 }]}>(from subcategory)</Text>
+                </View>
+              ) : (
+                <Pressable style={styles.pickerButton} onPress={() => setActiveModal('vehicle_section')}>
+                  <Text style={formData.vehicle_section ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                    {formData.vehicle_section === 'vehicle' ? 'Vehicle' : formData.vehicle_section === 'spare_part' ? 'Spare Part' : 'Select Section'}
+                  </Text>
+                  <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
+                </Pressable>
+              )}
 
               <Text style={styles.label}>Brand / Make</Text>
               <TextInput
@@ -844,7 +859,14 @@ export default function EditProductScreen() {
                       ]}
                       onPress={() => {
                         setSubCategoryId(cat.id);
-                        setFormData(f => ({ ...f, category_id: cat.id }));
+                        // Auto-derive vehicle_section from subcategory slug
+                        if (cat.slug === 'spare-parts') {
+                          setFormData(f => ({ ...f, category_id: cat.id, vehicle_section: 'spare_part' }));
+                        } else if (cat.slug === 'vehicles-sub') {
+                          setFormData(f => ({ ...f, category_id: cat.id, vehicle_section: 'vehicle' }));
+                        } else {
+                          setFormData(f => ({ ...f, category_id: cat.id }));
+                        }
                         setActiveModal(null);
                       }}
                     >
