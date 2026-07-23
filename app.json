@@ -21,6 +21,7 @@
         "googleMapsApiKey": "AIzaSyBiaBqnElMfrziuV-9SLX2mbLIrA5WO754"
       },
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Allow TOLA to access your location to calculate accurate delivery fees and show nearby shops.",
         "NSCameraUsageDescription": "Allow TOLA to access your camera to take verification photos.",
         "NSPhotoLibraryUsageDescription": "Allow TOLA to access your photo library to select verification documents."
