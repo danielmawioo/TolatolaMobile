@@ -847,7 +847,13 @@ export default function EditProductScreen() {
                       No Category
                     </Text>
                   </Pressable>
-                  {categories.filter(c => !c.parent_id).map((cat) => (
+                  {categories.filter(c => !c.parent_id).sort((a, b) => {
+                    const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
+                    const isBService = b.slug === "services" || b.name?.toLowerCase() === "services"
+                    if (isAService && !isBService) return 1
+                    if (!isAService && isBService) return -1
+                    return 0
+                  }).map((cat) => (
                     <Pressable
                       key={cat.id}
                       style={[

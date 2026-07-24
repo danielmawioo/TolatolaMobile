@@ -289,7 +289,13 @@ export default function GuestShopScreen() {
           <FontAwesome name="th-large" size={12} color={!selectedCategory ? '#fff' : Theme.textSecondary} />
           <Text style={[styles.catPillText, !selectedCategory && styles.catPillTextActive]}>ALL CATEGORIES</Text>
         </Pressable>
-        {categories.filter((c: any) => !c.parent_id).map(c => (
+        {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
+          const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
+          const isBService = b.slug === "services" || b.name?.toLowerCase() === "services"
+          if (isAService && !isBService) return 1
+          if (!isAService && isBService) return -1
+          return 0
+        }).map(c => (
           <Pressable
             key={c.id}
             style={[styles.catPill, selectedCategory === c.id && styles.catPillActive]}
