@@ -38,6 +38,9 @@ const categoryImages: Record<string, string> = {
   "food-beverages": "https://tolatola.co/category-food-beverages.jpg",
   textiles: "https://tolatola.co/category-textiles.jpg",
   fashion: "https://tolatola.co/category-textiles.jpg",
+  men: "https://images.unsplash.com/photo-1490578474895-699bc4e2cf59?auto=format&fit=crop&w=500&q=80",
+  women: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=500&q=80",
+  kids: "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?auto=format&fit=crop&w=500&q=80",
   electronics: "https://tolatola.co/category-electronics.jpg",
   "home-garden": "https://tolatola.co/category-home-garden.jpg",
   "health-beauty": "https://tolatola.co/category-health-beauty.jpg",
@@ -59,6 +62,9 @@ function getCategoryImage(cat: Category): string {
     return categoryImages[cat.slug];
   }
   const nameLower = (cat.name || '').toLowerCase();
+  if (nameLower === 'men' || nameLower.includes("men's") || nameLower.includes('mens')) return categoryImages.men;
+  if (nameLower === 'women' || nameLower.includes("women's") || nameLower.includes('womens')) return categoryImages.women;
+  if (nameLower === 'kids' || nameLower.includes("kid's") || nameLower.includes('children')) return categoryImages.kids;
   if (nameLower.includes('ready to eat') || nameLower.includes('ready-to-eat')) return categoryImages["ready-to-eat"];
   if (nameLower.includes('spare') || nameLower.includes('part')) return categoryImages["spare-parts"];
   if (nameLower.includes('drink') || nameLower.includes('alcohol')) return categoryImages.drinks;

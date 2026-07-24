@@ -192,7 +192,10 @@ export default function CreateProductScreen() {
     : selectedCategory;
 
   const selectedCategoryName = selectedParentCategory?.name;
-  const isFashion = selectedParentCategory?.name?.toLowerCase() === 'fashion';
+  const isFashion = selectedParentCategory?.name?.toLowerCase() === 'fashion' ||
+                    selectedCategory?.name?.toLowerCase() === 'fashion' ||
+                    ['men', 'women', 'kids'].includes(selectedCategory?.name?.toLowerCase() || '') ||
+                    ['men', 'women', 'kids'].includes(selectedCategory?.slug?.toLowerCase() || '');
   const isAgriculture = selectedParentCategory?.name?.toLowerCase() === 'agriculture';
   const isVehicles = selectedParentCategory?.name?.toLowerCase() === 'vehicles' ||
                      selectedParentCategory?.name?.toLowerCase() === 'motorcycles' ||

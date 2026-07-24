@@ -85,6 +85,8 @@ export default function GuestProductDetailScreen() {
 
   const isFashion = product?.categories?.name?.toLowerCase() === "fashion" ||
                     product?.category_name?.toLowerCase() === "fashion" ||
+                    ["men", "women", "kids"].includes(product?.categories?.name?.toLowerCase() || "") ||
+                    ["men", "women", "kids"].includes(product?.category_name?.toLowerCase() || "") ||
                     (product?.colors && product.colors.length > 0) ||
                     (product?.sizes && product.sizes.length > 0);
 
