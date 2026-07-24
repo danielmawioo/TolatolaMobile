@@ -123,9 +123,15 @@ export default function CategoriesScreen() {
     loadCategories();
   }, []);
 
-  const filteredCategories = categories.filter((c) =>
-    !c.parent_id && c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredCategories = categories
+    .filter((c) => !c.parent_id && c.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
+      const isBService = b.slug === "services" || b.name?.toLowerCase() === "services"
+      if (isAService && !isBService) return 1
+      if (!isAService && isBService) return -1
+      return 0
+    })
 
   return (
     <ScreenSafeLayout edges={['top']}>

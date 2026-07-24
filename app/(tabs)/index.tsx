@@ -447,7 +447,13 @@ export default function GuestHomeScreen() {
             </View>
             <Text style={[styles.catCircleLabel, styles.catCircleLabelActive]}>All</Text>
           </Pressable>
-          {categories.filter((c: any) => !c.parent_id).map(c => (
+          {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
+            const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
+            const isBService = b.slug === "services" || b.name?.toLowerCase() === "services"
+            if (isAService && !isBService) return 1
+            if (!isAService && isBService) return -1
+            return 0
+          }).map(c => (
             <Pressable key={c.id} style={styles.catCircleItem} onPress={() => router.push(`(tabs)/shop?category=${c.id}` as any)}>
               <View style={styles.catCircle}>
                 <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" style={{ borderRadius: 18 }} />
@@ -676,7 +682,13 @@ export default function GuestHomeScreen() {
           <Text style={styles.sectionSub}>Selections for you</Text>
           <Text style={styles.sectionTitle}>Shop by <Text style={styles.italicPrimary}>Category</Text></Text>
           <View style={styles.catCircleGrid}>
-            {categories.filter((c: any) => !c.parent_id).slice(0, 12).map((cat) => (
+            {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
+              const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
+              const isBService = b.slug === "services" || b.name?.toLowerCase() === "services"
+              if (isAService && !isBService) return 1
+              if (!isAService && isBService) return -1
+              return 0
+            }).slice(0, 12).map((cat) => (
               <Pressable key={cat.id} style={styles.catGridItem} onPress={() => router.push(`(tabs)/shop?category=${cat.id}` as any)}>
                 <View style={styles.catGridCircle}>
                   <OptimizedImage source={getCategoryImage(cat)} width="100%" height="100%" style={{ borderRadius: 22 }} />
