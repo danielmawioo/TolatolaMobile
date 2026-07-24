@@ -187,7 +187,7 @@ export default function CategoriesScreen() {
                       source={getCategoryImage(cat)}
                       width="100%"
                       height="100%"
-                      style={{ borderRadius: scaleByWidth(40) }}
+                      style={{ borderRadius: scaleByWidth(24) }}
                     />
                   </View>
                   <Text style={styles.name} numberOfLines={2}>
@@ -265,21 +265,21 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    rowGap: scaleByHeight(20),
+    rowGap: scaleByHeight(22),
   },
   circleItem: {
     width: '33.33%',
     alignItems: 'center',
-    paddingHorizontal: scaleByWidth(6),
+    paddingHorizontal: scaleByWidth(4),
   },
   cardPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.96 }],
   },
   circleBox: {
-    width: scaleByWidth(80),
-    height: scaleByWidth(80),
-    borderRadius: scaleByWidth(40),
+    width: scaleByWidth(90),
+    height: scaleByWidth(90),
+    borderRadius: scaleByWidth(24),
     overflow: 'hidden',
     backgroundColor: Theme.inputBg,
     borderWidth: 1,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     ...Theme.shadowSm,
   },
   name: {
-    fontSize: scaleByWidth(12),
+    fontSize: scaleByWidth(13),
     fontWeight: '700',
     color: Theme.text,
     textAlign: 'center',

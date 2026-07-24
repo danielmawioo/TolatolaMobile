@@ -439,18 +439,18 @@ export default function GuestHomeScreen() {
           </Pressable>
         )}
 
-        {/* Categories Nav - Circular Icons */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catNav} contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
+        {/* Categories Nav - Squircle Tile Icons */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catNav} contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}>
           <Pressable style={styles.catCircleItem} onPress={() => router.push('/(tabs)/shop')}>
             <View style={[styles.catCircle, styles.catCircleActive]}>
-              <FontAwesome name="th-large" size={18} color="#fff" />
+              <FontAwesome name="th-large" size={20} color="#fff" />
             </View>
             <Text style={[styles.catCircleLabel, styles.catCircleLabelActive]}>All</Text>
           </Pressable>
           {categories.filter((c: any) => !c.parent_id).map(c => (
             <Pressable key={c.id} style={styles.catCircleItem} onPress={() => router.push(`(tabs)/shop?category=${c.id}` as any)}>
               <View style={styles.catCircle}>
-                <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" style={{ borderRadius: 26 }} />
+                <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" style={{ borderRadius: 18 }} />
               </View>
               <Text style={styles.catCircleLabel} numberOfLines={2}>{c.name}</Text>
             </Pressable>
@@ -679,7 +679,7 @@ export default function GuestHomeScreen() {
             {categories.filter((c: any) => !c.parent_id).slice(0, 12).map((cat) => (
               <Pressable key={cat.id} style={styles.catGridItem} onPress={() => router.push(`(tabs)/shop?category=${cat.id}` as any)}>
                 <View style={styles.catGridCircle}>
-                  <OptimizedImage source={getCategoryImage(cat)} width="100%" height="100%" style={{ borderRadius: 36 }} />
+                  <OptimizedImage source={getCategoryImage(cat)} width="100%" height="100%" style={{ borderRadius: 22 }} />
                 </View>
                 <Text style={styles.catGridLabel} numberOfLines={2}>{cat.name}</Text>
               </Pressable>
@@ -875,11 +875,11 @@ const styles = StyleSheet.create({
     color: Theme.textMuted,
   },
   scrollContent: { paddingBottom: 40 },
-  catNav: { borderBottomWidth: 1, borderBottomColor: Theme.inputBorder, paddingVertical: 12, backgroundColor: '#fff' },
-  catCircleItem: { alignItems: 'center', width: 60 },
-  catCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: Theme.inputBg, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Theme.inputBorder },
+  catNav: { borderBottomWidth: 1, borderBottomColor: Theme.inputBorder, paddingVertical: 14, backgroundColor: '#fff' },
+  catCircleItem: { alignItems: 'center', width: 68 },
+  catCircle: { width: 60, height: 60, borderRadius: 18, backgroundColor: Theme.inputBg, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Theme.inputBorder },
   catCircleActive: { backgroundColor: Theme.primary, borderColor: Theme.primary },
-  catCircleLabel: { fontSize: 10, fontWeight: '700', color: Theme.textSecondary, textAlign: 'center', marginTop: 4, lineHeight: 12 },
+  catCircleLabel: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary, textAlign: 'center', marginTop: 6, lineHeight: 14 },
   catCircleLabelActive: { color: Theme.primary, fontWeight: '800' },
   
   heroSlider: { width: width, marginTop: 16 },
@@ -951,9 +951,9 @@ const styles = StyleSheet.create({
   benefitItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   benefitText: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   
-  catCircleGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, paddingHorizontal: 16, rowGap: 16 },
+  catCircleGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, paddingHorizontal: 16, rowGap: 20 },
   catGridItem: { width: '25%', alignItems: 'center', paddingHorizontal: 4 },
-  catGridCircle: { width: 72, height: 72, borderRadius: 36, overflow: 'hidden', backgroundColor: Theme.inputBg, borderWidth: 1, borderColor: Theme.inputBorder },
+  catGridCircle: { width: 78, height: 78, borderRadius: 22, overflow: 'hidden', backgroundColor: Theme.inputBg, borderWidth: 1, borderColor: Theme.inputBorder, ...Theme.shadowSm },
   catGridLabel: { fontSize: 11, fontWeight: '700', color: Theme.text, textAlign: 'center', marginTop: 6, lineHeight: 14 },
   viewCatalogBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, padding: 12 },
   viewCatalogText: { fontSize: 13, fontWeight: '700', color: Theme.primary, gap: 4 },
