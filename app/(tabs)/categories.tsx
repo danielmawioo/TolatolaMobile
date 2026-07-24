@@ -172,33 +172,27 @@ export default function CategoriesScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={[styles.grid, { gap: cardGap }]}>
+            <View style={styles.grid}>
               {filteredCategories.map((cat) => (
                 <Pressable
                   key={cat.id}
                   style={({ pressed }) => [
-                    styles.card,
-                    { width: cardWidth },
+                    styles.circleItem,
                     pressed && styles.cardPressed,
                   ]}
                   onPress={() => router.push(`/(tabs)/shop?category=${cat.id}`)}
                 >
-                  <View style={styles.imageContainer}>
+                  <View style={styles.circleBox}>
                     <OptimizedImage
                       source={getCategoryImage(cat)}
                       width="100%"
-                      aspectRatio={1.2}
+                      height="100%"
+                      style={{ borderRadius: scaleByWidth(40) }}
                     />
-                    
-                    {/* Gradient Overlay for Text Readability */}
-                    <View style={styles.gradientOverlay} />
-                    
-                    <View style={styles.cardContent}>
-                      <Text style={styles.name} numberOfLines={2}>
-                        {cat.name}
-                      </Text>
-                    </View>
                   </View>
+                  <Text style={styles.name} numberOfLines={2}>
+                    {cat.name}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -271,47 +265,34 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    rowGap: scaleByHeight(20),
   },
-  card: {
-    backgroundColor: Theme.background,
-    borderRadius: Theme.radiusLg,
-    overflow: 'hidden',
-    ...Theme.shadowMd,
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
+  circleItem: {
+    width: '33.33%',
+    alignItems: 'center',
+    paddingHorizontal: scaleByWidth(6),
   },
   cardPressed: {
     opacity: 0.85,
-    transform: [{ scale: 0.98 }],
+    transform: [{ scale: 0.96 }],
   },
-  imageContainer: {
-    width: '100%',
-    aspectRatio: 1.1,
+  circleBox: {
+    width: scaleByWidth(80),
+    height: scaleByWidth(80),
+    borderRadius: scaleByWidth(40),
+    overflow: 'hidden',
     backgroundColor: Theme.inputBg,
-    position: 'relative',
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  cardContent: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: scaleByWidth(12),
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    ...Theme.shadowSm,
   },
   name: {
-    fontSize: scaleByWidth(14),
-    fontWeight: '800',
-    color: '#ffffff',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    fontSize: scaleByWidth(12),
+    fontWeight: '700',
+    color: Theme.text,
+    textAlign: 'center',
+    marginTop: scaleByHeight(8),
+    lineHeight: scaleByHeight(16),
   },
   empty: {
     paddingVertical: scaleByHeight(40),

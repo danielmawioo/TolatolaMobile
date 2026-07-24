@@ -439,18 +439,20 @@ export default function GuestHomeScreen() {
           </Pressable>
         )}
 
-        {/* Categories Nav (Web Parity) */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catNav} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          <Pressable style={[styles.catPill, styles.catPillActive]} onPress={() => router.push('/(tabs)/shop')}>
-            <FontAwesome name="th-large" size={12} color="#fff" />
-            <Text style={[styles.catPillText, styles.catPillTextActive]}>ALL CATEGORIES</Text>
+        {/* Categories Nav - Circular Icons */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catNav} contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
+          <Pressable style={styles.catCircleItem} onPress={() => router.push('/(tabs)/shop')}>
+            <View style={[styles.catCircle, styles.catCircleActive]}>
+              <FontAwesome name="th-large" size={18} color="#fff" />
+            </View>
+            <Text style={[styles.catCircleLabel, styles.catCircleLabelActive]}>All</Text>
           </Pressable>
           {categories.filter((c: any) => !c.parent_id).map(c => (
-            <Pressable key={c.id} style={styles.catPill} onPress={() => router.push(`(tabs)/shop?category=${c.id}` as any)}>
-              <View style={styles.catPillImgBox}>
-                <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" />
+            <Pressable key={c.id} style={styles.catCircleItem} onPress={() => router.push(`(tabs)/shop?category=${c.id}` as any)}>
+              <View style={styles.catCircle}>
+                <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" style={{ borderRadius: 26 }} />
               </View>
-              <Text style={styles.catPillText}>{c.name}</Text>
+              <Text style={styles.catCircleLabel} numberOfLines={2}>{c.name}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -669,17 +671,17 @@ export default function GuestHomeScreen() {
           </View>
         </View>
 
-        {/* Trending Categories Grid */}
+        {/* Trending Categories - Circular Icons Grid */}
         <View style={styles.section}>
           <Text style={styles.sectionSub}>Selections for you</Text>
           <Text style={styles.sectionTitle}>Shop by <Text style={styles.italicPrimary}>Category</Text></Text>
-          <View style={styles.categoryGrid}>
+          <View style={styles.catCircleGrid}>
             {categories.filter((c: any) => !c.parent_id).slice(0, 12).map((cat) => (
-              <Pressable key={cat.id} style={styles.categoryCard} onPress={() => router.push(`(tabs)/shop?category=${cat.id}` as any)}>
-                <OptimizedImage source={getCategoryImage(cat)} width="100%" aspectRatio={1.5} style={styles.categoryCardImg} />
-                <View style={styles.categoryCardOverlay}>
-                  <Text style={styles.categoryCardText}>{cat.name}</Text>
+              <Pressable key={cat.id} style={styles.catGridItem} onPress={() => router.push(`(tabs)/shop?category=${cat.id}` as any)}>
+                <View style={styles.catGridCircle}>
+                  <OptimizedImage source={getCategoryImage(cat)} width="100%" height="100%" style={{ borderRadius: 36 }} />
                 </View>
+                <Text style={styles.catGridLabel} numberOfLines={2}>{cat.name}</Text>
               </Pressable>
             ))}
           </View>
@@ -874,26 +876,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: { paddingBottom: 40 },
   catNav: { borderBottomWidth: 1, borderBottomColor: Theme.inputBorder, paddingVertical: 12, backgroundColor: '#fff' },
-  catPill: { 
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
-    gap: 8,
-  },
-  catPillActive: {
-    backgroundColor: Theme.primary,
-    borderColor: Theme.primary,
-    ...Theme.shadowSm,
-  },
-  catPillText: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary },
-  catPillTextActive: { color: '#fff' },
-  catPillImgBox: { width: 20, height: 20, borderRadius: 6, overflow: 'hidden', backgroundColor: Theme.inputBg },
+  catCircleItem: { alignItems: 'center', width: 60 },
+  catCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: Theme.inputBg, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Theme.inputBorder },
+  catCircleActive: { backgroundColor: Theme.primary, borderColor: Theme.primary },
+  catCircleLabel: { fontSize: 10, fontWeight: '700', color: Theme.textSecondary, textAlign: 'center', marginTop: 4, lineHeight: 12 },
+  catCircleLabelActive: { color: Theme.primary, fontWeight: '800' },
   
   heroSlider: { width: width, marginTop: 16 },
   heroSlide: { width: width - 32, marginHorizontal: 16, borderRadius: 20, overflow: 'hidden', ...Theme.shadowMd },
@@ -964,16 +951,11 @@ const styles = StyleSheet.create({
   benefitItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   benefitText: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 16, paddingHorizontal: 16 },
-  categoryCard: { width: '48%', aspectRatio: 1.5, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
-  categoryCardImg: { width: '100%', height: '100%', borderRadius: 12 },
-  categoryCardOverlay: {
-    position: 'absolute', inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center', alignItems: 'center', padding: 8,
-  },
-  categoryCardText: { color: '#fff', fontSize: 12, fontWeight: '800', textAlign: 'center' },
-  viewCatalogBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, padding: 12 },
+  catCircleGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, paddingHorizontal: 16, rowGap: 16 },
+  catGridItem: { width: '25%', alignItems: 'center', paddingHorizontal: 4 },
+  catGridCircle: { width: 72, height: 72, borderRadius: 36, overflow: 'hidden', backgroundColor: Theme.inputBg, borderWidth: 1, borderColor: Theme.inputBorder },
+  catGridLabel: { fontSize: 11, fontWeight: '700', color: Theme.text, textAlign: 'center', marginTop: 6, lineHeight: 14 },
+  viewCatalogBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, padding: 12 },
   viewCatalogText: { fontSize: 13, fontWeight: '700', color: Theme.primary, gap: 4 },
   
   trustDesc: { fontSize: 12, color: Theme.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 20 },
