@@ -144,6 +144,11 @@ export default function GuestProductDetailScreen() {
     (!product.sizes || !Array.isArray(product.sizes) || product.sizes.length === 0 || item.selected_size === selectedSize)
   );
   const isSoldOut = product.stock_quantity === 0;
+  const productLocation = (product as any)?.location || 
+    [(product as any)?.shops?.ward, (product as any)?.shops?.district, (product as any)?.shops?.region].filter(Boolean).join(', ') || 
+    (product as any)?.shops?.address || 
+    (product as any)?.shops?.region || 
+    null;
 
   return (
     <View style={styles.container}>
@@ -177,20 +182,6 @@ export default function GuestProductDetailScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtnFloat}>
             <FontAwesome name="chevron-left" size={16} color={Theme.text} />
           </Pressable>
-
-          {/* Badges Overlay */}
-          <View style={styles.badgeOverlay}>
-            <View style={styles.premiumBadge}>
-              <FontAwesome name="star" size={10} color={Theme.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.premiumBadgeText}>POPULAR</Text>
-            </View>
-            {Number(product?.stock_quantity ?? product?.stock ?? 0) > 0 && (
-              <View style={styles.dispatchBadge}>
-                <FontAwesome name="bolt" size={10} color={Theme.primary} style={{ marginRight: 6 }} />
-                <Text style={styles.dispatchBadgeText}>INSTANT DISPATCH</Text>
-              </View>
-            )}
-          </View>
 
           {images.length > 1 && (
             <View style={styles.pagination}>
@@ -226,9 +217,17 @@ export default function GuestProductDetailScreen() {
 
           <Text style={styles.name}>{product.name}</Text>
 
-          <View style={styles.verifiedRow}>
-            <FontAwesome name="check-circle" size={14} color={Theme.primary} />
-            <Text style={styles.verifiedText}>VERIFIED BY TOLA</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <View style={styles.verifiedRow}>
+              <FontAwesome name="check-circle" size={14} color={Theme.primary} />
+              <Text style={styles.verifiedText}>VERIFIED BY TOLA</Text>
+            </View>
+            {productLocation && (
+              <View style={[styles.verifiedRow, { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]}>
+                <FontAwesome name="map-marker" size={14} color={Theme.primary} />
+                <Text style={[styles.verifiedText, { color: '#334155' }]}>{productLocation.toUpperCase()}</Text>
+              </View>
+            )}
           </View>
 
           <Text style={styles.desc}>{product.description}</Text>
@@ -414,6 +413,14 @@ export default function GuestProductDetailScreen() {
                   <Text style={styles.metadataTagText}>{product.categories?.name || 'Inventory'}</Text>
                 </View>
               </View>
+              {productLocation && (
+                <View style={styles.metadataRow}>
+                  <Text style={styles.metadataLabel}>Location</Text>
+                  <View style={styles.metadataTag}>
+                    <Text style={styles.metadataTagText}>{productLocation}</Text>
+                  </View>
+                </View>
+              )}
 
               {/* Vehicle Specifications */}
               {product.vehicle_section === 'vehicle' && (
