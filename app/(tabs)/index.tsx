@@ -15,6 +15,7 @@ import * as Location from 'expo-location';
 import { getCachedData, setCachedData, CACHE_KEYS } from '@/src/services/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { OfflineMessage } from '@/components/OfflineMessage';
+import { PartnersSection } from '@/components/PartnersSection';
 
 const { width } = Dimensions.get('window');
 
@@ -733,6 +734,9 @@ export default function GuestHomeScreen() {
             </View>
           </View>
         </View>
+
+        {/* Strategic Ecosystem Partners */}
+        <PartnersSection />
 
         {/* Seller CTA */}
         <View style={styles.ctaSection}>
