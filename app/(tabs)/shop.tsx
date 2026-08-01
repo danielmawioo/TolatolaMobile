@@ -67,6 +67,7 @@ export default function GuestShopScreen() {
   const [searchQuery, setSearchQuery] = useState<string>(params.search || '');
   const [searchInput, setSearchInput] = useState<string>(params.search || '');
   const [locationQuery, setLocationQuery] = useState<string>('');
+  const [showLocationFilter, setShowLocationFilter] = useState<boolean>(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   const getCategoryImage = (cat: any) => {
@@ -264,7 +265,7 @@ export default function GuestShopScreen() {
             <FontAwesome name="search" size={14} color={Theme.textMuted} />
             <TextInput
               style={styles.headerSearchInput}
-              placeholder="Search product or location..."
+              placeholder="Search products..."
               placeholderTextColor={Theme.textMuted}
               value={searchInput}
               onChangeText={setSearchInput}
@@ -272,16 +273,61 @@ export default function GuestShopScreen() {
               returnKeyType="search"
             />
             <Pressable
-              onPress={async () => {
-                // Image search trigger placeholder for native picker
-                alert("Visual Image Search: Please select or capture an image to find similar products.");
-              }}
+              onPress={() => setShowLocationFilter(!showLocationFilter)}
               style={{ padding: 4 }}
             >
-              <FontAwesome name="camera" size={14} color={Theme.primary} />
+              <FontAwesome name="sliders" size={14} color={locationQuery ? Theme.primary : Theme.textMuted} />
             </Pressable>
           </View>
         </View>
+
+        {/* Inline Location Filter Row */}
+        {showLocationFilter && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            paddingHorizontal: 16,
+            paddingBottom: 8,
+            backgroundColor: '#F8FAFC',
+          }}>
+            <FontAwesome name="map-marker" size={14} color={Theme.primary} />
+            <TextInput
+              style={{
+                flex: 1,
+                height: 36,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                fontSize: 13,
+                fontWeight: '600',
+                backgroundColor: '#fff',
+                color: Theme.textPrimary,
+              }}
+              placeholder="Filter by location (e.g. Pwani, Arusha...)"
+              placeholderTextColor={Theme.textMuted}
+              value={locationQuery}
+              onChangeText={setLocationQuery}
+              onSubmitEditing={() => {
+                handleSearch();
+                fetchData();
+              }}
+              returnKeyType="search"
+            />
+            {locationQuery.trim() !== '' && (
+              <Pressable
+                onPress={() => {
+                  setLocationQuery('');
+                  fetchData();
+                }}
+                style={{ padding: 4 }}
+              >
+                <FontAwesome name="times-circle" size={16} color={Theme.textMuted} />
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
 
       {isOffline && <OfflineBanner onRetry={fetchData} />}
