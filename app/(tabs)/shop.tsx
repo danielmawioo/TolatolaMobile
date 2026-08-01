@@ -66,6 +66,7 @@ export default function GuestShopScreen() {
   );
   const [searchQuery, setSearchQuery] = useState<string>(params.search || '');
   const [searchInput, setSearchInput] = useState<string>(params.search || '');
+  const [locationQuery, setLocationQuery] = useState<string>('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   const getCategoryImage = (cat: any) => {
@@ -100,6 +101,7 @@ export default function GuestShopScreen() {
       const queryParams = new URLSearchParams();
       if (selectedCategory) queryParams.append('category', selectedCategory);
       if (searchQuery) queryParams.append('search', searchQuery);
+      if (locationQuery) queryParams.append('location', locationQuery);
 
       const prodUrl = queryParams.toString() ? `/products?${queryParams.toString()}` : '/products';
 
@@ -262,13 +264,22 @@ export default function GuestShopScreen() {
             <FontAwesome name="search" size={14} color={Theme.textMuted} />
             <TextInput
               style={styles.headerSearchInput}
-              placeholder="What are you looking for..."
+              placeholder="Search product or location..."
               placeholderTextColor={Theme.textMuted}
               value={searchInput}
               onChangeText={setSearchInput}
               onSubmitEditing={handleSearch}
               returnKeyType="search"
             />
+            <Pressable
+              onPress={async () => {
+                // Image search trigger placeholder for native picker
+                alert("Visual Image Search: Please select or capture an image to find similar products.");
+              }}
+              style={{ padding: 4 }}
+            >
+              <FontAwesome name="camera" size={14} color={Theme.primary} />
+            </Pressable>
           </View>
         </View>
       </View>
