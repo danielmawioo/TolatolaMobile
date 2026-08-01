@@ -274,9 +274,14 @@ export default function GuestShopScreen() {
             />
             <Pressable
               onPress={() => setShowLocationFilter(!showLocationFilter)}
-              style={{ padding: 4 }}
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 8,
+                backgroundColor: showLocationFilter ? Theme.primary : 'transparent',
+              }}
             >
-              <FontAwesome name="sliders" size={14} color={locationQuery ? Theme.primary : Theme.textMuted} />
+              <FontAwesome name="sliders" size={14} color={showLocationFilter ? '#fff' : locationQuery ? Theme.primary : Theme.textMuted} />
             </Pressable>
           </View>
         </View>
