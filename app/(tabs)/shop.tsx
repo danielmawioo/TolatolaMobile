@@ -377,6 +377,8 @@ export default function GuestShopScreen() {
     );
   };
 
+  const userType = session?.user?.user_type || (session?.user as any)?.role;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* ===== Top Navbar – Row 1 ===== */}
@@ -386,12 +388,40 @@ export default function GuestShopScreen() {
             <View style={styles.logoBox}>
               <OptimizedImage source="https://tolatola.co/logo-new.png" width="100%" height="100%" resizeMode="contain" />
             </View>
-            <View>
-              <Text style={styles.logoTitle}>TOLA.</Text>
-              <Text style={styles.logoSubtitle}>YOUR TRADE PARTNER</Text>
-            </View>
+            <Text style={styles.logoTitle}>TOLA.</Text>
           </Pressable>
           <View style={styles.headerRight}>
+            {/* Show dashboard buttons for ALL approved roles */}
+            {((session?.user as any)?.vendor?.kyc_status === 'approved' || userType === 'vendor') && (
+              <Pressable 
+                style={({ pressed }) => [styles.dashboardBtn, pressed && { opacity: 0.75 }]} 
+                onPress={() => router.push('/(vendor)/dashboard' as any)}
+                hitSlop={10}
+              >
+                <FontAwesome name="dashboard" size={13} color="#fff" />
+                <Text style={styles.dashboardBtnLabel}>Seller Hub</Text>
+              </Pressable>
+            )}
+            {((session?.user as any)?.transporter?.kyc_status === 'approved' || userType === 'transporter') && (
+              <Pressable 
+                style={({ pressed }) => [styles.dashboardBtn, { backgroundColor: '#10b981' }, pressed && { opacity: 0.75 }]} 
+                onPress={() => router.push('/(transporter)/dashboard' as any)}
+                hitSlop={10}
+              >
+                <FontAwesome name="truck" size={13} color="#fff" />
+                <Text style={styles.dashboardBtnLabel}>Transporter</Text>
+              </Pressable>
+            )}
+            {userType === 'admin' && (
+              <Pressable 
+                style={({ pressed }) => [styles.dashboardBtn, pressed && { opacity: 0.75 }]} 
+                onPress={() => router.push(getRoleRedirectPath('admin') as any)}
+                hitSlop={10}
+              >
+                <FontAwesome name="gears" size={13} color="#fff" />
+                <Text style={styles.dashboardBtnLabel}>Admin</Text>
+              </Pressable>
+            )}
             <Pressable
               style={({ pressed }) => [styles.shopTextBtn, pressed && { opacity: 0.7 }]}
               onPress={() => {}}
@@ -401,7 +431,7 @@ export default function GuestShopScreen() {
               <Text style={styles.shopTextBtnLabel}>Shop</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }, { marginRight: 12 }]}
+              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }, { marginRight: 4 }]}
               onPress={() => router.push('/(tabs)/favorites')}
               hitSlop={10}
             >
@@ -554,14 +584,13 @@ export default function GuestShopScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.catNav}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
         >
-          <Pressable
-            style={[styles.catPill, !selectedCategory && styles.catPillActive]}
-            onPress={() => handleCategorySelect(null)}
-          >
-            <FontAwesome name="th-large" size={12} color={!selectedCategory ? '#fff' : Theme.textSecondary} />
-            <Text style={[styles.catPillText, !selectedCategory && styles.catPillTextActive]}>ALL CATEGORIES</Text>
+          <Pressable style={styles.catCircleItem} onPress={() => handleCategorySelect(null)}>
+            <View style={[styles.catCircle, !selectedCategory && styles.catCircleActive]}>
+              <FontAwesome name="th-large" size={20} color={!selectedCategory ? '#fff' : Theme.primary} />
+            </View>
+            <Text style={[styles.catCircleLabel, !selectedCategory && styles.catCircleLabelActive]}>All</Text>
           </Pressable>
           {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
             const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
@@ -569,18 +598,17 @@ export default function GuestShopScreen() {
             if (isAService && !isBService) return 1
             if (!isAService && isBService) return -1
             return 0
-          }).map(c => (
-            <Pressable
-              key={c.id}
-              style={[styles.catPill, selectedCategory === c.id && styles.catPillActive]}
-              onPress={() => handleCategorySelect(c.id)}
-            >
-              <View style={styles.catPillImgBox}>
-                <OptimizedImage source={getCategoryImages(c)} width="100%" height="100%" />
-              </View>
-              <Text style={[styles.catPillText, selectedCategory === c.id && styles.catPillTextActive]}>{c.name}</Text>
-            </Pressable>
-          ))}
+          }).map(c => {
+            const isSelected = selectedCategory === c.id;
+            return (
+              <Pressable key={c.id} style={styles.catCircleItem} onPress={() => handleCategorySelect(c.id)}>
+                <View style={[styles.catCircle, isSelected && styles.catCircleActive]}>
+                  <OptimizedImage source={getCategoryImages(c)} width="100%" height="100%" style={{ borderRadius: 18 }} />
+                </View>
+                <Text style={[styles.catCircleLabel, isSelected && styles.catCircleLabelActive]} numberOfLines={2}>{c.name}</Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       )}
 
@@ -749,29 +777,41 @@ const styles = StyleSheet.create({
   logoTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: Theme.text,
-    lineHeight: 20,
-  },
-  logoSubtitle: {
-    fontSize: 8,
-    fontWeight: '900',
     color: Theme.primary,
     letterSpacing: 1.5,
+    lineHeight: 20,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 10,
   },
   iconButton: {
     position: 'relative',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Theme.inputBg,
     alignItems: 'center',
     justifyContent: 'center',
     ...Theme.shadowSm,
+  },
+  dashboardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Theme.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Theme.primary,
+    ...Theme.shadowSm,
+  },
+  dashboardBtnLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
   },
   badge: {
     position: 'absolute',
@@ -1045,32 +1085,17 @@ const styles = StyleSheet.create({
   catNav: {
     borderBottomWidth: 1,
     borderBottomColor: Theme.inputBorder,
-    paddingVertical: 16,
+    paddingVertical: 14,
     backgroundColor: '#fff',
     flexGrow: 0,
     flexShrink: 0,
     marginBottom: 16,
   },
-  catPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: Theme.inputBorder,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
-    gap: 8,
-  },
-  catPillActive: {
-    backgroundColor: Theme.primary,
-    borderColor: Theme.primary,
-    ...Theme.shadowSm,
-  },
-  catPillText: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary },
-  catPillTextActive: { color: '#fff' },
-  catPillImgBox: { width: 20, height: 20, borderRadius: 6, overflow: 'hidden', backgroundColor: Theme.inputBg },
+  catCircleItem: { alignItems: 'center', width: 68 },
+  catCircle: { width: 60, height: 60, borderRadius: 18, backgroundColor: Theme.inputBg, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Theme.inputBorder },
+  catCircleActive: { backgroundColor: Theme.primary, borderColor: Theme.primary },
+  catCircleLabel: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary, textAlign: 'center', marginTop: 6, lineHeight: 14 },
+  catCircleLabelActive: { color: Theme.primary, fontWeight: '800' },
 
   /* ===== Search Results Header ===== */
   searchResultsHeader: {
