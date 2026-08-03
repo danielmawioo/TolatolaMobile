@@ -11,6 +11,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider } from '@/src/contexts/AuthContext';
 import { CartProvider } from '@/src/contexts/CartContext';
 import { NotificationProvider } from '@/src/contexts/NotificationContext';
+import { FloatingSupportFab } from '@/src/components/FloatingSupportFab';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -69,6 +70,7 @@ function RootLayoutNav() {
               <Stack.Screen name="payment-success" />
               <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
               </Stack>
+              <FloatingSupportFab />
             </ThemeProvider>
           </CartProvider>
         </NotificationProvider>
