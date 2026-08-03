@@ -53,6 +53,7 @@ export default function SupportChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [isEscalating, setIsEscalating] = useState(false);
   const [activeTicket, setActiveTicket] = useState<any>(null);
+  const [liveConversationId, setLiveConversationId] = useState<string | null>(null);
 
   // Inactivity & Session Termination State
   const lastActivityRef = useRef<number>(Date.now());
@@ -80,49 +81,6 @@ export default function SupportChatScreen() {
     }
   }, [isAuthenticated, session?.access_token]);
 
-  // 1-Hour Inactivity Monitor
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const elapsed = now - lastActivityRef.current;
-
-      if (elapsed >= INACTIVITY_TIMEOUT_MS && !inactivityPromptActive) {
-        setInactivityPromptActive(true);
-        setSecondsRemaining(TERMINATION_COUNTDOWN_SEC);
-
-        const promptMsg: Message = {
-          id: `inactivity-${now}`,
-          sender: 'bot',
-          text: 'Notice: Your chat session has been inactive for 1 hour. Would you like to continue or end the chat session?',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          showInactivityPrompt: true,
-        };
-        setMessages(prev => [...prev, promptMsg]);
-      }
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [inactivityPromptActive]);
-
-  // 2-Minute Countdown Ticker
-  useEffect(() => {
-    let ticker: NodeJS.Timeout | null = null;
-    if (inactivityPromptActive) {
-      ticker = setInterval(() => {
-        setSecondsRemaining(prev => {
-          if (prev <= 1) {
-            handleEndChatSession('inactivity');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (ticker) clearInterval(ticker);
-    };
-  }, [inactivityPromptActive]);
-
   const checkExistingTickets = async () => {
     try {
       const res = await apiGet<any>('/support/tickets', session!.access_token);
@@ -130,6 +88,9 @@ export default function SupportChatScreen() {
       const openTicket = tickets.find((t: any) => t.status === 'open' || t.status === 'in_progress');
       if (openTicket) {
         setActiveTicket(openTicket);
+        if (openTicket.conversation_id) {
+          setLiveConversationId(openTicket.conversation_id);
+        }
       }
     } catch (e) {
       console.log('Error checking tickets:', e);
@@ -157,6 +118,7 @@ export default function SupportChatScreen() {
   const handleEndChatSession = (reason: 'user' | 'inactivity' = 'user') => {
     setInactivityPromptActive(false);
     setActiveTicket(null);
+    setLiveConversationId(null);
     setMessages([INITIAL_WELCOME_MSG]);
     setInputText('');
 
@@ -184,6 +146,21 @@ export default function SupportChatScreen() {
     setMessages(prev => [...prev, userMsg]);
     if (!textToSend) setInputText('');
     scrollToBottom();
+
+    // If connected to live human support, send message to live conversation
+    if (liveConversationId && session?.access_token) {
+      try {
+        await apiPost(
+          `/conversations/${liveConversationId}/messages`,
+          { message: text },
+          session.access_token
+        );
+      } catch (e) {
+        console.log('Error sending message to live conversation:', e);
+      }
+      return;
+    }
+
     setIsTyping(true);
 
     try {
@@ -206,6 +183,8 @@ export default function SupportChatScreen() {
 
         if (res.ticket) {
           setActiveTicket(res.ticket);
+          const convId = res.conversation?.id || res.ticket.conversation_id;
+          if (convId) setLiveConversationId(convId);
         }
       } else {
         throw new Error('No AI response');
@@ -262,11 +241,14 @@ export default function SupportChatScreen() {
       );
 
       if (res?.ticket) {
-        setActiveTicket(res.ticket);
+        const convId = res.conversation?.id || res.ticket.conversation_id;
+        setActiveTicket({ ...res.ticket, conversation_id: convId });
+        if (convId) setLiveConversationId(convId);
+
         const botMsg: Message = {
           id: Date.now().toString(),
           sender: 'bot',
-          text: `✅ Connected to Human Support! Ticket #${res.ticket.id.slice(0, 8)} created. A support representative will join this chat shortly.`,
+          text: `✅ Connected to Human Support!\n\nTicket #${res.ticket.id.slice(0, 8)} created. A support representative will review your messages and reply shortly. Your messages will now be sent directly to our support team.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         };
         setMessages(prev => [...prev, botMsg]);
