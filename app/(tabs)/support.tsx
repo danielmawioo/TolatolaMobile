@@ -42,7 +42,7 @@ export default function SupportChatScreen() {
     {
       id: 'welcome-1',
       sender: 'bot',
-      text: "Welcome to Tolatola! I'm Aisha, your 24/7 digital agent to help you with whatever you may need! 😊 Choose one of the following topics or type your question.",
+      text: "Welcome to Tola! I'm Aisha, your 24/7 digital agent to help you with whatever you may need! 😊 Choose one of the following topics or type your question.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     },
   ]);
@@ -219,7 +219,7 @@ export default function SupportChatScreen() {
             <View style={s.onlineBadge} />
           </View>
           <Text style={s.agentGreeting}>Hello, I'm Aisha</Text>
-          <Text style={s.agentSubtitle}>TOLATOLA Digital Agent</Text>
+          <Text style={s.agentSubtitle}>TOLA Digital Agent</Text>
         </View>
       </View>
 
@@ -310,7 +310,7 @@ export default function SupportChatScreen() {
             <FontAwesome name="paper-plane" size={14} color="#fff" />
           </Pressable>
         </View>
-        <Text style={s.poweredBy}>TOLATOLA AI Support</Text>
+        <Text style={s.poweredBy}>TOLA AI Support</Text>
       </View>
     </KeyboardAvoidingView>
   );

@@ -1,5 +1,5 @@
 /**
- * Tolatola Support FAQ Knowledge Base
+ * Tola Support FAQ Knowledge Base
  *
  * Each entry contains a user-facing question, the bot's answer,
  * a category tag, and a set of keywords for pattern-matching.
@@ -36,7 +36,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'orders',
     question: 'What is your return policy?',
     answer:
-      'Tolatola supports returns within 7 days of delivery for most products. The item must be unused and in original packaging. Go to Profile → Orders → select the order → "Request Return". The seller will review and process your return.',
+      'Tola supports returns within 7 days of delivery for most products. The item must be unused and in original packaging. Go to Profile → Orders → select the order → "Request Return". The seller will review and process your return.',
     keywords: ['return', 'refund', 'exchange', 'send back', 'policy', 'damaged', 'wrong item', 'defective'],
   },
   {
@@ -54,7 +54,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'payments',
     question: 'What payment methods are accepted?',
     answer:
-      'Tolatola accepts Mobile Money (M-Pesa, Tigo Pesa, Airtel Money, Halo Pesa), bank transfers, and card payments. You can select your preferred method at checkout.',
+      'Tola accepts Mobile Money (M-Pesa, Tigo Pesa, Airtel Money, Halo Pesa), bank transfers, and card payments. You can select your preferred method at checkout.',
     keywords: ['payment', 'pay', 'method', 'mobile money', 'mpesa', 'tigo', 'airtel', 'card', 'bank', 'how to pay'],
   },
   {
@@ -112,9 +112,9 @@ export const SUPPORT_FAQ: FAQEntry[] = [
   {
     id: 'become-vendor',
     category: 'selling',
-    question: 'How do I become a seller on Tolatola?',
+    question: 'How do I become a seller on Tola?',
     answer:
-      'To start selling on Tolatola:\n1. Create an account (or sign in)\n2. Go to Profile → "Become a Seller"\n3. Complete KYC verification (ID + business info)\n4. Once approved, access your Seller Hub to list products\n\nKYC review typically takes 1–3 business days.',
+      'To start selling on Tola:\n1. Create an account (or sign in)\n2. Go to Profile → "Become a Seller"\n3. Complete KYC verification (ID + business info)\n4. Once approved, access your Seller Hub to list products\n\nKYC review typically takes 1–3 business days.',
     keywords: ['sell', 'seller', 'vendor', 'become vendor', 'list products', 'start selling', 'shop', 'business', 'kyc'],
   },
   {
@@ -130,7 +130,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'selling',
     question: 'What are the seller fees?',
     answer:
-      'Tolatola charges a small commission on each sale. The exact rate depends on your subscription plan. Free-tier sellers pay a standard commission, while premium sellers enjoy lower rates and additional features. Check Seller Hub → Subscription for details.',
+      'Tola charges a small commission on each sale. The exact rate depends on your subscription plan. Free-tier sellers pay a standard commission, while premium sellers enjoy lower rates and additional features. Check Seller Hub → Subscription for details.',
     keywords: ['fees', 'commission', 'charges', 'cost', 'seller fee', 'pricing', 'subscription', 'plan'],
   },
 
@@ -156,7 +156,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'shipping',
     question: 'Where do you deliver?',
     answer:
-      'Tolatola delivers across all regions of Tanzania including Dar es Salaam, Arusha, Dodoma, Mwanza, Mbeya, Zanzibar, and more. Coverage extends to both urban and rural areas through our transporter network.',
+      'Tola delivers across all regions of Tanzania including Dar es Salaam, Arusha, Dodoma, Mwanza, Mbeya, Zanzibar, and more. Coverage extends to both urban and rural areas through our transporter network.',
     keywords: ['deliver', 'area', 'region', 'coverage', 'where deliver', 'location', 'zanzibar', 'dar', 'arusha', 'tanzania'],
   },
   {
@@ -172,17 +172,17 @@ export const SUPPORT_FAQ: FAQEntry[] = [
   {
     id: 'what-is-tolatola',
     category: 'general',
-    question: 'What is Tolatola?',
+    question: 'What is Tola?',
     answer:
-      'Tolatola is Tanzania\'s B2B and B2C marketplace connecting sellers, buyers, and transporters. We offer a wide range of products from electronics and fashion to agriculture and construction materials, with built-in secure payments and delivery tracking.',
-    keywords: ['what is', 'tolatola', 'about', 'marketplace', 'company', 'platform', 'who are you'],
+      'Tola is Tanzania\'s B2B and B2C marketplace connecting sellers, buyers, and transporters. We offer a wide range of products from electronics and fashion to agriculture and construction materials, with built-in secure payments and delivery tracking.',
+    keywords: ['what is', 'tola', 'tolatola', 'about', 'marketplace', 'company', 'platform', 'who are you'],
   },
   {
     id: 'contact-info',
     category: 'general',
-    question: 'How can I contact Tolatola?',
+    question: 'How can I contact Tola?',
     answer:
-      'You can reach us through:\n• This support chat (available 24/7 for FAQ)\n• Email: support@tolatola.co\n• Website: www.tolatola.co\n\nFor urgent issues, use the "Connect to Human Support" option below to chat with our team directly.',
+      'You can reach us through:\n• This support chat (available 24/7 for FAQ)\n• Email: support@tola.co\n• Website: www.tola.co\n\nFor urgent issues, use the "Connect to Human Support" option below to chat with our team directly.',
     keywords: ['contact', 'reach', 'email', 'phone', 'call', 'whatsapp', 'customer service', 'talk to someone'],
   },
   {
@@ -198,7 +198,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'general',
     question: 'The app is not working properly',
     answer:
-      'If you\'re experiencing issues:\n1. Make sure you have the latest version of the app\n2. Check your internet connection\n3. Try closing and reopening the app\n4. Clear the app cache (Settings → Apps → Tolatola → Clear Cache)\n\nIf the problem persists, contact our support team with a description of the issue.',
+      'If you\'re experiencing issues:\n1. Make sure you have the latest version of the app\n2. Check your internet connection\n3. Try closing and reopening the app\n4. Clear the app cache (Settings → Apps → Tola → Clear Cache)\n\nIf the problem persists, contact our support team with a description of the issue.',
     keywords: ['not working', 'bug', 'crash', 'error', 'problem', 'issue', 'broken', 'glitch', 'freeze', 'slow'],
   },
   {
@@ -206,7 +206,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'general',
     question: 'How do promotions and discounts work?',
     answer:
-      'Tolatola regularly offers promotions and discounts! Check the Home screen banners for current deals. Some sellers also offer their own discounts — look for products with a "Compare At" price showing the original price crossed out.',
+      'Tola regularly offers promotions and discounts! Check the Home screen banners for current deals. Some sellers also offer their own discounts — look for products with a "Compare At" price showing the original price crossed out.',
     keywords: ['promotion', 'discount', 'sale', 'offer', 'deal', 'coupon', 'promo code', 'special offer'],
   },
   {
@@ -214,10 +214,11 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'general',
     question: 'Is there a referral program?',
     answer:
-      'Yes! Tolatola has a referral program. Share your referral link with friends and earn rewards when they sign up and make their first purchase. Check Profile → Agent Dashboard for your unique referral link and earnings.',
+      'Yes! Tola has a referral program. Share your referral link with friends and earn rewards when they sign up and make their first purchase. Check Profile → Agent Dashboard for your unique referral link and earnings.',
     keywords: ['referral', 'refer', 'invite', 'share', 'earn', 'friend', 'referral link', 'agent'],
   },
 ];
+
 
 /**
  * Quick suggestion chips shown at the start of a support chat.
