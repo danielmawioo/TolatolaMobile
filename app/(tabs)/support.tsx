@@ -288,11 +288,11 @@ export default function SupportChatScreen() {
       {/* Top Banner */}
       <View style={[s.topBanner, { paddingTop: Math.max(insets.top, 16) }]}>
         <View style={s.topBannerActions}>
-          <Pressable style={s.iconBtn} onPress={() => router.back()} hitSlop={12}>
-            <FontAwesome name="chevron-left" size={18} color="#4a3e20" />
+          <Pressable style={s.closeCircleBtn} onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back">
+            <FontAwesome name="chevron-left" size={16} color="#ffffff" />
           </Pressable>
-          <Pressable style={s.iconBtn} onPress={() => router.back()} hitSlop={12}>
-            <FontAwesome name="times" size={20} color="#4a3e20" />
+          <Pressable style={s.closeCircleBtn} onPress={() => router.back()} hitSlop={12} accessibilityLabel="Close Support Chat">
+            <FontAwesome name="times" size={18} color="#ffffff" />
           </Pressable>
         </View>
 
@@ -444,6 +444,14 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   iconBtn: { padding: 8 },
+  closeCircleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#332914',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   agentAvatarContainer: { alignItems: 'center', marginTop: 4 },
   avatarRing: {
     position: 'relative',
