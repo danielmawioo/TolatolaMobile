@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert, Modal } from 'react-native';
+import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
@@ -48,8 +49,23 @@ export function SupportSection({ accessToken }: Props) {
 
   return (
     <View style={s.container}>
+      {/* AI Live Support Chat Banner */}
+      <Pressable
+        style={({ pressed }) => [s.chatBanner, pressed && { opacity: 0.9 }]}
+        onPress={() => router.push('/(tabs)/support' as any)}
+      >
+        <View style={s.chatBannerIcon}>
+          <FontAwesome name="android" size={24} color="#fff" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.chatBannerTitle}>Live AI Support Agent</Text>
+          <Text style={s.chatBannerSub}>Get instant answers 24/7 or chat with customer service.</Text>
+        </View>
+        <FontAwesome name="chevron-right" size={14} color="#fff" />
+      </Pressable>
+
       <View style={s.headerRow}>
-        <Text style={s.desc}>Manage your support requests.</Text>
+        <Text style={s.desc}>Support Tickets History</Text>
         <Pressable style={s.newBtn} onPress={() => setShowCreate(true)}>
           <FontAwesome name="plus-circle" size={14} color="#fff" />
           <Text style={s.newBtnText}>New Ticket</Text>
@@ -121,6 +137,24 @@ export function SupportSection({ accessToken }: Props) {
 
 const s = StyleSheet.create({
   container: { gap: 16 },
+  chatBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.primary,
+    padding: 16,
+    borderRadius: Theme.radiusMd,
+    gap: 12,
+  },
+  chatBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatBannerTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  chatBannerSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 },
   center: { padding: 40, alignItems: 'center' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   desc: { fontSize: 12, color: Theme.textMuted, flex: 1 },
