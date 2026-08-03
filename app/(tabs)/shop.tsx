@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet, FlatList, RefreshControl, ScrollView, Dimensions, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, FlatList, RefreshControl, ScrollView, Dimensions, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { apiGet } from '@/src/services/api';
+import { apiGet, apiPost } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { ProductCard } from '@/components/ProductCard';
@@ -17,6 +17,7 @@ import { COPY } from '@/constants/copy';
 import { getCachedData, setCachedData, CACHE_KEYS } from '@/src/services/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { OfflineMessage } from '@/components/OfflineMessage';
+import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
 
 const { width } = Dimensions.get('window');
 
@@ -48,11 +49,17 @@ const categoryImages: Record<string, string> = {
 
 /**
  * Guest/browse shop: product listing with full header parity to the website.
- * Displays top navbar, categories bar, and product grid using ProductCard.
+ * Displays top navbar, categories bar, product grid using ProductCard, Image Search, and Location/Price Filters.
  */
 export default function GuestShopScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ categoryId?: string; category?: string; search?: string }>();
+  const params = useLocalSearchParams<{
+    categoryId?: string;
+    category?: string;
+    search?: string;
+    imageBase64?: string;
+    mimeType?: string;
+  }>();
   const { isAuthenticated, session } = useAuth();
   const { items: cartItems, addItem } = useCart();
 
@@ -66,8 +73,19 @@ export default function GuestShopScreen() {
   );
   const [searchQuery, setSearchQuery] = useState<string>(params.search || '');
   const [searchInput, setSearchInput] = useState<string>(params.search || '');
+
+  // Filter States (Location, Min Price, Max Price)
   const [locationQuery, setLocationQuery] = useState<string>('');
-  const [showLocationFilter, setShowLocationFilter] = useState<boolean>(false);
+  const [minPriceQuery, setMinPriceQuery] = useState<string>('');
+  const [maxPriceQuery, setMaxPriceQuery] = useState<string>('');
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+
+  // Image Search States
+  const [isImageSearching, setIsImageSearching] = useState<boolean>(false);
+  const [imageSearchResults, setImageSearchResults] = useState<Product[] | null>(null);
+  const [imageAnalysis, setImageAnalysis] = useState<string>('');
+  const [imageKeywords, setImageKeywords] = useState<string[]>([]);
+
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   const getCategoryImage = (cat: any) => {
@@ -103,6 +121,8 @@ export default function GuestShopScreen() {
       if (selectedCategory) queryParams.append('category', selectedCategory);
       if (searchQuery) queryParams.append('search', searchQuery);
       if (locationQuery) queryParams.append('location', locationQuery);
+      if (minPriceQuery) queryParams.append('minPrice', minPriceQuery);
+      if (maxPriceQuery) queryParams.append('maxPrice', maxPriceQuery);
 
       const prodUrl = queryParams.toString() ? `/products?${queryParams.toString()}` : '/products';
 
@@ -118,7 +138,7 @@ export default function GuestShopScreen() {
       setProducts(prods);
       setIsOffline(false);
 
-      if (!selectedCategory && !searchQuery) {
+      if (!selectedCategory && !searchQuery && !locationQuery && !minPriceQuery && !maxPriceQuery) {
         await setCachedData(CACHE_KEYS.SHOP_PRODUCTS, prods);
       }
       await setCachedData(CACHE_KEYS.CATEGORIES, cats);
@@ -140,6 +160,14 @@ export default function GuestShopScreen() {
           const query = searchQuery.toLowerCase();
           filtered = filtered.filter(p => p.name?.toLowerCase().includes(query) || p.description?.toLowerCase().includes(query));
         }
+        if (minPriceQuery) {
+          const min = Number(minPriceQuery);
+          if (!isNaN(min)) filtered = filtered.filter(p => (p.price || 0) >= min);
+        }
+        if (maxPriceQuery) {
+          const max = Number(maxPriceQuery);
+          if (!isNaN(max)) filtered = filtered.filter(p => (p.price || 0) <= max);
+        }
         setProducts(filtered);
       } else {
         setProducts([]);
@@ -147,17 +175,97 @@ export default function GuestShopScreen() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, locationQuery, minPriceQuery, maxPriceQuery]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  // Image search execution helper
+  const handleImageSearch = useCallback(async (base64Data: string, mimeType?: string) => {
+    setIsImageSearching(true);
+    setImageSearchResults(null);
+    setImageAnalysis('');
+    setImageKeywords([]);
+
+    try {
+      const formattedBase64 = base64Data.startsWith('data:')
+        ? base64Data
+        : `data:${mimeType || 'image/jpeg'};base64,${base64Data}`;
+
+      const res = await apiPost<{
+        data?: Product[];
+        analysis?: string;
+        keywords?: string[];
+        total?: number;
+      }>('/products/search-by-image', { image: formattedBase64 });
+
+      setImageSearchResults(res.data || []);
+      if (res.analysis) setImageAnalysis(res.analysis);
+      if (res.keywords) setImageKeywords(res.keywords);
+    } catch (err) {
+      console.error('[Image Search Error]', err);
+      setImageSearchResults([]);
+      Alert.alert('Image search failed', 'Could not analyze your image. Please try again.');
+    } finally {
+      setIsImageSearching(false);
+    }
+  }, []);
+
+  // Run image search if redirected with imageBase64 param
+  useEffect(() => {
+    if (params.imageBase64) {
+      handleImageSearch(params.imageBase64, params.mimeType);
+    }
+  }, [params.imageBase64, params.mimeType, handleImageSearch]);
+
+  const triggerImagePicker = () => {
+    Alert.alert(
+      'Search by Image',
+      'Upload a photo to find matching products using TOLATOLA AI',
+      [
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            const ok = await requestImagePermissions();
+            if (!ok) return;
+            const picked = await pickImageSafe(true);
+            if (picked?.base64) {
+              handleImageSearch(picked.base64, picked.mimeType);
+            }
+          },
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: async () => {
+            const ok = await requestImagePermissions();
+            if (!ok) return;
+            const picked = await pickImageSafe(false);
+            if (picked?.base64) {
+              handleImageSearch(picked.base64, picked.mimeType);
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  };
+
+  const handleClearImageSearch = () => {
+    setImageSearchResults(null);
+    setImageAnalysis('');
+    setImageKeywords([]);
+    setIsImageSearching(false);
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    if (imageSearchResults !== null) {
+      handleClearImageSearch();
+    }
     await fetchData();
     setRefreshing(false);
-  }, [fetchData]);
+  }, [fetchData, imageSearchResults]);
 
   const handleSearch = () => {
     setSearchQuery(searchInput.trim());
@@ -177,7 +285,13 @@ export default function GuestShopScreen() {
     setLoading(true);
   };
 
-  // We use percentage width in styles to ensure 2 items per row instead of fixed calculations
+  const activeFilterCount =
+    (locationQuery.trim() ? 1 : 0) +
+    (minPriceQuery.trim() ? 1 : 0) +
+    (maxPriceQuery.trim() ? 1 : 0);
+
+  const isImageSearchMode = isImageSearching || imageSearchResults !== null;
+  const displayProducts = isImageSearchMode ? (imageSearchResults || []) : products;
 
   const renderProduct = ({ item: p }: { item: Product }) => (
     <View style={styles.productCardWrapper}>
@@ -193,6 +307,63 @@ export default function GuestShopScreen() {
   );
 
   const renderSearchResults = () => {
+    if (isImageSearchMode) {
+      return (
+        <View style={{ marginBottom: 16 }}>
+          {isImageSearching && (
+            <View style={styles.aiAnalyzingCard}>
+              <ActivityIndicator size="large" color="#F59E0B" style={{ marginBottom: 12 }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <FontAwesome name="camera" size={16} color="#F59E0B" />
+                <Text style={styles.aiAnalyzingTitle}>AI is Analyzing Your Image...</Text>
+              </View>
+              <Text style={styles.aiAnalyzingDesc}>
+                TOLATOLA AI is identifying product features, category, and visual details to find matching products for you.
+              </Text>
+            </View>
+          )}
+
+          {!isImageSearching && (
+            <View style={styles.imageResultsCard}>
+              <View style={styles.imageResultsHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, flex: 1 }}>
+                  <View style={styles.cameraIconBox}>
+                    <FontAwesome name="camera" size={16} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <FontAwesome name="sparkles" size={14} color="#F59E0B" />
+                      <Text style={styles.imageResultsTitle}>Image Search Results</Text>
+                    </View>
+                    {imageAnalysis ? (
+                      <Text style={styles.imageResultsAnalysis}>
+                        AI identified: <Text style={{ fontWeight: '800', color: Theme.textPrimary }}>{imageAnalysis}</Text>
+                      </Text>
+                    ) : null}
+                    {imageKeywords.length > 0 && (
+                      <View style={styles.keywordPillsRow}>
+                        {imageKeywords.slice(0, 6).map((kw, i) => (
+                          <View key={i} style={styles.keywordPill}>
+                            <Text style={styles.keywordPillText}>{kw.toUpperCase()}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    <Text style={styles.imageResultsCount}>
+                      {displayProducts.length} {displayProducts.length === 1 ? 'product' : 'products'} found
+                    </Text>
+                  </View>
+                </View>
+                <Pressable onPress={handleClearImageSearch} style={styles.clearImageBtn} hitSlop={10}>
+                  <FontAwesome name="times" size={16} color={Theme.textMuted} />
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
+      );
+    }
+
     if (!searchQuery) return null;
     return (
       <View style={styles.searchResultsHeader}>
@@ -208,7 +379,7 @@ export default function GuestShopScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* ===== Top Navbar – Row 1 (same as home) ===== */}
+      {/* ===== Top Navbar – Row 1 ===== */}
       <View style={styles.headerContainer}>
         <View style={styles.headerTop}>
           <Pressable style={styles.logoGroup} onPress={() => router.push('/(tabs)')}>
@@ -248,11 +419,10 @@ export default function GuestShopScreen() {
                 </View>
               )}
             </Pressable>
-
           </View>
         </View>
 
-        {/* Navbar – Row 2: Track Order + Search */}
+        {/* Navbar – Row 2: Track Order + Search (with Camera & Sliders) */}
         <View style={styles.headerRow2}>
           <Pressable
             style={({ pressed }) => [styles.trackOrderBtn, pressed && { opacity: 0.85 }]}
@@ -272,107 +442,150 @@ export default function GuestShopScreen() {
               onSubmitEditing={handleSearch}
               returnKeyType="search"
             />
+            {/* Camera Button for Image Search */}
             <Pressable
-              onPress={() => setShowLocationFilter(!showLocationFilter)}
+              onPress={triggerImagePicker}
+              style={{ paddingHorizontal: 6, paddingVertical: 5 }}
+              hitSlop={8}
+            >
+              <FontAwesome name="camera" size={15} color="#F59E0B" />
+            </Pressable>
+            {/* Filter Toggle */}
+            <Pressable
+              onPress={() => setShowFilters(!showFilters)}
               style={{
                 paddingHorizontal: 8,
                 paddingVertical: 5,
                 borderRadius: 8,
-                backgroundColor: showLocationFilter ? Theme.primary : 'transparent',
+                backgroundColor: showFilters ? Theme.primary : 'transparent',
+                position: 'relative',
               }}
+              hitSlop={8}
             >
-              <FontAwesome name="sliders" size={14} color={showLocationFilter ? '#fff' : locationQuery ? Theme.primary : Theme.textMuted} />
+              <FontAwesome name="sliders" size={14} color={showFilters ? '#fff' : activeFilterCount > 0 ? Theme.primary : Theme.textMuted} />
+              {activeFilterCount > 0 && !showFilters && (
+                <View style={styles.filterBadgeMini}>
+                  <Text style={styles.filterBadgeMiniText}>{activeFilterCount}</Text>
+                </View>
+              )}
             </Pressable>
           </View>
         </View>
 
-        {/* Inline Location Filter Row */}
-        {showLocationFilter && (
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            paddingHorizontal: 16,
-            paddingBottom: 8,
-            backgroundColor: '#F8FAFC',
-          }}>
-            <FontAwesome name="map-marker" size={14} color={Theme.primary} />
-            <TextInput
-              style={{
-                flex: 1,
-                height: 36,
-                borderWidth: 1,
-                borderColor: '#E2E8F0',
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                fontSize: 13,
-                fontWeight: '600',
-                backgroundColor: '#fff',
-                color: Theme.textPrimary,
-              }}
-              placeholder="Filter by location (e.g. Pwani, Arusha...)"
-              placeholderTextColor={Theme.textMuted}
-              value={locationQuery}
-              onChangeText={setLocationQuery}
-              onSubmitEditing={() => {
-                handleSearch();
-                fetchData();
-              }}
-              returnKeyType="search"
-            />
-            {locationQuery.trim() !== '' && (
+        {/* Expandable Location & Price Filter Drawer */}
+        {showFilters && (
+          <View style={styles.filtersPanel}>
+            <View style={styles.filterRow}>
+              <FontAwesome name="map-marker" size={14} color={Theme.primary} style={{ width: 18 }} />
+              <TextInput
+                style={styles.filterInput}
+                placeholder="Filter by location (e.g. Dar es Salaam, Pwani...)"
+                placeholderTextColor={Theme.textMuted}
+                value={locationQuery}
+                onChangeText={setLocationQuery}
+                returnKeyType="done"
+              />
+              {locationQuery.trim() !== '' && (
+                <Pressable onPress={() => setLocationQuery('')} style={{ padding: 4 }}>
+                  <FontAwesome name="times-circle" size={14} color={Theme.textMuted} />
+                </Pressable>
+              )}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={[styles.filterRow, { flex: 1 }]}>
+                <FontAwesome name="money" size={13} color="#10B981" style={{ width: 18 }} />
+                <TextInput
+                  style={styles.filterInput}
+                  placeholder="Min Price (TZS)"
+                  placeholderTextColor={Theme.textMuted}
+                  keyboardType="numeric"
+                  value={minPriceQuery}
+                  onChangeText={setMinPriceQuery}
+                  returnKeyType="done"
+                />
+              </View>
+              <View style={[styles.filterRow, { flex: 1 }]}>
+                <FontAwesome name="money" size={13} color="#10B981" style={{ width: 18 }} />
+                <TextInput
+                  style={styles.filterInput}
+                  placeholder="Max Price (TZS)"
+                  placeholderTextColor={Theme.textMuted}
+                  keyboardType="numeric"
+                  value={maxPriceQuery}
+                  onChangeText={setMaxPriceQuery}
+                  returnKeyType="done"
+                />
+              </View>
+            </View>
+            <View style={styles.filterActions}>
               <Pressable
+                style={[styles.filterBtn, { backgroundColor: Theme.primary }]}
                 onPress={() => {
-                  setLocationQuery('');
+                  handleSearch();
                   fetchData();
                 }}
-                style={{ padding: 4 }}
               >
-                <FontAwesome name="times-circle" size={16} color={Theme.textMuted} />
+                <FontAwesome name="search" size={12} color="#fff" />
+                <Text style={styles.filterBtnText}>Apply Filters</Text>
               </Pressable>
-            )}
+              {activeFilterCount > 0 && (
+                <Pressable
+                  style={[styles.filterBtn, { backgroundColor: Theme.backgroundTertiary }]}
+                  onPress={() => {
+                    setLocationQuery('');
+                    setMinPriceQuery('');
+                    setMaxPriceQuery('');
+                    fetchData();
+                  }}
+                >
+                  <Text style={[styles.filterBtnText, { color: Theme.textMuted }]}>Reset</Text>
+                </Pressable>
+              )}
+            </View>
           </View>
         )}
       </View>
 
       {isOffline && <OfflineBanner onRetry={fetchData} />}
 
-      {/* ===== Categories Nav Bar (same as home/website) ===== */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.catNav}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-      >
-        <Pressable
-          style={[styles.catPill, !selectedCategory && styles.catPillActive]}
-          onPress={() => handleCategorySelect(null)}
+      {/* ===== Categories Nav Bar ===== */}
+      {!isImageSearchMode && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.catNav}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
         >
-          <FontAwesome name="th-large" size={12} color={!selectedCategory ? '#fff' : Theme.textSecondary} />
-          <Text style={[styles.catPillText, !selectedCategory && styles.catPillTextActive]}>ALL CATEGORIES</Text>
-        </Pressable>
-        {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
-          const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
-          const isBService = b.slug === "services" || b.name?.toLowerCase() === "services"
-          if (isAService && !isBService) return 1
-          if (!isAService && isBService) return -1
-          return 0
-        }).map(c => (
           <Pressable
-            key={c.id}
-            style={[styles.catPill, selectedCategory === c.id && styles.catPillActive]}
-            onPress={() => handleCategorySelect(c.id)}
+            style={[styles.catPill, !selectedCategory && styles.catPillActive]}
+            onPress={() => handleCategorySelect(null)}
           >
-            <View style={styles.catPillImgBox}>
-              <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" />
-            </View>
-            <Text style={[styles.catPillText, selectedCategory === c.id && styles.catPillTextActive]}>{c.name}</Text>
+            <FontAwesome name="th-large" size={12} color={!selectedCategory ? '#fff' : Theme.textSecondary} />
+            <Text style={[styles.catPillText, !selectedCategory && styles.catPillTextActive]}>ALL CATEGORIES</Text>
           </Pressable>
-        ))}
-      </ScrollView>
+          {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
+            const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
+            const isBService = b.slug === "services" || b.name?.toLowerCase() === "services"
+            if (isAService && !isBService) return 1
+            if (!isAService && isBService) return -1
+            return 0
+          }).map(c => (
+            <Pressable
+              key={c.id}
+              style={[styles.catPill, selectedCategory === c.id && styles.catPillActive]}
+              onPress={() => handleCategorySelect(c.id)}
+            >
+              <View style={styles.catPillImgBox}>
+                <OptimizedImage source={getCategoryImages(c)} width="100%" height="100%" />
+              </View>
+              <Text style={[styles.catPillText, selectedCategory === c.id && styles.catPillTextActive]}>{c.name}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Subcategory pills bar */}
-      {(() => {
+      {!isImageSearchMode && (() => {
         const activeCat = categories.find(c => c.id === selectedCategory);
         const parentCat = activeCat?.parent_id
           ? categories.find(c => c.id === activeCat.parent_id)
@@ -406,18 +619,18 @@ export default function GuestShopScreen() {
       })()}
 
       {/* ===== Products Grid ===== */}
-      {loading ? (
+      {loading && !isImageSearchMode ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Theme.primary} />
           <Text style={styles.loadingText}>Loading products...</Text>
         </View>
-      ) : isOffline && products.length === 0 ? (
+      ) : isOffline && displayProducts.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <OfflineMessage type="products" onRetry={fetchData} />
         </View>
       ) : (
         <FlatList
-          data={products}
+          data={displayProducts}
           keyExtractor={(item) => item.id.toString()}
           numColumns={2}
           columnWrapperStyle={styles.columnWrapper}
@@ -428,19 +641,40 @@ export default function GuestShopScreen() {
           ListHeaderComponent={renderSearchResults}
           renderItem={renderProduct}
           ListEmptyComponent={
-            <EmptyState
-              icon="search"
-              title={COPY.empty.shopProducts}
-              message="Try another category or check back later."
-              actionLabel="Clear Filters"
-              onAction={() => {
-                setSearchQuery('');
-                setSearchInput('');
-                setSelectedCategory(null);
-                router.setParams({ categoryId: '', search: '', category: '' });
-              }}
-              style={{ marginTop: 24 }}
-            />
+            isImageSearchMode ? (
+              <View style={styles.imageEmptyCard}>
+                <View style={styles.imageEmptyIconBox}>
+                  <FontAwesome name="camera" size={28} color={Theme.textMuted} />
+                </View>
+                {imageAnalysis ? (
+                  <Text style={styles.imageEmptyAnalysis}>
+                    We identified: <Text style={{ fontWeight: '800', color: Theme.textPrimary }}>{imageAnalysis}</Text>
+                  </Text>
+                ) : null}
+                <Text style={styles.imageEmptyTitle}>No similar products found</Text>
+                <Text style={styles.imageEmptySub}>Try uploading a different photo with clearer product details.</Text>
+                <Pressable onPress={handleClearImageSearch} style={styles.backToShopBtn}>
+                  <Text style={styles.backToShopText}>Back to Shop</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <EmptyState
+                icon="search"
+                title={COPY.empty.shopProducts}
+                message="Try another category or check back later."
+                actionLabel="Clear Filters"
+                onAction={() => {
+                  setSearchQuery('');
+                  setSearchInput('');
+                  setLocationQuery('');
+                  setMinPriceQuery('');
+                  setMaxPriceQuery('');
+                  setSelectedCategory(null);
+                  router.setParams({ categoryId: '', search: '', category: '' });
+                }}
+                style={{ marginTop: 24 }}
+              />
+            )
           }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Theme.primary]} />
@@ -449,6 +683,34 @@ export default function GuestShopScreen() {
       )}
     </View>
   );
+}
+
+// Rename helper function inside file to avoid conflicts
+function getCategoryImages(cat: any) {
+  if (cat.image_url) return cat.image_url;
+  if (cat.slug && categoryImages[cat.slug]) {
+    return categoryImages[cat.slug];
+  }
+  const nameLower = (cat.name || '').toLowerCase();
+  if (nameLower === 'men' || nameLower.includes("men's") || nameLower.includes('mens')) return categoryImages.men;
+  if (nameLower === 'women' || nameLower.includes("women's") || nameLower.includes('womens')) return categoryImages.women;
+  if (nameLower === 'kids' || nameLower.includes("kid's") || nameLower.includes('children')) return categoryImages.kids;
+  if (nameLower.includes('ready to eat') || nameLower.includes('ready-to-eat')) return categoryImages["ready-to-eat"];
+  if (nameLower.includes('spare') || nameLower.includes('part')) return categoryImages["spare-parts"];
+  if (nameLower.includes('drink') || nameLower.includes('alcohol')) return categoryImages.drinks;
+  if (nameLower.includes('agri') || nameLower.includes('farm')) return categoryImages.agriculture;
+  if (nameLower.includes('food') || nameLower.includes('bev') || nameLower.includes('beverage')) return categoryImages["food-beverages"];
+  if (nameLower.includes('construct') || nameLower.includes('hard') || nameLower.includes('hardware')) return categoryImages["construction-hardware"];
+  if (nameLower.includes('electro')) return categoryImages.electronics;
+  if (nameLower.includes('health') || nameLower.includes('beauty')) return categoryImages["health-beauty"];
+  if (nameLower.includes('service')) return categoryImages.services;
+  if (nameLower.includes('fmcg') || nameLower.includes('fast') || nameLower.includes('moving')) return categoryImages["fast-moving-consumer-goods"];
+  if (nameLower.includes('motorcycle')) return categoryImages.motorcycles;
+  if (nameLower.includes('vehicle') || nameLower.includes('car') || nameLower.includes('auto') || nameLower.includes('motor')) return categoryImages.vehicles;
+  if (nameLower.includes('handicraft') || nameLower.includes('craft')) return categoryImages.handicrafts;
+  if (nameLower.includes('home') || nameLower.includes('garden')) return categoryImages["home-garden"];
+  if (nameLower.includes('textile') || nameLower.includes('fabric') || nameLower.includes('cloth') || nameLower.includes('fashion')) return categoryImages.textiles;
+  return categoryImages.default;
 }
 
 const styles = StyleSheet.create({
@@ -573,7 +835,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: Theme.inputBg,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     borderRadius: 22,
     borderWidth: 1,
     borderColor: Theme.inputBorder,
@@ -584,6 +846,199 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Theme.text,
     paddingVertical: 0,
+  },
+  filterBadgeMini: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: Theme.accentRed,
+    borderRadius: 8,
+    minWidth: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeMiniText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+
+  /* ===== Expandable Filter Panel ===== */
+  filtersPanel: {
+    marginTop: 10,
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    height: 38,
+  },
+  filterInput: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: Theme.textPrimary,
+  },
+  filterActions: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+    marginTop: 2,
+  },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  filterBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  /* ===== Image Search Components ===== */
+  aiAnalyzingCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiAnalyzingTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  aiAnalyzingDesc: {
+    fontSize: 12,
+    color: '#B45309',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  imageResultsCard: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 16,
+    padding: 14,
+  },
+  imageResultsHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  cameraIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F59E0B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageResultsTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#78350F',
+  },
+  imageResultsAnalysis: {
+    fontSize: 12,
+    color: '#92400E',
+    marginTop: 2,
+  },
+  keywordPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 6,
+  },
+  keywordPill: {
+    backgroundColor: '#FDE68A',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  keywordPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#78350F',
+  },
+  imageResultsCount: {
+    fontSize: 11,
+    color: '#B45309',
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  clearImageBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FDE68A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageEmptyCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 16,
+  },
+  imageEmptyIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  imageEmptyAnalysis: {
+    fontSize: 13,
+    color: Theme.textSecondary,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  imageEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Theme.textPrimary,
+  },
+  imageEmptySub: {
+    fontSize: 12,
+    color: Theme.textMuted,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  backToShopBtn: {
+    marginTop: 16,
+    backgroundColor: Theme.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  backToShopText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#fff',
   },
 
   /* ===== Categories Nav ===== */
@@ -666,3 +1121,4 @@ const styles = StyleSheet.create({
     width: '48%',
   },
 });
+

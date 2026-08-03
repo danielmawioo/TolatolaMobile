@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, FlatList, Dimensions, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, FlatList, Dimensions, ActivityIndicator, Linking, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -16,6 +16,7 @@ import { getCachedData, setCachedData, CACHE_KEYS } from '@/src/services/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { OfflineMessage } from '@/components/OfflineMessage';
 import { PartnersSection } from '@/components/PartnersSection';
+import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
 
 const { width } = Dimensions.get('window');
 
@@ -279,6 +280,44 @@ export default function GuestHomeScreen() {
     return categoryImages.default;
   };
 
+  const triggerImagePicker = () => {
+    Alert.alert(
+      'Search by Image',
+      'Upload a photo to find matching products using TOLATOLA AI',
+      [
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            const ok = await requestImagePermissions();
+            if (!ok) return;
+            const picked = await pickImageSafe(true);
+            if (picked?.base64) {
+              router.push({
+                pathname: '/(tabs)/shop',
+                params: { imageBase64: picked.base64, mimeType: picked.mimeType },
+              });
+            }
+          },
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: async () => {
+            const ok = await requestImagePermissions();
+            if (!ok) return;
+            const picked = await pickImageSafe(false);
+            if (picked?.base64) {
+              router.push({
+                pathname: '/(tabs)/shop',
+                params: { imageBase64: picked.base64, mimeType: picked.mimeType },
+              });
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  };
+
   const toggleLike = (id: string) => {
     setLikedIds(prev => {
       const next = new Set(prev);
@@ -381,13 +420,22 @@ export default function GuestHomeScreen() {
             <FontAwesome name="map-marker" size={14} color="#fff" />
             <Text style={styles.trackOrderBtnText}>Track Order</Text>
           </Pressable>
-          <Pressable
-            style={styles.headerSearchBar}
-            onPress={() => router.push('/(tabs)/shop')}
-          >
-            <FontAwesome name="search" size={14} color={Theme.textMuted} />
-            <Text style={styles.headerSearchPlaceholder}>What are you looking for...</Text>
-          </Pressable>
+          <View style={styles.headerSearchBar}>
+            <Pressable
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              onPress={() => router.push('/(tabs)/shop')}
+            >
+              <FontAwesome name="search" size={14} color={Theme.textMuted} />
+              <Text style={styles.headerSearchPlaceholder}>What are you looking for...</Text>
+            </Pressable>
+            <Pressable
+              onPress={triggerImagePicker}
+              style={{ paddingHorizontal: 6, paddingVertical: 5 }}
+              hitSlop={8}
+            >
+              <FontAwesome name="camera" size={15} color="#F59E0B" />
+            </Pressable>
+          </View>
         </View>
       </View>
 
