@@ -24,6 +24,15 @@ import { matchUserQuery } from '@/src/lib/supportAgent';
 import { QUICK_SUGGESTIONS } from '@/src/data/supportFAQ';
 
 const AISHA_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
+const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+const TERMINATION_COUNTDOWN_SEC = 120; // 2 minutes
+
+const INITIAL_WELCOME_MSG: Message = {
+  id: 'welcome-1',
+  sender: 'bot',
+  text: "Welcome to Tola! I'm Aisha, your 24/7 digital agent to help you with whatever you may need! 😊 Choose one of the following topics or type your question.",
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+};
 
 interface Message {
   id: string;
@@ -31,6 +40,7 @@ interface Message {
   text: string;
   timestamp: string;
   showEscalationOption?: boolean;
+  showInactivityPrompt?: boolean;
 }
 
 export default function SupportChatScreen() {
@@ -38,20 +48,25 @@ export default function SupportChatScreen() {
   const { isAuthenticated, session } = useAuth();
   const params = useLocalSearchParams<{ initialQuery?: string }>();
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome-1',
-      sender: 'bot',
-      text: "Welcome to Tola! I'm Aisha, your 24/7 digital agent to help you with whatever you may need! 😊 Choose one of the following topics or type your question.",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([INITIAL_WELCOME_MSG]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isEscalating, setIsEscalating] = useState(false);
   const [activeTicket, setActiveTicket] = useState<any>(null);
 
+  // Inactivity & Session Termination State
+  const lastActivityRef = useRef<number>(Date.now());
+  const [inactivityPromptActive, setInactivityPromptActive] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(TERMINATION_COUNTDOWN_SEC);
+
   const flatListRef = useRef<FlatList>(null);
+
+  const resetActivityTimer = () => {
+    lastActivityRef.current = Date.now();
+    if (inactivityPromptActive) {
+      setInactivityPromptActive(false);
+    }
+  };
 
   useEffect(() => {
     if (params.initialQuery) {
@@ -64,6 +79,49 @@ export default function SupportChatScreen() {
       checkExistingTickets();
     }
   }, [isAuthenticated, session?.access_token]);
+
+  // 1-Hour Inactivity Monitor
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastActivityRef.current;
+
+      if (elapsed >= INACTIVITY_TIMEOUT_MS && !inactivityPromptActive) {
+        setInactivityPromptActive(true);
+        setSecondsRemaining(TERMINATION_COUNTDOWN_SEC);
+
+        const promptMsg: Message = {
+          id: `inactivity-${now}`,
+          sender: 'bot',
+          text: 'Notice: Your chat session has been inactive for 1 hour. Would you like to continue or end the chat session?',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          showInactivityPrompt: true,
+        };
+        setMessages(prev => [...prev, promptMsg]);
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [inactivityPromptActive]);
+
+  // 2-Minute Countdown Ticker
+  useEffect(() => {
+    let ticker: NodeJS.Timeout | null = null;
+    if (inactivityPromptActive) {
+      ticker = setInterval(() => {
+        setSecondsRemaining(prev => {
+          if (prev <= 1) {
+            handleEndChatSession('inactivity');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (ticker) clearInterval(ticker);
+    };
+  }, [inactivityPromptActive]);
 
   const checkExistingTickets = async () => {
     try {
@@ -84,10 +142,36 @@ export default function SupportChatScreen() {
     }, 100);
   };
 
+  const handleContinueChatSession = () => {
+    resetActivityTimer();
+    const resMsg: Message = {
+      id: `resumed-${Date.now()}`,
+      sender: 'bot',
+      text: 'Great! Your chat session has been resumed. How else can Aisha help you today?',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    };
+    setMessages(prev => [...prev, resMsg]);
+    scrollToBottom();
+  };
+
+  const handleEndChatSession = (reason: 'user' | 'inactivity' = 'user') => {
+    setInactivityPromptActive(false);
+    setActiveTicket(null);
+    setMessages([INITIAL_WELCOME_MSG]);
+    setInputText('');
+
+    Alert.alert(
+      reason === 'inactivity' ? 'Session Ended' : 'Chat Ended',
+      'Your chat session has been terminated due to inactivity. You can start a new session anytime.',
+      [{ text: 'OK', onPress: () => router.back() }]
+    );
+  };
+
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text) return;
 
+    resetActivityTimer();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const userMsg: Message = {
@@ -103,7 +187,6 @@ export default function SupportChatScreen() {
     setIsTyping(true);
 
     try {
-      // 1. Try real backend Gemini API call first
       const chatHistory = messages.map(m => ({ sender: m.sender, text: m.text }));
       const res = await apiPost<any>(
         '/support/ai-chat',
@@ -128,7 +211,6 @@ export default function SupportChatScreen() {
         throw new Error('No AI response');
       }
     } catch (err) {
-      // 2. Fallback to smart local pattern matcher
       const matchResult = matchUserQuery(text);
       if (matchResult) {
         const botMsg: Message = {
@@ -150,11 +232,13 @@ export default function SupportChatScreen() {
       }
     } finally {
       setIsTyping(false);
+      resetActivityTimer();
       scrollToBottom();
     }
   };
 
   const handleEscalateToHuman = async () => {
+    resetActivityTimer();
     if (!isAuthenticated) {
       Alert.alert('Sign In Required', 'Please sign in to connect with live human customer support.', [
         { text: 'Cancel', style: 'cancel' },
@@ -191,6 +275,7 @@ export default function SupportChatScreen() {
       Alert.alert('Connection Failed', e.message || 'Failed to create support ticket');
     } finally {
       setIsEscalating(false);
+      resetActivityTimer();
       scrollToBottom();
     }
   };
@@ -199,16 +284,15 @@ export default function SupportChatScreen() {
     <KeyboardAvoidingView
       style={s.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      {/* Top Banner Matching Reference Image */}
+      {/* Top Banner */}
       <View style={[s.topBanner, { paddingTop: Math.max(insets.top, 16) }]}>
         <View style={s.topBannerActions}>
-          <Pressable style={s.iconBtn} onPress={() => router.back()} hitSlop={10}>
-            <FontAwesome name="chevron-left" size={16} color="#4a3e20" />
+          <Pressable style={s.iconBtn} onPress={() => router.back()} hitSlop={12}>
+            <FontAwesome name="chevron-left" size={18} color="#4a3e20" />
           </Pressable>
-          <Pressable style={s.iconBtn} onPress={() => router.back()} hitSlop={10}>
-            <FontAwesome name="minus" size={16} color="#4a3e20" />
+          <Pressable style={s.iconBtn} onPress={() => router.back()} hitSlop={12}>
+            <FontAwesome name="times" size={20} color="#4a3e20" />
           </Pressable>
         </View>
 
@@ -258,6 +342,7 @@ export default function SupportChatScreen() {
                 <Text style={[s.msgText, isUser ? s.msgTextUser : s.msgTextBot]}>{item.text}</Text>
                 <Text style={[s.msgTime, isUser ? s.msgTimeUser : s.msgTimeBot]}>{item.timestamp}</Text>
 
+                {/* Human Escalation Option */}
                 {item.showEscalationOption && !activeTicket && (
                   <Pressable
                     style={({ pressed }) => [s.escalateBtn, pressed && { opacity: 0.85 }]}
@@ -273,6 +358,25 @@ export default function SupportChatScreen() {
                       </>
                     )}
                   </Pressable>
+                )}
+
+                {/* 1-Hour Inactivity Termination Action Prompt */}
+                {item.showInactivityPrompt && inactivityPromptActive && (
+                  <View style={s.inactivityPromptContainer}>
+                    <Text style={s.inactivityTimerText}>
+                      Ending automatically in {Math.floor(secondsRemaining / 60)}m {secondsRemaining % 60}s...
+                    </Text>
+                    <View style={s.inactivityBtnRow}>
+                      <Pressable style={s.continueBtn} onPress={handleContinueChatSession}>
+                        <FontAwesome name="refresh" size={12} color="#fff" />
+                        <Text style={s.continueBtnText}>Continue</Text>
+                      </Pressable>
+                      <Pressable style={s.endBtn} onPress={() => handleEndChatSession('user')}>
+                        <FontAwesome name="sign-out" size={12} color="#dc2626" />
+                        <Text style={s.endBtnText}>End Chat</Text>
+                      </Pressable>
+                    </View>
+                  </View>
                 )}
               </View>
             </View>
@@ -290,13 +394,16 @@ export default function SupportChatScreen() {
         }
       />
 
-      {/* Input Bar Matching Reference Image */}
+      {/* Input Bar */}
       <View style={[s.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <View style={s.inputWrapper}>
           <TextInput
             style={s.input}
             value={inputText}
-            onChangeText={setInputText}
+            onChangeText={text => {
+              resetActivityTimer();
+              setInputText(text);
+            }}
             placeholder="Type your message"
             placeholderTextColor="#94a3b8"
             multiline
@@ -435,6 +542,47 @@ const s = StyleSheet.create({
     marginTop: 8,
   },
   escalateBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
+
+  inactivityPromptContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#cbd5e1',
+    gap: 8,
+  },
+  inactivityTimerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#b45309',
+  },
+  inactivityBtnRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  continueBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#059669',
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  continueBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
+  endBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  endBtnText: { color: '#dc2626', fontSize: 12, fontWeight: '700' },
 
   inputBar: {
     backgroundColor: '#ffffff',
