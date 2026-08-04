@@ -81,6 +81,39 @@ export default function SupportChatScreen() {
     }
   }, [isAuthenticated, session?.access_token]);
 
+  // Poll for incoming messages from support agent during active live support
+  useEffect(() => {
+    if (!liveConversationId || !session?.access_token) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiGet<any>(`/conversations/${liveConversationId}/messages`, session.access_token);
+        const msgs = res?.data || res?.messages || (Array.isArray(res) ? res : []);
+        if (Array.isArray(msgs) && msgs.length > 0) {
+          setMessages((prev) => {
+            let updated = [...prev];
+            let changed = false;
+            for (const m of msgs) {
+              const msgId = `live-${m.id}`;
+              if (!updated.some((existing) => existing.id === msgId || existing.id === m.id)) {
+                changed = true;
+                updated.push({
+                  id: msgId,
+                  sender: m.sender_type === 'bot' ? 'bot' : m.sender_type === 'agent' ? 'agent' : 'user',
+                  text: m.message || '[Attachment]',
+                  timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                });
+              }
+            }
+            return changed ? updated : prev;
+          });
+        }
+      } catch (e) {
+        /* silent */
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [liveConversationId, session?.access_token]);
+
   const checkExistingTickets = async () => {
     try {
       const res = await apiGet<any>('/support/tickets', session!.access_token);

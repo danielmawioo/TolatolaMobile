@@ -1,5 +1,9 @@
 // Load .env into process.env when present (e.g. copy .env.example to .env)
-require('dotenv').config();
+try {
+  require('dotenv').config();
+} catch (e) {
+  // Ignore if dotenv is not installed in certain build environments
+}
 
 const appJson = require('./app.json');
 

@@ -120,7 +120,11 @@ export default function SignupScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setError(null);
     try {
-      const user = await signInWithGoogle();
+      const user = await signInWithGoogle({
+        userType,
+        vendorType: userType === 'vendor' ? vendorType : undefined,
+        referralCode: referralCode.trim() || params.ref || undefined,
+      });
       if (user) {
         // Since they signed up/logged in via Google, redirect to role-specific dashboard
         const { getRoleRedirectPath } = await import('@/src/lib/roleRedirect');
