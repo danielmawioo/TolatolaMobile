@@ -816,7 +816,7 @@ export default function GuestHomeScreen() {
           </View>
         </View>
 
-        {/* Strategic Ecosystem Partners */}
+        {/* Ecosystem Partners */}
         <PartnersSection />
 
         {/* Seller CTA */}

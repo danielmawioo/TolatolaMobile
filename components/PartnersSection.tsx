@@ -31,7 +31,7 @@ export function PartnersSection() {
           <Text style={styles.badgeText}>ECOSYSTEM PARTNERS</Text>
         </View>
         <Text style={styles.sectionTitle}>
-          Our Strategic <Text style={styles.italicPrimary}>Partners</Text>
+          Our <Text style={styles.italicPrimary}>Partners</Text>
         </Text>
       </View>
 
