@@ -114,7 +114,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'selling',
     question: 'How do I become a seller on Tola?',
     answer:
-      'To start selling on Tola:\n1. Create an account (or sign in)\n2. Go to Profile → "Become a Seller"\n3. Complete KYC verification (ID + business info)\n4. Once approved, access your Seller Hub to list products\n\nKYC review typically takes 1–3 business days.',
+      'To start selling on Tola:\n1. Go to the Sign Up page at https://tolatola.co/auth/sign-up\n2. Select "Sell my products" as your account type\n3. Choose your business type (Producer, Manufacturer, Supplier, Wholesaler, or Retail Trader)\n4. Fill in your details and create your account\n5. Complete KYC verification at https://tolatola.co/vendor/register (TIN, NIDA, business license required)\n6. KYC review takes 1–3 business days\n7. Once approved, access your Vendor Dashboard and create your shop to start listing products!',
     keywords: ['sell', 'seller', 'vendor', 'become vendor', 'list products', 'start selling', 'shop', 'business', 'kyc'],
   },
   {
@@ -164,7 +164,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'shipping',
     question: 'How do I become a transporter?',
     answer:
-      'To join as a transporter:\n1. Create an account\n2. Go to Profile → "Become a Transporter"\n3. Complete verification with your vehicle details and ID\n4. Once approved, you\'ll receive delivery assignments in your area\n\nTransporters earn per delivery and can set their availability.',
+      'To join as a transporter:\n1. Go to the Sign Up page at https://tolatola.co/auth/sign-up\n2. Select "Provide transport services" as your account type\n3. Fill in your details and create your account\n4. Complete verification at https://tolatola.co/transporter/register with your vehicle details and ID\n5. Once approved, access your Transporter Dashboard to receive delivery assignments\n\nTransporters earn per delivery and can set their availability.',
     keywords: ['transporter', 'delivery driver', 'courier', 'become transporter', 'deliver items', 'driver'],
   },
 
@@ -182,7 +182,7 @@ export const SUPPORT_FAQ: FAQEntry[] = [
     category: 'general',
     question: 'How can I contact Tola?',
     answer:
-      'You can reach us through:\n• This support chat (available 24/7 for FAQ)\n• Email: support@tola.co\n• Website: www.tola.co\n\nFor urgent issues, use the "Connect to Human Support" option below to chat with our team directly.',
+      'You can reach us through:\n• This support chat (available 24/7 for FAQ)\n• Email: support@tolatola.co\n• Website: https://tolatola.co\n• Contact page: https://tolatola.co/contact\n\nFor urgent issues, use the "Connect to Human Support" option below to chat with our team directly.',
     keywords: ['contact', 'reach', 'email', 'phone', 'call', 'whatsapp', 'customer service', 'talk to someone'],
   },
   {
