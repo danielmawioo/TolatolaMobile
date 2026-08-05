@@ -23,14 +23,14 @@ import { apiGet, apiPost } from '@/src/services/api';
 import { matchUserQuery } from '@/src/lib/supportAgent';
 import { QUICK_SUGGESTIONS } from '@/src/data/supportFAQ';
 
-const AISHA_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
+const MOUREEN_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
 const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
 const TERMINATION_COUNTDOWN_SEC = 120; // 2 minutes
 
 const INITIAL_WELCOME_MSG: Message = {
   id: 'welcome-1',
   sender: 'bot',
-  text: "Welcome to Tola! I'm Aisha, your 24/7 digital agent to help you with whatever you may need! 😊 Choose one of the following topics or type your question.",
+  text: "Welcome to Tola! I'm Moureen Tyler, your 24/7 digital agent to help you with whatever you may need! 😊 Choose one of the following topics or type your question.",
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
 };
 
@@ -141,7 +141,7 @@ export default function SupportChatScreen() {
     const resMsg: Message = {
       id: `resumed-${Date.now()}`,
       sender: 'bot',
-      text: 'Great! Your chat session has been resumed. How else can Aisha help you today?',
+      text: 'Great! Your chat session has been resumed. How else can Moureen Tyler help you today?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     };
     setMessages(prev => [...prev, resMsg]);
@@ -311,13 +311,13 @@ export default function SupportChatScreen() {
           </Pressable>
         </View>
 
-        {/* Centered Aisha Avatar Header */}
+        {/* Centered Moureen Tyler Avatar Header */}
         <View style={s.agentAvatarContainer}>
           <View style={s.avatarRing}>
-            <Image source={{ uri: AISHA_AVATAR }} style={s.avatarImage} />
+            <Image source={{ uri: MOUREEN_AVATAR }} style={s.avatarImage} />
             <View style={s.onlineBadge} />
           </View>
-          <Text style={s.agentGreeting}>Hello, I'm Aisha</Text>
+          <Text style={s.agentGreeting}>Hello, I'm Moureen Tyler</Text>
           <Text style={s.agentSubtitle}>TOLA Digital Agent</Text>
         </View>
       </View>
@@ -351,7 +351,7 @@ export default function SupportChatScreen() {
           return (
             <View style={[s.msgWrapper, isUser ? s.msgWrapperUser : s.msgWrapperBot]}>
               {!isUser && (
-                <Image source={{ uri: AISHA_AVATAR }} style={s.msgAvatar} />
+                <Image source={{ uri: MOUREEN_AVATAR }} style={s.msgAvatar} />
               )}
               <View style={[s.msgBubble, isUser ? s.msgBubbleUser : s.msgBubbleBot]}>
                 <Text style={[s.msgText, isUser ? s.msgTextUser : s.msgTextBot]}>{item.text}</Text>
@@ -400,7 +400,7 @@ export default function SupportChatScreen() {
         ListFooterComponent={
           isTyping ? (
             <View style={[s.msgWrapper, s.msgWrapperBot]}>
-              <Image source={{ uri: AISHA_AVATAR }} style={s.msgAvatar} />
+              <Image source={{ uri: MOUREEN_AVATAR }} style={s.msgAvatar} />
               <View style={[s.msgBubble, s.msgBubbleBot, { paddingVertical: 12, paddingHorizontal: 16 }]}>
                 <ActivityIndicator size="small" color={Theme.primary} />
               </View>

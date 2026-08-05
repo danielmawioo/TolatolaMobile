@@ -3,7 +3,7 @@ import { Pressable, View, Text, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
-const AISHA_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
+const MOUREEN_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
 
 export function FloatingSupportFab() {
   const handleOpenSupport = () => {
@@ -18,7 +18,7 @@ export function FloatingSupportFab() {
       hitSlop={10}
     >
       <View style={styles.avatarWrapper}>
-        <Image source={{ uri: AISHA_AVATAR }} style={styles.avatarImage} />
+        <Image source={{ uri: MOUREEN_AVATAR }} style={styles.avatarImage} />
         {/* Red notification badge matching reference Image 1 */}
         <View style={styles.badge}>
           <Text style={styles.badgeText}>1</Text>
