@@ -12,11 +12,14 @@ import {
   Platform,
   ScrollView,
   Image,
+  Linking,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Theme } from '@/constants/Theme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { apiGet, apiPost } from '@/src/services/api';
@@ -30,7 +33,7 @@ const TERMINATION_COUNTDOWN_SEC = 120; // 2 minutes
 const INITIAL_WELCOME_MSG: Message = {
   id: 'welcome-1',
   sender: 'bot',
-  text: "Welcome to Tola! I'm Moureen Tyler, your 24/7 digital agent to help you with whatever you may need! 😊 Choose one of the following topics or type your question.",
+  text: "Welcome to Tola! I'm Moureen Tyler, your 24/7 digital agent to help you with whatever you may need! 😊 Choose a topic, type your question, or attach a photo/PDF document.",
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
 };
 
@@ -41,6 +44,17 @@ interface Message {
   timestamp: string;
   showEscalationOption?: boolean;
   showInactivityPrompt?: boolean;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  attachmentName?: string;
+}
+
+interface SelectedAttachment {
+  uri: string;
+  name: string;
+  mimeType: string;
+  base64Data?: string;
+  isPdf: boolean;
 }
 
 export default function SupportChatScreen() {
@@ -54,6 +68,9 @@ export default function SupportChatScreen() {
   const [isEscalating, setIsEscalating] = useState(false);
   const [activeTicket, setActiveTicket] = useState<any>(null);
   const [liveConversationId, setLiveConversationId] = useState<string | null>(null);
+
+  // Attachment State
+  const [selectedAttachment, setSelectedAttachment] = useState<SelectedAttachment | null>(null);
 
   // Inactivity & Session Termination State
   const lastActivityRef = useRef<number>(Date.now());
@@ -101,6 +118,8 @@ export default function SupportChatScreen() {
                   sender: m.sender_type === 'bot' ? 'bot' : m.sender_type === 'agent' ? 'agent' : 'user',
                   text: m.message || '[Attachment]',
                   timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                  attachmentUrl: m.attachment_url,
+                  attachmentType: m.attachment_type,
                 });
               }
             }
@@ -136,6 +155,99 @@ export default function SupportChatScreen() {
     }, 100);
   };
 
+  const handlePickAttachmentOptions = () => {
+    Alert.alert(
+      'Attach File',
+      'Choose attachment type for Moureen Tyler & Support Agent:',
+      [
+        { text: '📷 Choose Photo (Gallery)', onPress: pickImage },
+        { text: '📄 Select PDF Document', onPress: pickDocument },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Needed', 'Please allow access to your photo library to attach pictures.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        base64: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        let base64 = asset.base64;
+        if (!base64 && asset.uri) {
+          try {
+            base64 = await fetch(asset.uri).then(r => r.blob()).then(b => new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const res = reader.result as string;
+                resolve(res.includes(';base64,') ? res.split(';base64,')[1] : res);
+              };
+              reader.readAsDataURL(b);
+            }));
+          } catch (e) {
+            console.warn('Error reading image base64:', e);
+          }
+        }
+
+        setSelectedAttachment({
+          uri: asset.uri,
+          name: asset.fileName || `photo_${Date.now()}.jpg`,
+          mimeType: asset.mimeType || 'image/jpeg',
+          base64Data: base64,
+          isPdf: false,
+        });
+      }
+    } catch (err) {
+      console.error('Error picking image:', err);
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        let base64: string | undefined;
+        try {
+          base64 = await fetch(asset.uri).then(r => r.blob()).then(b => new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const res = reader.result as string;
+              resolve(res.includes(';base64,') ? res.split(';base64,')[1] : res);
+            };
+            reader.readAsDataURL(b);
+          }));
+        } catch (e) {
+          console.warn('Error reading PDF base64:', e);
+        }
+
+        setSelectedAttachment({
+          uri: asset.uri,
+          name: asset.name || `document_${Date.now()}.pdf`,
+          mimeType: asset.mimeType || 'application/pdf',
+          base64Data: base64,
+          isPdf: true,
+        });
+      }
+    } catch (err) {
+      console.error('Error picking document:', err);
+    }
+  };
+
   const handleContinueChatSession = () => {
     resetActivityTimer();
     const resMsg: Message = {
@@ -154,6 +266,7 @@ export default function SupportChatScreen() {
     setLiveConversationId(null);
     setMessages([INITIAL_WELCOME_MSG]);
     setInputText('');
+    setSelectedAttachment(null);
 
     Alert.alert(
       reason === 'inactivity' ? 'Session Ended' : 'Chat Ended',
@@ -164,20 +277,26 @@ export default function SupportChatScreen() {
 
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
-    if (!text) return;
+    if (!text && !selectedAttachment) return;
 
     resetActivityTimer();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    const userMsgText = text || (selectedAttachment ? `Attached document: ${selectedAttachment.name}` : '');
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      text,
+      text: userMsgText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      attachmentUrl: selectedAttachment?.uri,
+      attachmentType: selectedAttachment?.mimeType,
+      attachmentName: selectedAttachment?.name,
     };
 
+    const currentAttachment = selectedAttachment;
     setMessages(prev => [...prev, userMsg]);
     if (!textToSend) setInputText('');
+    setSelectedAttachment(null);
     scrollToBottom();
 
     // If connected to live human support, send message to live conversation
@@ -185,7 +304,11 @@ export default function SupportChatScreen() {
       try {
         await apiPost(
           `/conversations/${liveConversationId}/messages`,
-          { message: text },
+          {
+            message: userMsgText,
+            attachment_url: currentAttachment?.uri,
+            attachment_type: currentAttachment?.mimeType,
+          },
           session.access_token
         );
       } catch (e) {
@@ -197,10 +320,32 @@ export default function SupportChatScreen() {
     setIsTyping(true);
 
     try {
-      const chatHistory = messages.map(m => ({ sender: m.sender, text: m.text }));
+      const chatHistory = messages.map(m => ({
+        sender: m.sender,
+        text: m.text,
+        attachmentUrl: m.attachmentUrl,
+        attachmentType: m.attachmentType,
+      }));
+
+      const payload: any = {
+        message: userMsgText,
+        history: chatHistory,
+        attachmentUrl: currentAttachment?.uri,
+        attachmentType: currentAttachment?.mimeType,
+      };
+
+      if (currentAttachment) {
+        payload.attachment = {
+          data: currentAttachment.base64Data,
+          mimeType: currentAttachment.mimeType,
+          filename: currentAttachment.name,
+          url: currentAttachment.uri,
+        };
+      }
+
       const res = await apiPost<any>(
         '/support/ai-chat',
-        { message: text, history: chatHistory },
+        payload,
         session?.access_token
       );
 
@@ -223,7 +368,7 @@ export default function SupportChatScreen() {
         throw new Error('No AI response');
       }
     } catch (err) {
-      const matchResult = matchUserQuery(text);
+      const matchResult = matchUserQuery(userMsgText);
       if (matchResult) {
         const botMsg: Message = {
           id: (Date.now() + 1).toString(),
@@ -236,7 +381,7 @@ export default function SupportChatScreen() {
         const botMsg: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'bot',
-          text: `I'm sorry, I couldn't find an exact match for your question. Would you like to connect with our human Customer Support team?`,
+          text: `I couldn't process that attachment or message. Would you like to connect with our human Customer Support team?`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
           showEscalationOption: true,
         };
@@ -269,7 +414,17 @@ export default function SupportChatScreen() {
 
       const res = await apiPost<any>(
         '/support/tickets',
-        { subject, message: messageBody, priority: 'medium' },
+        {
+          subject,
+          message: messageBody,
+          priority: 'medium',
+          history: messages.map(m => ({
+            sender: m.sender,
+            text: m.text,
+            attachmentUrl: m.attachmentUrl,
+            attachmentType: m.attachmentType,
+          })),
+        },
         session?.access_token
       );
 
@@ -348,12 +503,39 @@ export default function SupportChatScreen() {
         contentContainerStyle={s.messageList}
         renderItem={({ item }) => {
           const isUser = item.sender === 'user';
+          const isImage = item.attachmentType?.startsWith('image/') || item.attachmentUrl?.startsWith('data:image/');
           return (
             <View style={[s.msgWrapper, isUser ? s.msgWrapperUser : s.msgWrapperBot]}>
               {!isUser && (
                 <Image source={{ uri: MOUREEN_AVATAR }} style={s.msgAvatar} />
               )}
               <View style={[s.msgBubble, isUser ? s.msgBubbleUser : s.msgBubbleBot]}>
+                
+                {/* Message Attachment Rendering */}
+                {item.attachmentUrl && (
+                  <View style={s.attachmentContainer}>
+                    {isImage ? (
+                      <Image source={{ uri: item.attachmentUrl }} style={s.msgImageAttachment} resizeMode="cover" />
+                    ) : (
+                      <Pressable
+                        style={s.pdfCard}
+                        onPress={() => Linking.openURL(item.attachmentUrl!)}
+                      >
+                        <View style={s.pdfIconBadge}>
+                          <FontAwesome name="file-pdf-o" size={18} color="#dc2626" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.pdfNameText} numberOfLines={1}>
+                            {item.attachmentName || 'PDF Document'}
+                          </Text>
+                          <Text style={s.pdfSubText}>Tap to open PDF</Text>
+                        </View>
+                        <FontAwesome name="external-link" size={12} color="#94a3b8" />
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+
                 <Text style={[s.msgText, isUser ? s.msgTextUser : s.msgTextBot]}>{item.text}</Text>
                 <Text style={[s.msgTime, isUser ? s.msgTimeUser : s.msgTimeBot]}>{item.timestamp}</Text>
 
@@ -411,7 +593,33 @@ export default function SupportChatScreen() {
 
       {/* Input Bar */}
       <View style={[s.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        
+        {/* Selected Attachment Preview Box */}
+        {selectedAttachment && (
+          <View style={s.previewBar}>
+            <View style={s.previewInfo}>
+              {selectedAttachment.isPdf ? (
+                <View style={s.previewPdfBadge}>
+                  <Text style={s.previewPdfBadgeText}>PDF</Text>
+                </View>
+              ) : (
+                <Image source={{ uri: selectedAttachment.uri }} style={s.previewImage} />
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={s.previewFileName} numberOfLines={1}>{selectedAttachment.name}</Text>
+                <Text style={s.previewSubText}>{selectedAttachment.isPdf ? 'PDF Document' : 'Picture'}</Text>
+              </View>
+            </View>
+            <Pressable style={s.removeAttachmentBtn} onPress={() => setSelectedAttachment(null)}>
+              <FontAwesome name="times" size={12} color="#475569" />
+            </Pressable>
+          </View>
+        )}
+
         <View style={s.inputWrapper}>
+          <Pressable style={s.attachBtn} onPress={handlePickAttachmentOptions}>
+            <FontAwesome name="paperclip" size={18} color="#64748b" />
+          </Pressable>
           <TextInput
             style={s.input}
             value={inputText}
@@ -419,15 +627,19 @@ export default function SupportChatScreen() {
               resetActivityTimer();
               setInputText(text);
             }}
-            placeholder="Type your message"
+            placeholder={selectedAttachment ? 'Add a comment (optional)...' : 'Type message or attach file'}
             placeholderTextColor="#94a3b8"
             multiline
             maxLength={500}
           />
           <Pressable
-            style={({ pressed }) => [s.sendBtn, !inputText.trim() && s.sendBtnDisabled, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [
+              s.sendBtn,
+              (!inputText.trim() && !selectedAttachment) && s.sendBtnDisabled,
+              pressed && { opacity: 0.8 },
+            ]}
             onPress={() => handleSend()}
-            disabled={!inputText.trim()}
+            disabled={!inputText.trim() && !selectedAttachment}
           >
             <FontAwesome name="paper-plane" size={14} color="#fff" />
           </Pressable>
@@ -553,6 +765,34 @@ const s = StyleSheet.create({
   msgTimeUser: { color: 'rgba(255,255,255,0.7)', alignSelf: 'flex-end' },
   msgTimeBot: { color: '#94a3b8', alignSelf: 'flex-start' },
 
+  attachmentContainer: { marginBottom: 6 },
+  msgImageAttachment: {
+    width: 200,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: '#e2e8f0',
+  },
+  pdfCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  pdfIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#fee2e2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pdfNameText: { fontSize: 12, fontWeight: '700', color: '#1e293b' },
+  pdfSubText: { fontSize: 10, color: '#64748b' },
+
   escalateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -615,6 +855,39 @@ const s = StyleSheet.create({
     borderTopColor: '#e2e8f0',
     alignItems: 'center',
   },
+  previewBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 8,
+    padding: 8,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  previewInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  previewImage: { width: 36, height: 36, borderRadius: 8 },
+  previewPdfBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#fee2e2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewPdfBadgeText: { fontSize: 10, fontWeight: '900', color: '#dc2626' },
+  previewFileName: { fontSize: 12, fontWeight: '700', color: '#1e293b' },
+  previewSubText: { fontSize: 10, color: '#64748b' },
+  removeAttachmentBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -622,10 +895,14 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
     borderRadius: 28,
-    paddingLeft: 16,
+    paddingLeft: 12,
     paddingRight: 6,
     paddingVertical: 4,
     width: '100%',
+  },
+  attachBtn: {
+    padding: 6,
+    marginRight: 4,
   },
   input: {
     flex: 1,
@@ -638,7 +915,7 @@ const s = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#94a3b8',
+    backgroundColor: Theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
