@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { AppThemeProvider } from '@/src/contexts/ThemeContext';
 import { AuthProvider } from '@/src/contexts/AuthContext';
 import { CartProvider } from '@/src/contexts/CartContext';
 import { NotificationProvider } from '@/src/contexts/NotificationContext';
@@ -46,7 +47,11 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <AppThemeProvider>
+      <RootLayoutNav />
+    </AppThemeProvider>
+  );
 }
 
 function RootLayoutNav() {

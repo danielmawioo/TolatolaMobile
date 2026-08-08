@@ -17,6 +17,7 @@ import { TransactionHistorySection } from '@/src/components/profile/TransactionH
 import { SupportSection } from '@/src/components/profile/SupportSection';
 import { KycVerificationSection } from '@/src/components/profile/KycVerificationSection';
 import { OptimizedImage } from '@/components/OptimizedImage';
+import { ThemeToggle } from '@/src/components/ThemeToggle';
 
 type ProfileTab = 'personal' | 'kyc' | 'orders' | 'transactions' | 'support' | 'settings' | 'wishlist';
 
@@ -318,6 +319,12 @@ export default function ProfileScreen() {
         <Pressable style={[styles.editProfileBtn, changingPw && { opacity: 0.5 }]} onPress={handlePasswordChange} disabled={changingPw}>
           {changingPw ? <ActivityIndicator color="#fff" /> : <Text style={styles.editProfileBtnText}>Update Password</Text>}
         </Pressable>
+      </View>
+
+      <Text style={[styles.settingsTitle, { marginTop: 24 }]}>Appearance & Theme</Text>
+      <Text style={styles.settingsDesc}>Switch between Light and Dark mode.</Text>
+      <View style={[styles.infoCard, { alignItems: 'flex-start', paddingTop: 8 }]}>
+        <ThemeToggle />
       </View>
 
       <Text style={[styles.settingsTitle, { color: Theme.error, marginTop: 24 }]}>Danger Zone</Text>
@@ -652,6 +659,9 @@ export default function ProfileScreen() {
         {activeTab === 'support' && <SupportSection accessToken={session.access_token!} />}
         {activeTab === 'settings' && renderSettings()}
       </View>
+
+      {/* Theme Toggle Button at Bottom */}
+      <ThemeToggle style={{ marginTop: 24, alignSelf: 'center' }} />
 
     </ScrollView>
   );
