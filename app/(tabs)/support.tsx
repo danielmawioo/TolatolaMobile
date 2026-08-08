@@ -33,7 +33,7 @@ const TERMINATION_COUNTDOWN_SEC = 120; // 2 minutes
 const INITIAL_WELCOME_MSG: Message = {
   id: 'welcome-1',
   sender: 'bot',
-  text: "Welcome to Tola! I'm Moureen Tyler, your 24/7 digital agent to help you with whatever you may need! 😊 Choose a topic, type your question, or attach a photo/PDF document.",
+  text: "Welcome to Tola! I'm Moureen Tyler, your 24/7 digital agent to help you with whatever you may need! 😊 Type your question or attach a photo/PDF document.",
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
 };
 
