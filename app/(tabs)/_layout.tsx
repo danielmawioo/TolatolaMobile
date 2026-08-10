@@ -8,6 +8,8 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useCart } from '@/src/contexts/CartContext';
 import { useNotifications } from '@/src/contexts/NotificationContext';
 
+import { useThemeColors } from '@/src/hooks/useThemeColors';
+
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
@@ -41,16 +43,17 @@ export default function TabLayout() {
   const { session } = useAuth();
   const { itemCount } = useCart();
   const { unreadCount } = useNotifications();
+  const theme = useThemeColors();
 
   return (
     <ErrorBoundary>
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Theme.primary,
-        tabBarInactiveTintColor: Theme.textMuted,
+        tabBarActiveTintColor: theme.tabActive,
+        tabBarInactiveTintColor: theme.tabInactive,
         tabBarStyle: {
-          backgroundColor: Theme.background,
-          borderTopColor: Theme.inputBorder,
+          backgroundColor: theme.tabBarBg,
+          borderTopColor: theme.tabBarBorder,
           borderTopWidth: 1,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
@@ -58,8 +61,8 @@ export default function TabLayout() {
           shadowRadius: 8,
           elevation: 8,
         },
-        headerStyle: { backgroundColor: Theme.background },
-        headerTintColor: Theme.text,
+        headerStyle: { backgroundColor: theme.background },
+        headerTintColor: theme.text,
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}
     >

@@ -24,13 +24,13 @@ export const APP_API_URL =
  * Supabase project URL (same project as the backend).
  */
 export const SUPABASE_URL =
-  extra?.SUPABASE_URL ?? process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+  extra?.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://eyvumcctadmjetvjujcn.supabase.co';
 
 /**
  * Supabase anon/public key (same as backend).
  */
 export const SUPABASE_ANON_KEY =
-  extra?.SUPABASE_ANON_KEY ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  extra?.SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dnVtY2N0YWRtamV0dmp1amNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODg0NzYsImV4cCI6MjA3NDk2NDQ3Nn0.RuFpE0tm1xGRHDZzreE1zpgWfNeGrsqxaXPRqvNXavs';
 
 /**
  * App URL scheme for deep links (e.g. tolatolamobile://).

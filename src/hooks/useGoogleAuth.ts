@@ -48,10 +48,33 @@ export function useGoogleAuth() {
     const authResult = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
 
     if (authResult.type === 'success' && authResult.url) {
-      const parsedUrl = new URL(authResult.url.replace('#', '?'));
-      const accessToken = parsedUrl.searchParams.get('access_token');
-      const refreshToken = parsedUrl.searchParams.get('refresh_token');
-      const idToken = parsedUrl.searchParams.get('id_token');
+      let accessToken: string | null = null;
+      let refreshToken: string | null = null;
+      let idToken: string | null = null;
+
+      try {
+        const urlObj = new URL(authResult.url);
+        accessToken = urlObj.searchParams.get('access_token');
+        refreshToken = urlObj.searchParams.get('refresh_token');
+        idToken = urlObj.searchParams.get('id_token');
+
+        if (!accessToken && !idToken && urlObj.hash) {
+          const hashParams = new URLSearchParams(urlObj.hash.replace(/^#/, ''));
+          accessToken = hashParams.get('access_token');
+          refreshToken = hashParams.get('refresh_token');
+          idToken = hashParams.get('id_token');
+        }
+      } catch (e) {
+        const hashIdx = authResult.url.indexOf('#');
+        const queryIdx = authResult.url.indexOf('?');
+        const paramStr = hashIdx !== -1 
+          ? authResult.url.substring(hashIdx + 1)
+          : (queryIdx !== -1 ? authResult.url.substring(queryIdx + 1) : '');
+        const params = new URLSearchParams(paramStr);
+        accessToken = params.get('access_token');
+        refreshToken = params.get('refresh_token');
+        idToken = params.get('id_token');
+      }
 
       if (idToken) {
         const response = await apiPost<{ user: User; session: Session }>('/auth/google', {

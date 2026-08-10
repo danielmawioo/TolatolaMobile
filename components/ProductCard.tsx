@@ -6,6 +6,8 @@ import { Theme } from '@/constants/Theme';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import type { Product } from '@/src/types';
 
+import { useThemeColors } from '@/src/hooks/useThemeColors';
+
 interface ProductCardProps {
   product: Product;
   badge?: { text: string; variant: 'new' | 'deal' | 'hot' };
@@ -27,6 +29,7 @@ export function ProductCard({
   onShare,
   style,
 }: ProductCardProps) {
+  const theme = useThemeColors();
   const stock = product.stock_quantity ?? product.stock ?? 1;
   const isSoldOut = stock === 0;
 
@@ -57,8 +60,18 @@ export function ProductCard({
   };
 
   return (
-    <Pressable style={[styles.card, style]} onPress={handlePress}>
-      <View style={styles.imageContainer}>
+    <Pressable
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.cardBackground,
+          borderColor: theme.border,
+        },
+        style,
+      ]}
+      onPress={handlePress}
+    >
+      <View style={[styles.imageContainer, { backgroundColor: theme.inputBg }]}>
         <OptimizedImage
           source={(product.images && Array.isArray(product.images) && product.images.length > 0) ? (product.images[0] as string) : product.image_url}
           width="100%"
