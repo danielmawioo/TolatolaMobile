@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import { useThemeColors } from '@/src/hooks/useThemeColors';
 import { apiGet } from '@/src/services/api';
 import type { Product, Banner } from '@/src/types';
 import { OptimizedImage } from '@/components/OptimizedImage';
@@ -81,6 +82,7 @@ export default function GuestHomeScreen() {
   const insets = useSafeAreaInsets();
   const { isAuthenticated, session } = useAuth();
   const { items: cartItems, addItem } = useCart();
+  const theme = useThemeColors();
   
   const [categories, setCategories] = useState<any[]>([]);
   const [promotions, setPromotions] = useState<any[]>([]);
@@ -359,8 +361,8 @@ export default function GuestHomeScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={Theme.primary} />
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -368,15 +370,15 @@ export default function GuestHomeScreen() {
   const userType = session?.user?.user_type || (session?.user as any)?.role;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.background }]}>
       {/* Top Navbar – Row 1 */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
         <View style={styles.headerTop}>
           <Pressable style={styles.logoGroup} onPress={() => {}}>
-            <View style={styles.logoBox}>
+            <View style={[styles.logoBox, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
                <OptimizedImage source="https://tolatola.co/logo-new.png" width="100%" height="100%" resizeMode="contain" />
             </View>
-            <Text style={styles.logoTitle}>TOLA.</Text>
+            <Text style={[styles.logoTitle, { color: theme.text }]}>TOLA.</Text>
           </Pressable>
           <View style={styles.headerRight}>
              {/* Show dashboard buttons for ALL approved roles */}
@@ -411,28 +413,28 @@ export default function GuestHomeScreen() {
                </Pressable>
              )}
              <Pressable 
-               style={({ pressed }) => [styles.shopTextBtn, pressed && { opacity: 0.7 }]} 
+               style={({ pressed }) => [styles.shopTextBtn, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '40' }, pressed && { opacity: 0.7 }]} 
                onPress={() => router.push('/(tabs)/shop')}
                hitSlop={10}
              >
-               <FontAwesome name="shopping-bag" size={14} color={Theme.primary} />
+               <FontAwesome name="shopping-bag" size={14} color={theme.primary} />
                <Text style={styles.shopTextBtnLabel}>Shop</Text>
              </Pressable>
              <Pressable 
-                style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }, { marginRight: 4 }]} 
+                style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.iconBg }, pressed && { opacity: 0.7 }, { marginRight: 4 }]} 
                 onPress={() => router.push('/(tabs)/favorites')}
                 hitSlop={10}
               >
-                <FontAwesome name="heart-o" size={20} color={Theme.primary} />
+                <FontAwesome name="heart-o" size={20} color={theme.primary} />
               </Pressable>
               <Pressable 
-                style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]} 
+                style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.iconBg }, pressed && { opacity: 0.7 }]} 
                 onPress={() => router.push('/(tabs)/cart')}
                 hitSlop={10}
               >
-                <FontAwesome name="shopping-cart" size={22} color={Theme.primary} />
+                <FontAwesome name="shopping-cart" size={22} color={theme.primary} />
                 {cartItems.length > 0 && (
-                  <View style={styles.badge}>
+                  <View style={[styles.badge, { borderColor: theme.background }]}>
                     <Text style={styles.badgeText}>{cartItems.length > 99 ? '99+' : cartItems.length}</Text>
                   </View>
                 )}
@@ -450,13 +452,13 @@ export default function GuestHomeScreen() {
             <FontAwesome name="map-marker" size={14} color="#fff" />
             <Text style={styles.trackOrderBtnText}>Track Order</Text>
           </Pressable>
-          <View style={styles.headerSearchBar}>
+          <View style={[styles.headerSearchBar, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
             <Pressable
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
               onPress={() => router.push('/(tabs)/shop')}
             >
-              <FontAwesome name="search" size={14} color={Theme.textMuted} />
-              <Text style={styles.headerSearchPlaceholder}>What are you looking for...</Text>
+              <FontAwesome name="search" size={14} color={theme.textMuted} />
+              <Text style={[styles.headerSearchPlaceholder, { color: theme.textMuted }]}>What are you looking for...</Text>
             </Pressable>
             <Pressable
               onPress={triggerImagePicker}
@@ -481,7 +483,7 @@ export default function GuestHomeScreen() {
         {/* Supply Chain Real-Time Notification Banner */}
         {isAuthenticated && scNotification && (
           <Pressable
-            style={styles.scNotificationBanner}
+            style={[styles.scNotificationBanner, { backgroundColor: theme.cardBackground, borderColor: theme.primary + '30' }]}
             onPress={() => {
               const pid = scNotification.data?.product_id || scNotification.data?.productId;
               if (pid) {
@@ -506,25 +508,25 @@ export default function GuestHomeScreen() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.scNotifTitle} numberOfLines={1}>
+                <Text style={[styles.scNotifTitle, { color: theme.text }]} numberOfLines={1}>
                   {scNotification.title}
                 </Text>
-                <Text style={styles.scNotifMessage} numberOfLines={1}>
+                <Text style={[styles.scNotifMessage, { color: theme.textSecondary }]} numberOfLines={1}>
                   {scNotification.message}
                 </Text>
               </View>
             </View>
-            <FontAwesome name="chevron-right" size={12} color={Theme.primary} />
+            <FontAwesome name="chevron-right" size={12} color={theme.primary} />
           </Pressable>
         )}
 
         {/* Categories Nav - Squircle Tile Icons */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catNav} contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.catNav, { backgroundColor: theme.background, borderBottomColor: theme.border }]} contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}>
           <Pressable style={styles.catCircleItem} onPress={() => router.push('/(tabs)/shop')}>
             <View style={[styles.catCircle, styles.catCircleActive]}>
               <FontAwesome name="th-large" size={20} color="#fff" />
             </View>
-            <Text style={[styles.catCircleLabel, styles.catCircleLabelActive]}>All</Text>
+            <Text style={[styles.catCircleLabel, styles.catCircleLabelActive, { color: theme.primary }]}>All</Text>
           </Pressable>
           {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
             const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
@@ -534,10 +536,10 @@ export default function GuestHomeScreen() {
             return 0
           }).map(c => (
             <Pressable key={c.id} style={styles.catCircleItem} onPress={() => router.push(`(tabs)/shop?category=${c.id}` as any)}>
-              <View style={styles.catCircle}>
+              <View style={[styles.catCircle, { backgroundColor: theme.catCircleBg, borderColor: theme.catCircleBorder }]}>
                 <OptimizedImage source={getCategoryImage(c)} width="100%" height="100%" style={{ borderRadius: 18 }} />
               </View>
-              <Text style={styles.catCircleLabel} numberOfLines={2}>{c.name}</Text>
+              <Text style={[styles.catCircleLabel, { color: theme.textSecondary }]} numberOfLines={2}>{c.name}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -620,8 +622,8 @@ export default function GuestHomeScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <View>
-                    <Text style={styles.sectionSub}>Sourced from preferred partners</Text>
-                    <Text style={styles.sectionTitle}>Supply Chain <Text style={styles.italicPrimary}>Matches</Text></Text>
+                    <Text style={[styles.sectionSub, { color: theme.primary }]}>Sourced from preferred partners</Text>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Supply Chain <Text style={styles.italicPrimary}>Matches</Text></Text>
                   </View>
                   <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
                 </View>
@@ -646,8 +648,8 @@ export default function GuestHomeScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <View>
-                    <Text style={styles.sectionSub}>Top trading opportunities calculated for you</Text>
-                    <Text style={styles.sectionTitle}>Recommended <Text style={styles.italicRed}>For You</Text></Text>
+                    <Text style={[styles.sectionSub, { color: theme.primary }]}>Top trading opportunities calculated for you</Text>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Recommended <Text style={styles.italicRed}>For You</Text></Text>
                   </View>
                   <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
                 </View>
@@ -673,7 +675,7 @@ export default function GuestHomeScreen() {
             {featuredProducts.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Handpicked for <Text style={styles.italicPrimary}>You</Text></Text>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Handpicked for <Text style={styles.italicPrimary}>You</Text></Text>
                   <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
@@ -696,7 +698,7 @@ export default function GuestHomeScreen() {
             {bestSelling.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Most <Text style={[styles.italicPrimary, { color: '#F59E0B' }]}>Selling</Text></Text>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Most <Text style={[styles.italicPrimary, { color: '#F59E0B' }]}>Selling</Text></Text>
                   <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
@@ -719,7 +721,7 @@ export default function GuestHomeScreen() {
             {bestDeals.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Best Deals <Text style={styles.italicRed}>In Town</Text></Text>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Best Deals <Text style={styles.italicRed}>In Town</Text></Text>
                   <Pressable onPress={() => router.push('/(tabs)/shop')}><Text style={styles.seeAll}>See All</Text></Pressable>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
@@ -743,23 +745,23 @@ export default function GuestHomeScreen() {
         {/* Benefits Strip */}
         <View style={styles.benefitsStrip}>
           <View style={styles.benefitItem}>
-            <FontAwesome name="shield" size={18} color={Theme.primary} />
+            <FontAwesome name="shield" size={18} color={theme.primary} />
             <Text style={styles.benefitText}>SECURE PAYMENTS</Text>
           </View>
           <View style={styles.benefitItem}>
-            <FontAwesome name="users" size={18} color={Theme.primary} />
+            <FontAwesome name="users" size={18} color={theme.primary} />
             <Text style={styles.benefitText}>VERIFIED VENDORS</Text>
           </View>
           <View style={styles.benefitItem}>
-            <FontAwesome name="globe" size={18} color={Theme.primary} />
+            <FontAwesome name="globe" size={18} color={theme.primary} />
             <Text style={styles.benefitText}>PAN-TANZANIA REACH</Text>
           </View>
         </View>
 
         {/* Trending Categories - Circular Icons Grid */}
         <View style={styles.section}>
-          <Text style={styles.sectionSub}>Selections for you</Text>
-          <Text style={styles.sectionTitle}>Shop by <Text style={styles.italicPrimary}>Category</Text></Text>
+          <Text style={[styles.sectionSub, { color: theme.primary }]}>Selections for you</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Shop by <Text style={styles.italicPrimary}>Category</Text></Text>
           <View style={styles.catCircleGrid}>
             {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
               const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
@@ -769,10 +771,10 @@ export default function GuestHomeScreen() {
               return 0
             }).slice(0, 12).map((cat) => (
               <Pressable key={cat.id} style={styles.catGridItem} onPress={() => router.push(`(tabs)/shop?category=${cat.id}` as any)}>
-                <View style={styles.catGridCircle}>
+                <View style={[styles.catGridCircle, { backgroundColor: theme.catCircleBg, borderColor: theme.catCircleBorder }]}>
                   <OptimizedImage source={getCategoryImage(cat)} width="100%" height="100%" style={{ borderRadius: 22 }} />
                 </View>
-                <Text style={styles.catGridLabel} numberOfLines={2}>{cat.name}</Text>
+                <Text style={[styles.catGridLabel, { color: theme.text }]} numberOfLines={2}>{cat.name}</Text>
               </Pressable>
             ))}
           </View>
@@ -782,23 +784,23 @@ export default function GuestHomeScreen() {
         </View>
 
         {/* Engineered for Trust */}
-        <View style={[styles.section, { backgroundColor: '#fafaf9', paddingVertical: 28, marginHorizontal: -16, paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e7e5e4' }]}>
+        <View style={[styles.section, { backgroundColor: theme.trustSectionBg, paddingVertical: 28, marginHorizontal: -16, paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.trustSectionBorder }]}>
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
             <View style={styles.trustHeaderBadge}>
               <FontAwesome name="shield" size={12} color={Theme.primary} />
               <Text style={styles.trustHeaderBadgeText}>MULTI-LAYER PROTECTION</Text>
             </View>
-            <Text style={[styles.sectionTitle, { textAlign: 'center', marginTop: 8 }]}>
+            <Text style={[styles.sectionTitle, { textAlign: 'center', marginTop: 8, color: theme.text }]}>
               Engineered for <Text style={styles.italicPrimary}>Trust</Text>
             </Text>
-            <Text style={styles.trustDesc}>
+            <Text style={[styles.trustDesc, { color: theme.textSecondary }]}>
               We've built a multi-layered security framework to protect both the buyer and the merchant at every step.
             </Text>
           </View>
 
           <View style={styles.trustCardsContainer}>
             {trustFeatures.map((f, i) => (
-              <View key={i} style={styles.trustCard}>
+              <View key={i} style={[styles.trustCard, { backgroundColor: theme.trustCardBg, borderColor: theme.trustSectionBorder }]}>
                 <View style={styles.trustImgBox}>
                   <Image source={f.image} style={styles.trustImg} resizeMode="cover" />
                   <View style={styles.trustImgOverlay} />
@@ -808,8 +810,8 @@ export default function GuestHomeScreen() {
                 </View>
 
                 <View style={styles.trustCardBody}>
-                  <Text style={styles.trustCardTitle}>{f.title}</Text>
-                  <Text style={styles.trustCardDesc}>{f.desc}</Text>
+                  <Text style={[styles.trustCardTitle, { color: theme.trustCardTitle }]}>{f.title}</Text>
+                  <Text style={[styles.trustCardDesc, { color: theme.textSecondary }]}>{f.desc}</Text>
                 </View>
               </View>
             ))}

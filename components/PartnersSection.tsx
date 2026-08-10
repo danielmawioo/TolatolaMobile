@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import { useThemeColors } from '@/src/hooks/useThemeColors';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 interface Partner {
@@ -23,14 +24,16 @@ const PARTNERS: Partner[] = [
 ];
 
 export function PartnersSection() {
+  const theme = useThemeColors();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background, borderBottomColor: theme.border + '60' }]}>
       <View style={styles.headerContainer}>
         <View style={styles.badge}>
           <FontAwesome name="handshake-o" size={10} color={Theme.primary} />
           <Text style={styles.badgeText}>ECOSYSTEM PARTNERS</Text>
         </View>
-        <Text style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
           Our <Text style={styles.italicPrimary}>Partners</Text>
         </Text>
       </View>
@@ -41,8 +44,8 @@ export function PartnersSection() {
         contentContainerStyle={styles.scrollList}
       >
         {PARTNERS.map((partner, index) => (
-          <View key={index} style={styles.partnerCard}>
-            <View style={styles.logoContainer}>
+          <View key={index} style={[styles.partnerCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+            <View style={[styles.logoContainer, { backgroundColor: theme.inputBg }]}>
               <OptimizedImage
                 source={partner.logo}
                 width="100%"
@@ -51,7 +54,7 @@ export function PartnersSection() {
                 style={{ backgroundColor: 'transparent' }}
               />
             </View>
-            <Text style={styles.partnerName} numberOfLines={1}>
+            <Text style={[styles.partnerName, { color: theme.text }]} numberOfLines={1}>
               {partner.name}
             </Text>
           </View>

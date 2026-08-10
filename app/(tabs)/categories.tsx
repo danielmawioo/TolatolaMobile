@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import { useThemeColors } from '@/src/hooks/useThemeColors';
 import { gap, scaleByWidth, scaleByHeight } from '@/constants/layout';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
@@ -90,6 +91,7 @@ export default function CategoriesScreen() {
   const [isOffline, setIsOffline] = useState(false);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const theme = useThemeColors();
 
   // 2 columns
   const numColumns = 2;
@@ -135,18 +137,18 @@ export default function CategoriesScreen() {
 
   return (
     <ScreenSafeLayout edges={['top']}>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}>
         {/* Header Section */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Explore Categories</Text>
-          <Text style={styles.headerSubtitle}>Find exactly what you need</Text>
+        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Explore Categories</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>Find exactly what you need</Text>
           
-          <View style={styles.searchWrap}>
-            <FontAwesome name="search" size={scaleByWidth(16)} color={Theme.textMuted} style={styles.searchIcon} />
+          <View style={[styles.searchWrap, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+            <FontAwesome name="search" size={scaleByWidth(16)} color={theme.textMuted} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: theme.text }]}
               placeholder="Search categories..."
-              placeholderTextColor={Theme.textMuted}
+              placeholderTextColor={theme.textMuted}
               value={search}
               onChangeText={setSearch}
             />
@@ -188,7 +190,7 @@ export default function CategoriesScreen() {
                   ]}
                   onPress={() => router.push(`/(tabs)/shop?category=${cat.id}`)}
                 >
-                  <View style={styles.circleBox}>
+                  <View style={[styles.circleBox, { backgroundColor: theme.catCircleBg, borderColor: theme.catCircleBorder }]}>
                     <OptimizedImage
                       source={getCategoryImage(cat)}
                       width="100%"
@@ -196,7 +198,7 @@ export default function CategoriesScreen() {
                       style={{ borderRadius: scaleByWidth(24) }}
                     />
                   </View>
-                  <Text style={styles.name} numberOfLines={2}>
+                  <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>
                     {cat.name}
                   </Text>
                 </Pressable>
@@ -205,8 +207,8 @@ export default function CategoriesScreen() {
             
             {filteredCategories.length === 0 && (
               <View style={styles.empty}>
-                <FontAwesome name="folder-open-o" size={48} color={Theme.textMuted} />
-                <Text style={styles.emptyText}>No categories found.</Text>
+                <FontAwesome name="folder-open-o" size={48} color={theme.textMuted} />
+                <Text style={[styles.emptyText, { color: theme.textMuted }]}>No categories found.</Text>
               </View>
             )}
           </ScrollView>

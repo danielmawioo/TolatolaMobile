@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { apiGet, apiPost } from '@/src/services/api';
 import { Theme } from '@/constants/Theme';
+import { useThemeColors } from '@/src/hooks/useThemeColors';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { ProductCard } from '@/components/ProductCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -53,6 +54,7 @@ const categoryImages: Record<string, string> = {
  */
 export default function GuestShopScreen() {
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
   const params = useLocalSearchParams<{
     categoryId?: string;
     category?: string;
@@ -380,15 +382,15 @@ export default function GuestShopScreen() {
   const userType = session?.user?.user_type || (session?.user as any)?.role;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.background }]}>
       {/* ===== Top Navbar – Row 1 ===== */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
         <View style={styles.headerTop}>
           <Pressable style={styles.logoGroup} onPress={() => router.push('/(tabs)')}>
-            <View style={styles.logoBox}>
+            <View style={[styles.logoBox, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
               <OptimizedImage source="https://tolatola.co/logo-new.png" width="100%" height="100%" resizeMode="contain" />
             </View>
-            <Text style={styles.logoTitle}>TOLA.</Text>
+            <Text style={[styles.logoTitle, { color: theme.primary }]}>TOLA.</Text>
           </Pressable>
           <View style={styles.headerRight}>
             {/* Show dashboard buttons for ALL approved roles */}
@@ -423,28 +425,28 @@ export default function GuestShopScreen() {
               </Pressable>
             )}
             <Pressable
-              style={({ pressed }) => [styles.shopTextBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.shopTextBtn, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '40' }, pressed && { opacity: 0.7 }]}
               onPress={() => {}}
               hitSlop={10}
             >
-              <FontAwesome name="shopping-bag" size={14} color={Theme.primary} />
-              <Text style={styles.shopTextBtnLabel}>Shop</Text>
+              <FontAwesome name="shopping-bag" size={14} color={theme.primary} />
+              <Text style={[styles.shopTextBtnLabel, { color: theme.primary }]}>Shop</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }, { marginRight: 4 }]}
+              style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.iconBg }, pressed && { opacity: 0.7 }, { marginRight: 4 }]}
               onPress={() => router.push('/(tabs)/favorites')}
               hitSlop={10}
             >
-              <FontAwesome name="heart-o" size={20} color={Theme.primary} />
+              <FontAwesome name="heart-o" size={20} color={theme.primary} />
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.iconBg }, pressed && { opacity: 0.7 }]}
               onPress={() => router.push('/(tabs)/cart')}
               hitSlop={10}
             >
-              <FontAwesome name="shopping-cart" size={22} color={Theme.primary} />
+              <FontAwesome name="shopping-cart" size={22} color={theme.primary} />
               {cartItems.length > 0 && (
-                <View style={styles.badge}>
+                <View style={[styles.badge, { borderColor: theme.background }]}>
                   <Text style={styles.badgeText}>{cartItems.length > 99 ? '99+' : cartItems.length}</Text>
                 </View>
               )}
@@ -461,12 +463,12 @@ export default function GuestShopScreen() {
             <FontAwesome name="map-marker" size={14} color="#fff" />
             <Text style={styles.trackOrderBtnText}>Track Order</Text>
           </Pressable>
-          <View style={styles.headerSearchBar}>
-            <FontAwesome name="search" size={14} color={Theme.textMuted} />
+          <View style={[styles.headerSearchBar, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+            <FontAwesome name="search" size={14} color={theme.textMuted} />
             <TextInput
-              style={styles.headerSearchInput}
+              style={[styles.headerSearchInput, { color: theme.text }]}
               placeholder="Search products..."
-              placeholderTextColor={Theme.textMuted}
+              placeholderTextColor={theme.textMuted}
               value={searchInput}
               onChangeText={setSearchInput}
               onSubmitEditing={handleSearch}
@@ -583,14 +585,14 @@ export default function GuestShopScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.catNav}
+          style={[styles.catNav, { backgroundColor: theme.background, borderBottomColor: theme.border }]}
           contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
         >
           <Pressable style={styles.catCircleItem} onPress={() => handleCategorySelect(null)}>
             <View style={[styles.catCircle, !selectedCategory && styles.catCircleActive]}>
               <FontAwesome name="th-large" size={20} color={!selectedCategory ? '#fff' : Theme.primary} />
             </View>
-            <Text style={[styles.catCircleLabel, !selectedCategory && styles.catCircleLabelActive]}>All</Text>
+            <Text style={[styles.catCircleLabel, { color: theme.textSecondary }, !selectedCategory && styles.catCircleLabelActive]}>All</Text>
           </Pressable>
           {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
             const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
@@ -602,10 +604,10 @@ export default function GuestShopScreen() {
             const isSelected = selectedCategory === c.id;
             return (
               <Pressable key={c.id} style={styles.catCircleItem} onPress={() => handleCategorySelect(c.id)}>
-                <View style={[styles.catCircle, isSelected && styles.catCircleActive]}>
+                <View style={[styles.catCircle, { backgroundColor: theme.catCircleBg, borderColor: theme.catCircleBorder }, isSelected && styles.catCircleActive]}>
                   <OptimizedImage source={getCategoryImages(c)} width="100%" height="100%" style={{ borderRadius: 18 }} />
                 </View>
-                <Text style={[styles.catCircleLabel, isSelected && styles.catCircleLabelActive]} numberOfLines={2}>{c.name}</Text>
+                <Text style={[styles.catCircleLabel, { color: theme.textSecondary }, isSelected && styles.catCircleLabelActive]} numberOfLines={2}>{c.name}</Text>
               </Pressable>
             );
           })}
@@ -742,7 +744,7 @@ function getCategoryImages(cat: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1 },
 
   /* ===== Top Navbar ===== */
   headerContainer: {
