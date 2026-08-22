@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { getProductImageUrl } from '@/src/lib/productImage';
@@ -47,6 +48,13 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<WishlistEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Mirrors `items` synchronously so mutation handlers can compute the next
+  // array without depending on when React actually re-renders after
+  // setState — the functional setState updater form runs asynchronously
+  // relative to the code calling setItems, so persisting a value captured
+  // from that updater's closure would race and persist stale data.
+  const itemsRef = useRef<WishlistEntry[]>([]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -54,14 +62,14 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         if (raw) {
           const parsed = JSON.parse(raw) as unknown;
           if (Array.isArray(parsed)) {
-            setItems(
-              parsed.filter(
-                (row): row is WishlistEntry =>
-                  row != null &&
-                  typeof row === 'object' &&
-                  typeof (row as WishlistEntry).productId === 'string'
-              )
+            const loaded = parsed.filter(
+              (row): row is WishlistEntry =>
+                row != null &&
+                typeof row === 'object' &&
+                typeof (row as WishlistEntry).productId === 'string'
             );
+            itemsRef.current = loaded;
+            setItems(loaded);
           }
         }
       } catch (e) {
@@ -88,12 +96,13 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const toggleWishlist = useCallback(
     async (product: Product) => {
       const pid = String(product.id);
-      let next: WishlistEntry[] = [];
-      setItems((prev) => {
-        const exists = prev.some((i) => i.productId === pid);
-        next = exists ? prev.filter((i) => i.productId !== pid) : [...prev, productToEntry(product)];
-        return next;
-      });
+      const prev = itemsRef.current;
+      const exists = prev.some((i) => i.productId === pid);
+      const next = exists
+        ? prev.filter((i) => i.productId !== pid)
+        : [...prev, productToEntry(product)];
+      itemsRef.current = next;
+      setItems(next);
       await persist(next);
     },
     [persist]
@@ -102,11 +111,9 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const removeFromWishlist = useCallback(
     async (productId: string) => {
       const pid = String(productId);
-      let next: WishlistEntry[] = [];
-      setItems((prev) => {
-        next = prev.filter((i) => i.productId !== pid);
-        return next;
-      });
+      const next = itemsRef.current.filter((i) => i.productId !== pid);
+      itemsRef.current = next;
+      setItems(next);
       await persist(next);
     },
     [persist]
