@@ -3,11 +3,14 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth, type Session } from '@/src/contexts/AuthContext';
 import { apiPost, getApiBaseUrl, setOn401Handler } from '@/src/services/api';
+import { setErrorTrackingUser } from '@/src/lib/errorTracking';
 
 jest.mock('@/src/services/api');
+jest.mock('@/src/lib/errorTracking');
 
 const mockedApiPost = apiPost as jest.Mock;
 const mockedSetOn401Handler = setOn401Handler as jest.Mock;
+const mockedSetErrorTrackingUser = setErrorTrackingUser as jest.Mock;
 
 const SESSION_KEY = '@tolatola/session';
 const SESSION_CREATED_KEY = '@tolatola/session_created_at';
@@ -67,6 +70,7 @@ describe('AuthContext', () => {
     expect(result.current.session).toEqual(storedSession);
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.accessToken).toBe('stored-token');
+    expect(mockedSetErrorTrackingUser).toHaveBeenCalledWith({ id: 'u1', email: 'stored@example.com' });
 
     unmount();
   });
@@ -138,6 +142,7 @@ describe('AuthContext', () => {
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.accessToken).toBe('new-token');
     expect(result.current.session?.user).toEqual(user);
+    expect(mockedSetErrorTrackingUser).toHaveBeenCalledWith({ id: 'u1', email: 'a@example.com' });
 
     const stored = await AsyncStorage.getItem(SESSION_KEY);
     expect(JSON.parse(stored as string)).toMatchObject({ access_token: 'new-token', user });
@@ -189,6 +194,7 @@ describe('AuthContext', () => {
     expect(result.current.session).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
     expect(await AsyncStorage.getItem(SESSION_KEY)).toBeNull();
+    expect(mockedSetErrorTrackingUser).toHaveBeenLastCalledWith(null);
 
     unmount();
   });

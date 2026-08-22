@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiPost, getApiBaseUrl, setOn401Handler } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
+import { setErrorTrackingUser } from '@/src/lib/errorTracking';
 
 
 const SESSION_KEY = '@tolatola/session';
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       await AsyncStorage.multiRemove([SESSION_KEY, SESSION_CREATED_KEY]);
     }
+    setErrorTrackingUser(session ? { id: session.user.id, email: session.user.email } : null);
     setState({
       session,
       isLoading: false,
@@ -372,6 +374,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoading: false,
           isAuthenticated: true,
         });
+        setErrorTrackingUser({ id: parsed.user.id, email: parsed.user.email });
 
         // Then attempt a background refresh if we have a refresh_token
         if (parsed.refresh_token) {

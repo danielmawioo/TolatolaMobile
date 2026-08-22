@@ -1,8 +1,14 @@
-import { logger, setLogSink } from '@/src/lib/logger';
+import { logger, setLogSink, defaultLogSink } from '@/src/lib/logger';
 
 describe('logger', () => {
+  const originalDev = (global as any).__DEV__;
+
   afterEach(() => {
     jest.restoreAllMocks();
+    (global as any).__DEV__ = originalDev;
+    // Always restore the real default sink so mutations in one test (e.g.
+    // installing a custom sink) can't leak into unrelated tests.
+    setLogSink(defaultLogSink);
   });
 
   it('forwards info/warn/error to the matching console method with all extra args', () => {
@@ -26,11 +32,39 @@ describe('logger', () => {
     logger.error('boom', { code: 500 });
 
     expect(sink).toHaveBeenCalledWith('error', 'boom', [{ code: 500 }]);
+  });
 
-    // restore the default console sink so other tests aren't affected
-    setLogSink((level, message, args) => {
-      const method = level === 'info' ? console.log : level === 'warn' ? console.warn : console.error;
-      method(message, ...args);
-    });
+  it('suppresses info logs through the default sink when __DEV__ is false', () => {
+    (global as any).__DEV__ = false;
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    logger.info('should be suppressed');
+    logger.warn('should still log');
+    logger.error('should still log');
+
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith('should still log');
+    expect(errorSpy).toHaveBeenCalledWith('should still log');
+  });
+
+  it('still logs info through the default sink when __DEV__ is true', () => {
+    (global as any).__DEV__ = true;
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    logger.info('dev info message');
+
+    expect(logSpy).toHaveBeenCalledWith('dev info message');
+  });
+
+  it('still delivers info calls to a custom sink even when __DEV__ is false, since filtering is a default-sink concern', () => {
+    (global as any).__DEV__ = false;
+    const sink = jest.fn();
+    setLogSink(sink);
+
+    logger.info('info for custom sink', { a: 1 });
+
+    expect(sink).toHaveBeenCalledWith('info', 'info for custom sink', [{ a: 1 }]);
   });
 });
