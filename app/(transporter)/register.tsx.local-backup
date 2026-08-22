@@ -1,0 +1,251 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as ImagePicker from 'expo-image-picker';
+import { Theme } from '@/constants/Theme';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { submitTransporterRegistrationFormData } from '@/src/api/onboardingSubmit';
+
+type Kind = 'individual' | 'company';
+
+export default function TransporterRegisterScreen() {
+  const insets = useSafeAreaInsets();
+  const { session } = useAuth();
+  const token = session?.access_token ?? '';
+  const [kind, setKind] = useState<Kind>('individual');
+  const [busy, setBusy] = useState(false);
+
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [vehicleNumber, setVehicleNumber] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [repName, setRepName] = useState('');
+  const [repEmail, setRepEmail] = useState('');
+  const [repPhone, setRepPhone] = useState('');
+  const [repPosition, setRepPosition] = useState('');
+
+  const [licenseImage, setLicenseImage] = useState<string | null>(null);
+  const [vehicleImage, setVehicleImage] = useState<string | null>(null);
+  const [regCardImage, setRegCardImage] = useState<string | null>(null);
+
+  const pickImage = async (setter: (u: string | null) => void) => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission', 'Photo library access is needed for document images.');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+    if (!res.canceled && res.assets[0]?.uri) setter(res.assets[0].uri);
+  };
+
+  const appendFile = (fd: FormData, key: string, uri: string | null, name: string) => {
+    if (!uri) return;
+    const ext = uri.split('.').pop()?.toLowerCase() === 'png' ? 'png' : 'jpg';
+    const type = ext === 'png' ? 'image/png' : 'image/jpeg';
+    fd.append(key, { uri, name, type } as never);
+  };
+
+  const onSubmit = async () => {
+    if (!token) {
+      Alert.alert('Sign in required', 'Sign in as a transporter first.');
+      return;
+    }
+    if (!email.trim() || !phone.trim() || !licenseNumber.trim() || !vehicleNumber.trim()) {
+      Alert.alert('Missing fields', 'Email, phone, driving licence number and vehicle number are required.');
+      return;
+    }
+    if (kind === 'company' && (!companyName.trim() || !repName.trim())) {
+      Alert.alert('Missing company details', 'Company name and representative name are required.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append('registration_kind', kind);
+      fd.append('email', email.trim().toLowerCase());
+      fd.append('phone', phone.trim());
+      fd.append('driving_license_number', licenseNumber.trim());
+      fd.append('vehicle_number', vehicleNumber.trim());
+      appendFile(fd, 'license_image', licenseImage, 'driving_license.jpg');
+      appendFile(fd, 'vehicle_image', vehicleImage, 'vehicle.jpg');
+      appendFile(fd, 'vehicle_registration_card', regCardImage, 'registration.jpg');
+      if (kind === 'company') {
+        fd.append('company_name', companyName.trim());
+        fd.append('representative_name', repName.trim());
+        fd.append('representative_email', repEmail.trim().toLowerCase());
+        fd.append('representative_phone', repPhone.trim());
+        fd.append('representative_position', repPosition.trim());
+      }
+      await submitTransporterRegistrationFormData(token, fd);
+      Alert.alert('Submitted', 'Transporter KYC was uploaded.', [
+        { text: 'OK', onPress: () => router.replace('/(transporter)/kyc-pending' as never) },
+      ]);
+    } catch (e) {
+      Alert.alert('Could not submit', e instanceof Error ? e.message : 'Try the web app or contact support.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={[styles.root, { paddingTop: insets.top + 12 }]}>
+      <Pressable style={styles.back} onPress={() => router.back()} hitSlop={12}>
+        <FontAwesome name="chevron-left" size={18} color={Theme.link} />
+        <Text style={styles.backText}>Back</Text>
+      </Pressable>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: 40 + insets.bottom }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.title}>Transporter registration</Text>
+        <Text style={styles.body}>
+          Driver location is tracked from the device while you are on duty — not the fleet owner address. Attach clear
+          photos of your documents (Phase 1 spec).
+        </Text>
+
+        <View style={styles.segment}>
+          <Pressable style={[styles.segBtn, kind === 'individual' && styles.segBtnOn]} onPress={() => setKind('individual')}>
+            <Text style={[styles.segTxt, kind === 'individual' && styles.segTxtOn]}>Individual</Text>
+          </Pressable>
+          <Pressable style={[styles.segBtn, kind === 'company' && styles.segBtnOn]} onPress={() => setKind('company')}>
+            <Text style={[styles.segTxt, kind === 'company' && styles.segTxtOn]}>Company</Text>
+          </Pressable>
+        </View>
+
+        <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <Field label="Driving licence number" value={licenseNumber} onChangeText={setLicenseNumber} />
+        <Field label="Vehicle number (plate)" value={vehicleNumber} onChangeText={setVehicleNumber} autoCapitalize="characters" />
+
+        {kind === 'company' ? (
+          <>
+            <Field label="Company name" value={companyName} onChangeText={setCompanyName} />
+            <Text style={styles.subTitle}>Representative</Text>
+            <Field label="Name" value={repName} onChangeText={setRepName} />
+            <Field label="Email" value={repEmail} onChangeText={setRepEmail} keyboardType="email-address" autoCapitalize="none" />
+            <Field label="Phone" value={repPhone} onChangeText={setRepPhone} keyboardType="phone-pad" />
+            <Field label="Position" value={repPosition} onChangeText={setRepPosition} />
+          </>
+        ) : null}
+
+        <Text style={styles.subTitle}>Documents</Text>
+        <AttachRow label="Driving licence photo" done={!!licenseImage} onPress={() => pickImage(setLicenseImage)} />
+        <AttachRow label="Vehicle photo" done={!!vehicleImage} onPress={() => pickImage(setVehicleImage)} />
+        <AttachRow label="Vehicle registration card" done={!!regCardImage} onPress={() => pickImage(setRegCardImage)} />
+
+        <Pressable style={[styles.primary, busy && { opacity: 0.7 }]} onPress={onSubmit} disabled={busy}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Submit KYC</Text>}
+        </Pressable>
+
+        <Pressable style={styles.secondary} onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.secondaryText}>Back to shop</Text>
+        </Pressable>
+      </ScrollView>
+    </View>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChangeText,
+  keyboardType,
+  autoCapitalize,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  autoCapitalize?: 'none' | 'sentences' | 'characters';
+}) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        style={styles.input}
+        value={value}
+        onChangeText={onChangeText}
+        placeholderTextColor={Theme.textMuted}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize ?? 'sentences'}
+      />
+    </View>
+  );
+}
+
+function AttachRow({ label, done, onPress }: { label: string; done: boolean; onPress: () => void }) {
+  return (
+    <Pressable style={styles.attach} onPress={onPress}>
+      <FontAwesome name={done ? 'check-circle' : 'camera'} size={20} color={done ? Theme.success : Theme.primary} />
+      <Text style={styles.attachText}>{done ? `${label} ✓` : label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: Theme.backgroundSecondary, paddingHorizontal: 20 },
+  scroll: { paddingBottom: 32 },
+  back: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  backText: { fontSize: 16, color: Theme.link, fontWeight: '600' },
+  title: { fontSize: 22, fontWeight: '700', color: Theme.text, marginBottom: 8 },
+  body: { fontSize: 14, color: Theme.textSecondary, lineHeight: 20, marginBottom: 16 },
+  subTitle: { fontSize: 16, fontWeight: '700', color: Theme.text, marginTop: 8, marginBottom: 8 },
+  segment: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  segBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    alignItems: 'center',
+    backgroundColor: Theme.background,
+  },
+  segBtnOn: { borderColor: Theme.primary, backgroundColor: 'rgba(37,99,235,0.08)' },
+  segTxt: { fontWeight: '600', color: Theme.textSecondary },
+  segTxtOn: { color: Theme.primary },
+  field: { marginBottom: 12 },
+  label: { fontSize: 13, fontWeight: '600', color: Theme.text, marginBottom: 4 },
+  input: {
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 15,
+    color: Theme.text,
+    backgroundColor: Theme.background,
+  },
+  attach: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+  },
+  attachText: { fontSize: 15, color: Theme.link, fontWeight: '600' },
+  primary: {
+    backgroundColor: Theme.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  primaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  secondary: { paddingVertical: 12, alignItems: 'center' },
+  secondaryText: { color: Theme.link, fontSize: 15, fontWeight: '600' },
+});

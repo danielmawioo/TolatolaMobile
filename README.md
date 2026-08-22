@@ -33,8 +33,10 @@ Set these before building or running (e.g. in your shell, `.env` loaded by your 
 | `SUPABASE_URL` | Supabase project URL (same as backend) |
 | `SUPABASE_ANON_KEY` | Supabase anon key (same as backend) |
 | `APP_URL` | (Optional) App URL scheme for deep links, e.g. `tola://` |
+| `EXPO_PUBLIC_APP_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_APP_URL` | Same values as above, prefixed for `EXPO_PUBLIC_*` access. `src/config/env.ts` uses these as a fallback when `Constants.expoConfig?.extra` isn't populated (e.g. running under Jest). Keep both sets of vars in sync. |
+| `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_IOS_URL_SCHEME` | Google Sign-In OAuth client config |
 
-Copy `.env.example` to `.env` and fill in values. For Expo, `app.config.js` reads `process.env` and passes them into the app via `expo-constants`; `src/config/env.ts` reads them from there (or from `EXPO_PUBLIC_*` in some setups).
+Copy `.env.example` to `.env` and fill in values. For Expo, `app.config.js` reads `process.env` and passes them into the app via `expo-constants`; `src/config/env.ts` reads them from there (or from `EXPO_PUBLIC_*` in some setups). `SUPABASE_URL`/`SUPABASE_ANON_KEY` have no hardcoded fallback — the app throws a clear startup error if they're missing, so `.env` must be set up before running.
 
 ## How to run
 
@@ -45,6 +47,15 @@ Copy `.env.example` to `.env` and fill in values. For Expo, `app.config.js` read
 - **Web:** `npx expo start --web` (optional)
 
 For a physical device, ensure `APP_API_URL` points to your machine’s IP (e.g. `http://192.168.1.x:8080`) so the device can reach the backend; use the same `/api` path prefix.
+
+## Testing and linting
+
+- **Run tests:** `npm test` (Jest + `jest-expo` + React Native Testing Library)
+- **Watch mode:** `npm run test:watch`
+- **Type check:** `npm run typecheck`
+- **Lint:** `npm run lint`
+
+CI (`.github/workflows/ci.yml`) runs lint and tests on every push/PR to `main`.
 
 ### iOS: "This app is not made for this device" / Apple TV
 

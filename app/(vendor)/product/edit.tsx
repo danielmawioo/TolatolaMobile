@@ -8,6 +8,7 @@ import { apiGet, apiPut, apiPost } from '@/src/services/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
+import { initialProductFormData, validateProductForm } from '@/src/lib/productForm';
 
 export default function EditProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,35 +34,7 @@ export default function EditProductScreen() {
   const [uploadingColorImage, setUploadingColorImage] = useState(false);
   const [sizes, setSizes] = useState<string[]>([]);
   const [newSize, setNewSize] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    description: '',
-    stock_quantity: '',
-    moq: '1',
-    category_id: '',
-    quality_grade: '',
-    location: '',
-    delivery_available: true,
-    weight_unit: '',
-    // Vehicles fields
-    vehicle_section: '', // vehicle | spare_part
-    brand: '',
-    model: '',
-    year: '',
-    mileage: '',
-    transmission: '',
-    fuel_type: '',
-    engine_size: '',
-    part_number: '',
-    compatibility: '',
-    condition: '',
-    // Ready to eat
-    dietary_info: '',
-    prep_time: '',
-    // Drinks
-    drink_section: '',
-  });
+  const [formData, setFormData] = useState({ ...initialProductFormData, delivery_available: true });
 
   useEffect(() => {
     if (!id || !session?.access_token) return;
@@ -185,18 +158,9 @@ export default function EditProductScreen() {
   };
 
   const handleUpdate = async () => {
-    if (!formData.name || !formData.price || !formData.stock_quantity) {
-      Alert.alert('Error', 'Please fill in Name, Price, and Stock Quantity.');
-      return;
-    }
-
-    if (!formData.category_id) {
-      Alert.alert('Error', 'Please select a product category before uploading.');
-      return;
-    }
-
-    if (isAgriculture && !formData.weight_unit) {
-      Alert.alert('Error', 'Please select a weight unit for agricultural products.');
+    const formError = validateProductForm(formData, isAgriculture);
+    if (formError) {
+      Alert.alert('Error', formError);
       return;
     }
 

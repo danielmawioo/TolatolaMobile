@@ -25,6 +25,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { apiGet, apiPost } from '@/src/services/api';
 import { matchUserQuery } from '@/src/lib/supportAgent';
 import { QUICK_SUGGESTIONS } from '@/src/data/supportFAQ';
+import { logger } from '@/src/lib/logger';
 
 const MOUREEN_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
 const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
@@ -145,7 +146,7 @@ export default function SupportChatScreen() {
         }
       }
     } catch (e) {
-      console.log('Error checking tickets:', e);
+      logger.info('Error checking tickets:', e);
     }
   };
 
@@ -195,7 +196,7 @@ export default function SupportChatScreen() {
               reader.readAsDataURL(b);
             }));
           } catch (e) {
-            console.warn('Error reading image base64:', e);
+            logger.warn('Error reading image base64:', e);
           }
         }
 
@@ -208,7 +209,7 @@ export default function SupportChatScreen() {
         });
       }
     } catch (err) {
-      console.error('Error picking image:', err);
+      logger.error('Error picking image:', err);
     }
   };
 
@@ -232,7 +233,7 @@ export default function SupportChatScreen() {
             reader.readAsDataURL(b);
           }));
         } catch (e) {
-          console.warn('Error reading PDF base64:', e);
+          logger.warn('Error reading PDF base64:', e);
         }
 
         setSelectedAttachment({
@@ -244,7 +245,7 @@ export default function SupportChatScreen() {
         });
       }
     } catch (err) {
-      console.error('Error picking document:', err);
+      logger.error('Error picking document:', err);
     }
   };
 
@@ -312,7 +313,7 @@ export default function SupportChatScreen() {
           session.access_token
         );
       } catch (e) {
-        console.log('Error sending message to live conversation:', e);
+        logger.info('Error sending message to live conversation:', e);
       }
       return;
     }

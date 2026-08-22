@@ -27,8 +27,10 @@ module.exports = {
         projectId: 'e2e4ea34-64fc-4698-9baf-329e34255023',
       },
       APP_API_URL: process.env.APP_API_URL ?? 'https://api.tolatola.co',
-      SUPABASE_URL: process.env.SUPABASE_URL || 'https://eyvumcctadmjetvjujcn.supabase.co',
-      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dnVtY2N0YWRtamV0dmp1amNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODg0NzYsImV4cCI6MjA3NDk2NDQ3Nn0.RuFpE0tm1xGRHDZzreE1zpgWfNeGrsqxaXPRqvNXavs',
+      // No hardcoded fallback: src/config/env.ts throws a clear startup error
+      // if these aren't set, instead of silently using a baked-in project key.
+      SUPABASE_URL: process.env.SUPABASE_URL,
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
       APP_URL: process.env.APP_URL ?? 'tola://',
       GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID ?? '',
     },

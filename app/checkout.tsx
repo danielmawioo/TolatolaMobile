@@ -14,16 +14,16 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useCart } from '@/src/contexts/CartContext';
 import { useNotifications } from '@/src/contexts/NotificationContext';
 import { apiGet, apiPost } from '@/src/services/api';
-import { OptimizedImage } from '@/components/OptimizedImage';
 import { TanzaniaAddressForm } from '@/src/components/checkout/TanzaniaAddressForm';
 import { PaymentMethodPicker } from '@/src/components/checkout/PaymentMethodPicker';
+import { OrderSummary } from '@/src/components/checkout/OrderSummary';
+import { useCheckoutSubmit } from '@/src/hooks/useCheckoutSubmit';
 
 // Lazy-load the map picker so it doesn't block checkout page render
 const MapPicker = lazy(() => import('@/src/components/MapPicker'));
 
 import {
   BUYER_PROTECTION_RATE, INITIAL_ADDRESS,
-  MOBILE_MONEY_PROVIDERS, CARD_PROVIDERS,
   type AddressData, type TransportMethod,
 } from '@/src/constants/checkout';
 
@@ -56,12 +56,6 @@ export default function CheckoutScreen() {
     (session?.user?.phone as string) || ''
   );
   const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvv: '' });
-
-  // UI State
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAwaitingPayment, setIsAwaitingPayment] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showErrorModal, setShowErrorModal] = useState(false);
 
   // Delivery fee & Logistics
   const [deliveryFee, setDeliveryFee] = useState(0);
@@ -216,154 +210,11 @@ export default function CheckoutScreen() {
     (m) => m.id === selectedTransportId
   )?.name || 'Select method';
 
-  const validate = (): string | null => {
-    if (paymentMethod === 'm-pesa') return 'M-Pesa is currently under maintenance. Please select another method.';
-    if (!fullName.trim()) return 'Please enter your full name';
-    if (!phone.trim()) return 'Please enter your phone number';
-    if (!isAuthenticated && (!guestEmail || !guestEmail.includes('@')))
-      return 'Please enter a valid email address';
-    if (!addressData.region || !addressData.district || !addressData.ward || !addressData.street)
-      return 'Please fill in all required address fields (Region, District, Ward, Street)';
-    if (Object.keys(shopDeliveries).length === 0 && selectedTransportId)
-      return 'Please select your location using the autocomplete search to calculate delivery fees.';
-    if (!selectedTransportId) return 'Please select a delivery method';
-    const isMobile = MOBILE_MONEY_PROVIDERS.some((p) => p.id === paymentMethod);
-    if (isMobile && !paymentPhone.trim()) return 'Please enter your mobile money phone number';
-    const isCard = CARD_PROVIDERS.some((p) => p.id === paymentMethod);
-    if (isCard && (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv))
-      return 'Please enter complete card details';
-    return null;
-  };
-
-  const handleSubmit = async () => {
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      setShowErrorModal(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      return;
-    }
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Build order items
-      const orderItems = items.map((item) => {
-        const sId = item.shop_id || 'unknown';
-        return {
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price: item.price,
-          shop_id: item.shop_id || '',
-          delivery_fee: shopFees[sId] || 0,
-          selected_color: item.selected_color || null,
-          selected_size: item.selected_size || null,
-        };
-      });
-
-      const shippingAddress = {
-        full_name: fullName,
-        phone,
-        email: guestEmail || session?.user?.email,
-        country: addressData.country,
-        region: addressData.region,
-        district: addressData.district,
-        ward: addressData.ward,
-        village: addressData.village,
-        street: addressData.street,
-        address: [addressData.street, addressData.ward, addressData.district, addressData.region].filter(Boolean).join(', '),
-        delivery_fee: deliveryFee,
-        latitude,
-        longitude,
-      };
-
-
-      const isMobile = MOBILE_MONEY_PROVIDERS.some((p) => p.id === paymentMethod);
-      const isCard = CARD_PROVIDERS.some((p) => p.id === paymentMethod);
-
-      const orderPayload = {
-        items: orderItems,
-        shippingAddress,
-        totalAmount: total,
-        insuranceFee,
-        paymentMethod,
-        paymentDetails: {
-          phoneNumber: isMobile ? paymentPhone : undefined,
-          cardNumber: isCard ? cardDetails.number : undefined,
-          expiryDate: isCard ? cardDetails.expiry : undefined,
-          cvv: isCard ? cardDetails.cvv : undefined,
-        },
-        transportMethodId: selectedTransportId || null,
-        deliveryFee,
-        pushToken: expoPushToken || null,
-      };
-
-      // 1. Create order
-      const orderRes = await apiPost<any>('/orders', orderPayload, session?.access_token);
-      const orderId = orderRes?.order?.id || orderRes?.id;
-
-      if (!orderId) throw new Error('Order ID not returned from API');
-
-      // 2. Handle payment
-      if (paymentMethod === 'cash-on-delivery') {
-        await clearCart();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.replace({ pathname: '/payment-success', params: { orderId, paymentMethod } });
-        return;
-      }
-
-      setIsAwaitingPayment(true);
-
-      // Use the mobile-specific payment endpoint
-      const payBody: any = {
-        orderId,
-        provider: paymentMethod,
-        amount: total,
-        currency: 'TZS',
-      };
-      if (isCard) {
-        payBody.paymentDetails = {
-          cardNumber: cardDetails.number || '',
-          expiryDate: cardDetails.expiry || '',
-          cvv: cardDetails.cvv || '',
-        };
-      } else {
-        payBody.phone = paymentPhone;
-      }
-
-      const payRes = await apiPost<any>(
-        '/payments/mobile/initiate',
-        payBody,
-        session?.access_token
-      );
-
-      if (payRes.success) {
-        await clearCart();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.replace({
-          pathname: '/payment-success',
-          params: {
-            orderId,
-            paymentMethod,
-            transactionId: payRes.transactionId || payRes.payment_intent_id || '',
-            controlNumber: payRes.controlNumber || '',
-          },
-        });
-      } else {
-        throw new Error(payRes.message || 'Failed to initiate payment');
-      }
-    } catch (err: any) {
-      const msg = err.message || 'An error occurred during checkout';
-      setError(msg);
-      setShowErrorModal(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setIsAwaitingPayment(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { handleSubmit, isLoading, isAwaitingPayment, error, setError, showErrorModal, setShowErrorModal } = useCheckoutSubmit({
+    items, fullName, phone, guestEmail, isAuthenticated, addressData, selectedTransportId,
+    shopDeliveries, shopFees, paymentMethod, paymentPhone, cardDetails, deliveryFee,
+    insuranceFee, total, latitude, longitude, session, expoPushToken, clearCart,
+  });
 
   if (items.length === 0) return null;
 
@@ -647,66 +498,7 @@ export default function CheckoutScreen() {
 
           {/* Order Summary */}
           <View style={styles.section}>
-            <View style={[styles.summaryCard, Theme.shadowMd]}>
-              <View style={styles.summaryHeader}>
-                <Text style={styles.summaryHeaderText}>Order Summary</Text>
-                <Text style={styles.summaryItemCount}>{items.length} item(s)</Text>
-              </View>
-
-              {/* Items preview */}
-              <View style={styles.summaryItems}>
-                {items.slice(0, 3).map((item) => (
-                  <View key={item.id} style={styles.summaryItem}>
-                    <OptimizedImage source={item.image_url} width={44} height={44} style={styles.summaryItemImg} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.summaryItemName} numberOfLines={1}>{item.name}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                        <Text style={styles.summaryItemQty}>Qty: {item.quantity}</Text>
-                        {item.selected_color && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f4', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1, gap: 3 }}>
-                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: item.selected_color.name.toLowerCase() }} />
-                            <Text style={{ fontSize: 8, fontWeight: '700', color: '#78716c' }}>{item.selected_color.name}</Text>
-                          </View>
-                        )}
-                        {item.selected_size && (
-                          <View style={{ backgroundColor: '#f5f5f4', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 }}>
-                            <Text style={{ fontSize: 8, fontWeight: '700', color: '#78716c' }}>{item.selected_size}</Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                    <Text style={styles.summaryItemPrice}>
-                      TSh {(item.price * item.quantity).toLocaleString()}
-                    </Text>
-                  </View>
-                ))}
-                {items.length > 3 && (
-                  <Text style={styles.moreItems}>+{items.length - 3} more item(s)</Text>
-                )}
-              </View>
-
-              <View style={styles.summaryDivider} />
-
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>TSh {subtotal.toLocaleString()}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Delivery</Text>
-                <Text style={styles.summaryValue}>
-                  {deliveryFee > 0 ? `TSh ${deliveryFee.toLocaleString()}` : 'Pending location'}
-                </Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Buyer Protection (1.5%)</Text>
-                <Text style={styles.summaryValue}>TSh {insuranceFee.toLocaleString()}</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryTotalRow}>
-                <Text style={styles.summaryTotalLabel}>Total</Text>
-                <Text style={styles.summaryTotalValue}>TSh {total.toLocaleString()}</Text>
-              </View>
-            </View>
+            <OrderSummary items={items} subtotal={subtotal} deliveryFee={deliveryFee} insuranceFee={insuranceFee} total={total} />
           </View>
 
           {error && (
@@ -844,37 +636,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   transportRateText: { fontSize: 10, fontWeight: '800', color: Theme.primary, textTransform: 'uppercase' },
-  // Summary
-  summaryCard: {
-    backgroundColor: Theme.background, borderRadius: 24,
-    overflow: 'hidden', ...Theme.shadowLg,
-  },
-  summaryHeader: {
-    backgroundColor: Theme.success, paddingHorizontal: 20, paddingVertical: 18,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  summaryHeaderText: { fontSize: 19, fontWeight: '900', color: '#fff', letterSpacing: -0.3 },
-  summaryItemCount: { fontSize: 12, fontWeight: '600', color: '#ffffffcc' },
-  summaryItems: { padding: 16, gap: 12 },
-  summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  summaryItemImg: { borderRadius: 8, backgroundColor: Theme.backgroundSecondary },
-  summaryItemName: { fontSize: 13, fontWeight: '700', color: Theme.text },
-  summaryItemQty: { fontSize: 10, fontWeight: '600', color: Theme.textMuted },
-  summaryItemPrice: { fontSize: 13, fontWeight: '800', color: Theme.text },
-  moreItems: { fontSize: 12, color: Theme.textMuted, fontWeight: '600', textAlign: 'center' },
-  summaryDivider: { height: 1, backgroundColor: Theme.inputBorder, marginHorizontal: 16 },
-  summaryRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 18, paddingVertical: 8,
-  },
-  summaryLabel: { fontSize: 13, fontWeight: '600', color: Theme.textSecondary },
-  summaryValue: { fontSize: 13, fontWeight: '700', color: Theme.text },
-  summaryTotalRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 18, paddingVertical: 14,
-  },
-  summaryTotalLabel: { fontSize: 12, fontWeight: '800', color: Theme.primary, textTransform: 'uppercase' },
-  summaryTotalValue: { fontSize: 20, fontWeight: '900', color: Theme.text },
   // Error
   errorBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14,

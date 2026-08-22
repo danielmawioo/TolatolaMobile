@@ -18,6 +18,7 @@ import { SupportSection } from '@/src/components/profile/SupportSection';
 import { KycVerificationSection } from '@/src/components/profile/KycVerificationSection';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { ThemeToggle } from '@/src/components/ThemeToggle';
+import { logger } from '@/src/lib/logger';
 
 type ProfileTab = 'personal' | 'kyc' | 'orders' | 'transactions' | 'support' | 'settings' | 'wishlist';
 
@@ -61,7 +62,7 @@ export default function ProfileScreen() {
         });
       }
     } catch (err) {
-      console.log('Error fetching fresh profile:', err);
+      logger.info('Error fetching fresh profile:', err);
     }
   };
 

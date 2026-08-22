@@ -1,0 +1,27 @@
+import React, { useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+
+import { useAuth } from '@/src/contexts/AuthContext';
+import { NotificationsFeed } from '@/components/NotificationsFeed';
+
+export default function NotificationsScreen() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.replace('/(tabs)');
+    }
+  }, [isLoading, isAuthenticated]);
+
+  if (!isLoading && !isAuthenticated) {
+    return <View style={styles.screen} />;
+  }
+
+  return <NotificationsFeed />;
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+});

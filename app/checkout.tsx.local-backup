@@ -1,0 +1,909 @@
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Theme } from '@/constants/Theme';
+import { gap } from '@/constants/layout';
+import { useCart } from '@/src/contexts/CartContext';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { POST_AUTH_CHECKOUT_PATH } from '@/src/lib/roleRedirect';
+import { useBuyerLocation } from '@/src/contexts/BuyerLocationContext';
+import { loadSavedDeliverySnapshot, persistSavedDeliveryAddress } from '@/src/lib/savedDeliveryAddress';
+import { extractPhoneFromUser, formatPhoneForCheckoutInput } from '@/src/lib/userPhone';
+import { apiGet } from '@/src/services/api';
+import { queryKeys } from '@/src/lib/queryKeys';
+import { userFacingMessageForApiError } from '@/src/lib/authErrors';
+import { isValidEmail } from '@/src/lib/validation';
+import {
+  createOrder,
+  createGuestOrder,
+  fetchTransportMethods,
+  getCheckoutQuote,
+  mapUiPaymentMethodToApi,
+  type CheckoutQuote,
+  type TransportMethod,
+} from '@/src/api/orders';
+import { initiateMobileMoneyPayment, fetchPaymentStatus } from '@/src/api/payments';
+import { DeliveryAddressAutocomplete } from '@/components/DeliveryAddressAutocomplete';
+import { PaymentWaitModal, type PaymentWaitMode } from '@/components/PaymentWaitModal';
+import type { TransportModeId } from '@/src/lib/checkoutPricing';
+
+type MciName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+/** Means of transport — labels in Swahili for clarity. */
+const DELIVERY_OPTIONS: {
+  id: TransportModeId;
+  label: string;
+  sublabel: string;
+  icon: MciName;
+}[] = [
+  {
+    id: 'motorcycle',
+    label: 'Pikipiki / bodaboda',
+    sublabel: 'Mizigo midogo, haraka',
+    icon: 'motorbike',
+  },
+  { id: 'bajaj', label: 'Bajaj', sublabel: 'Mzigo wa wastani', icon: 'rickshaw' },
+  { id: 'car', label: 'Gari (kati)', sublabel: 'Mizigo ya kati', icon: 'car-estate' },
+  { id: 'truck', label: 'Lori', sublabel: 'Mizigo mizito / kubwa', icon: 'truck' },
+  {
+    id: 'semi_trailer',
+    label: 'Lori kubwa / semi trailer',
+    sublabel: 'Shehena kubwa sana',
+    icon: 'truck-trailer',
+  },
+];
+
+/** All payments settle on the platform — networks are separate products. */
+const PAYMENT_OPTIONS = [
+  {
+    id: 'mpesa',
+    label: 'M-Pesa',
+    icon: 'mobile' as const,
+    desc: 'VODACOM',
+  },
+  {
+    id: 'airtel_money',
+    label: 'Airtel Money',
+    icon: 'mobile' as const,
+    desc: 'AIRTEL',
+  },
+  {
+    id: 'halopesa',
+    label: 'HaloPesa',
+    icon: 'mobile' as const,
+    desc: 'HALOTEL',
+  },
+  {
+    id: 'tigopesa',
+    label: 'Mixx by Yas',
+    icon: 'mobile' as const,
+    desc: 'TIGO PESA',
+  },
+] as const;
+
+function digitsOnly(s: string): string {
+  return s.replace(/\D/g, '');
+}
+
+function isValidMobileMoneyPhone(raw: string): boolean {
+  const d = digitsOnly(raw);
+  return d.length >= 9 && d.length <= 15;
+}
+
+function firstParam(v: string | string[] | undefined): string | undefined {
+  if (v == null) return undefined;
+  return typeof v === 'string' ? v : v[0];
+}
+
+export default function CheckoutScreen() {
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ guest?: string | string[] }>();
+  const isGuestCheckout = firstParam(params.guest) === '1';
+  const { isAuthenticated, isLoading: authLoading, session } = useAuth();
+  const { refresh: refreshBuyerLocation, coords: buyerCoords } = useBuyerLocation();
+  const { items, totalAmount } = useCart();
+  const scrollRef = useRef<ScrollView | null>(null);
+  const [deliveryOption, setDeliveryOption] = useState<TransportModeId>('motorcycle');
+  const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_OPTIONS[0].id);
+  const [address, setAddress] = useState('');
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [saveAddressForNextTime, setSaveAddressForNextTime] = useState(false);
+  const [mobileMoneyPhone, setMobileMoneyPhone] = useState('');
+  const userEditedPhoneRef = useRef(false);
+  const [payWaitVisible, setPayWaitVisible] = useState(false);
+  const [payWaitMode, setPayWaitMode] = useState<PaymentWaitMode>('manual_mobile');
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const pendingSuccessParams = useRef<Record<string, string>>({});
+  const placedOrderIdRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  const coordsForQuote = useMemo(
+    () => dropoffCoords ?? buyerCoords ?? null,
+    [dropoffCoords, buyerCoords]
+  );
+
+  const token = session?.access_token;
+  const uid = session?.user?.id;
+
+  const transportQuery = useQuery({
+    queryKey: queryKeys.api.transportMethods(token ?? (isGuestCheckout ? 'guest' : '')),
+    queryFn: async () => {
+      try {
+        return await fetchTransportMethods(isGuestCheckout ? undefined : token);
+      } catch {
+        return [] as TransportMethod[];
+      }
+    },
+    enabled: Boolean(!authLoading && (isGuestCheckout || (isAuthenticated && token))),
+  });
+
+  const profileQuery = useQuery({
+    queryKey: queryKeys.api.profile(token),
+    queryFn: async () => {
+      try {
+        return await apiGet<Record<string, unknown>>('/profile', token!);
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(!authLoading && isAuthenticated && token),
+  });
+
+  const savedDeliveryQuery = useQuery({
+    queryKey: queryKeys.local.deliveryAddress(uid),
+    queryFn: () => loadSavedDeliverySnapshot(String(uid!)),
+    enabled: Boolean(!authLoading && isAuthenticated && uid),
+    staleTime: 120_000,
+  });
+
+  const transportMethods = transportQuery.data ?? [];
+
+  useEffect(() => {
+    const accessForQuote = isGuestCheckout ? null : session?.access_token ?? null;
+    if ((!accessForQuote && !isGuestCheckout) || items.length === 0) {
+      setQuote(null);
+      setQuoteError(null);
+      setQuoteLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    getCheckoutQuote(
+      items,
+      accessForQuote,
+      coordsForQuote,
+      deliveryOption,
+      transportMethods
+    )
+      .then((q) => {
+        if (!cancelled) setQuote(q);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setQuote(null);
+          setQuoteError(userFacingMessageForApiError(e));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setQuoteLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [items, session?.access_token, coordsForQuote, deliveryOption, transportMethods, isGuestCheckout]);
+
+  const totals = useMemo(() => {
+    if (!quote) {
+      return {
+        subtotal: totalAmount,
+        distanceKm: 0,
+        deliveryFee: 0,
+        insuranceFee: 0,
+        platformTotal: totalAmount,
+        shopCount: 0,
+      };
+    }
+    return {
+      subtotal: quote.subtotal,
+      distanceKm: quote.displayDistanceKm,
+      deliveryFee: quote.deliveryFee,
+      insuranceFee: quote.insuranceFee,
+      platformTotal: quote.platformTotal,
+      shopCount: Object.keys(quote.shopDeliveries).length,
+    };
+  }, [quote, totalAmount]);
+
+  useEffect(() => {
+    if (authLoading || isGuestCheckout) return;
+    if (!isAuthenticated) {
+      router.replace({
+        pathname: '/(auth)/login',
+        params: { redirect: POST_AUTH_CHECKOUT_PATH },
+      });
+    }
+  }, [authLoading, isAuthenticated, isGuestCheckout]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (items.length === 0) router.replace('/(tabs)/cart');
+  }, [authLoading, items.length]);
+
+  useEffect(() => {
+    if (isGuestCheckout) return;
+    const saved = savedDeliveryQuery.data;
+    if (!saved?.address?.trim()) return;
+    setAddress((prev) => (prev.trim() ? prev : saved.address));
+    setSaveAddressForNextTime(true);
+    if (
+      saved.latitude != null &&
+      saved.longitude != null &&
+      Number.isFinite(saved.latitude) &&
+      Number.isFinite(saved.longitude)
+    ) {
+      setDropoffCoords({ lat: saved.latitude, lng: saved.longitude });
+    }
+  }, [savedDeliveryQuery.data, isGuestCheckout]);
+
+  useEffect(() => {
+    if (isGuestCheckout) return;
+    if (userEditedPhoneRef.current) return;
+    const profileResult = profileQuery.data;
+    const raw =
+      (profileResult && extractPhoneFromUser(profileResult)) ||
+      extractPhoneFromUser(session?.user as Record<string, unknown>);
+    const formatted = formatPhoneForCheckoutInput(raw);
+    if (formatted) {
+      setMobileMoneyPhone((prev) => (prev.trim() ? prev : formatted));
+    }
+  }, [profileQuery.data, session?.user, isGuestCheckout]);
+
+  const paymentDetailsOk = useMemo(() => isValidMobileMoneyPhone(mobileMoneyPhone), [mobileMoneyPhone]);
+
+  const guestDetailsOk = useMemo(() => {
+    if (!isGuestCheckout) return true;
+    return (
+      guestName.trim().length >= 2 &&
+      isValidEmail(guestEmail.trim().toLowerCase()) &&
+      paymentDetailsOk
+    );
+  }, [isGuestCheckout, guestName, guestEmail, paymentDetailsOk]);
+
+  const canProceed =
+    address.trim().length >= 5 &&
+    paymentDetailsOk &&
+    guestDetailsOk &&
+    !quoteLoading &&
+    quote != null &&
+    !quoteError;
+
+  const paymentDetailSummary = useMemo(() => {
+    const d = digitsOnly(mobileMoneyPhone);
+    const tail = d.slice(-4);
+    return tail ? `Mobile money ••••${tail}` : '';
+  }, [mobileMoneyPhone]);
+
+  const finishPaidCheckout = useCallback(() => {
+    setPayWaitVisible(false);
+    setPaymentIntentId(null);
+    placedOrderIdRef.current = null;
+    router.replace({
+      pathname: '/payment-success',
+      params: pendingSuccessParams.current,
+    });
+  }, []);
+
+  const handleManualPaymentConfirm = useCallback(async () => {
+    const oid = placedOrderIdRef.current;
+    const token = session?.access_token;
+    if (oid) {
+      const s = await fetchPaymentStatus(token ?? undefined, oid);
+      if (s !== 'succeeded') {
+        Alert.alert(
+          'Payment not confirmed',
+          'We have not received a successful payment yet. Approve the prompt on your phone, wait a few seconds, and try again.'
+        );
+        return;
+      }
+    }
+    finishPaidCheckout();
+  }, [session?.access_token, finishPaidCheckout]);
+
+  const handleProceedToPayment = async () => {
+    if (!canProceed) return;
+    if (!isGuestCheckout && (!isAuthenticated || !session?.access_token)) return;
+    const uid = session?.user?.id;
+    if (!isGuestCheckout && saveAddressForNextTime && uid) {
+      try {
+        await persistSavedDeliveryAddress(String(uid), address.trim(), coordsForQuote);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.local.deliveryAddress(uid) });
+        await refreshBuyerLocation();
+      } catch {
+        /* still continue checkout */
+      }
+    }
+
+    const token = session?.access_token;
+    const payLabel = PAYMENT_OPTIONS.find((p) => p.id === paymentMethod)?.label ?? paymentMethod;
+    const delLabel = DELIVERY_OPTIONS.find((d) => d.id === deliveryOption)?.label ?? deliveryOption;
+
+    setPaymentSubmitting(true);
+    try {
+      const freshQuote = await getCheckoutQuote(
+        items,
+        isGuestCheckout ? null : token ?? null,
+        coordsForQuote,
+        deliveryOption,
+        transportMethods
+      );
+      const transportId = freshQuote.transportMethodId;
+      const contactPhoneDigits = digitsOnly(mobileMoneyPhone);
+
+      const shippingAddress: Record<string, unknown> = {
+        address: address.trim(),
+        street: address.trim(),
+        full_name: isGuestCheckout
+          ? guestName.trim()
+          : ((session?.user?.full_name as string) || ''),
+      };
+      if (contactPhoneDigits.length >= 9) {
+        shippingAddress.phone = contactPhoneDigits;
+      }
+      if (isGuestCheckout) {
+        shippingAddress.email = guestEmail.trim().toLowerCase();
+      }
+      if (coordsForQuote) {
+        shippingAddress.latitude = coordsForQuote.lat;
+        shippingAddress.longitude = coordsForQuote.lng;
+        shippingAddress.estimatedDistanceKm = freshQuote.displayDistanceKm;
+      }
+
+      const apiPaymentMethod = mapUiPaymentMethodToApi(paymentMethod);
+      const order = isGuestCheckout
+        ? await createGuestOrder({
+            items: freshQuote.lineItems,
+            shippingAddress,
+            totalAmount: freshQuote.platformTotal,
+            paymentMethod: apiPaymentMethod,
+            transportMethodId: transportId,
+            deliveryFee: freshQuote.deliveryFee,
+            insuranceFee: freshQuote.insuranceFee,
+            guestEmail: guestEmail.trim().toLowerCase(),
+            guestPhone: contactPhoneDigits,
+            guestName: guestName.trim(),
+          })
+        : await createOrder(token!, {
+            items: freshQuote.lineItems,
+            shippingAddress,
+            totalAmount: freshQuote.platformTotal,
+            paymentMethod: apiPaymentMethod,
+            transportMethodId: transportId,
+            deliveryFee: freshQuote.deliveryFee,
+            insuranceFee: freshQuote.insuranceFee,
+          });
+
+      placedOrderIdRef.current = order.id;
+      const trackingDisplay = order.tracking_code?.trim() || 'Shown after payment confirms';
+
+      const params: Record<string, string> = {
+        orderId: order.id,
+        orderNumber: order.order_number || order.id.slice(0, 13),
+        trackingCode: trackingDisplay,
+        paymentMethod,
+        paymentLabel: payLabel,
+        deliveryLabel: delLabel,
+        address: address.trim(),
+        paymentDetail: paymentDetailSummary,
+        orderStatus: order.status || '',
+        platformTotal: String(freshQuote.platformTotal),
+        deliveryFee: String(freshQuote.deliveryFee),
+        buyerProtectionFee: String(freshQuote.insuranceFee),
+      };
+      pendingSuccessParams.current = params;
+
+      try {
+        await initiateMobileMoneyPayment(token ?? undefined, {
+          orderId: order.id,
+          provider: apiPaymentMethod,
+          phone: digitsOnly(mobileMoneyPhone),
+          amount: freshQuote.platformTotal,
+        });
+        setPaymentIntentId(order.id);
+        setPayWaitMode('poll');
+      } catch {
+        setPaymentIntentId(order.id);
+        setPayWaitMode('manual_mobile');
+      }
+      setPayWaitVisible(true);
+    } catch (e) {
+      Alert.alert('Checkout', userFacingMessageForApiError(e));
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
+
+  const phoneTailForModal =
+    digitsOnly(mobileMoneyPhone).length >= 4 ? digitsOnly(mobileMoneyPhone).slice(-4) : undefined;
+
+  if (authLoading || (!isGuestCheckout && !isAuthenticated)) {
+    return (
+      <View style={[styles.centered, { paddingTop: insets.top + 24 }]}>
+        <ActivityIndicator size="large" color={Theme.primary} />
+        <Text style={styles.loadingText}>
+          {isGuestCheckout ? 'Loading checkout…' : 'Checking your account…'}
+        </Text>
+      </View>
+    );
+  }
+
+  const payLabelActive = PAYMENT_OPTIONS.find((p) => p.id === paymentMethod)?.label ?? paymentMethod;
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 72 : 12}
+    >
+      <PaymentWaitModal
+        visible={payWaitVisible}
+        mode={payWaitMode}
+        methodLabel={payLabelActive}
+        amountLabel={`TSh ${(quote?.platformTotal ?? totals.platformTotal).toLocaleString()}`}
+        phoneTail={phoneTailForModal}
+        paymentIntentId={paymentIntentId}
+        accessToken={session?.access_token ?? null}
+        onPollSucceeded={finishPaidCheckout}
+        onManualConfirm={handleManualPaymentConfirm}
+        onDismiss={() => {
+          setPayWaitVisible(false);
+          setPaymentIntentId(null);
+        }}
+      />
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <FontAwesome name="arrow-left" size={22} color={Theme.text} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Checkout</Text>
+        <View style={styles.headerRight} />
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, { paddingBottom: 160 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {isGuestCheckout ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Guest checkout</Text>
+            <Text style={styles.sectionSub}>
+              We only use these details for this order and delivery updates. You can create an account later to save
+              addresses.
+            </Text>
+            <Text style={styles.paymentFieldsLabel}>Full name</Text>
+            <TextInput
+              style={styles.inputSingle}
+              placeholder="Your name"
+              placeholderTextColor={Theme.textMuted}
+              value={guestName}
+              onChangeText={setGuestName}
+              autoCapitalize="words"
+            />
+            <Text style={[styles.paymentFieldsLabel, { marginTop: 12 }]}>Email</Text>
+            <TextInput
+              style={styles.inputSingle}
+              placeholder="you@example.com"
+              placeholderTextColor={Theme.textMuted}
+              value={guestEmail}
+              onChangeText={setGuestEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Pressable
+              style={{ marginTop: 14 }}
+              onPress={() =>
+                router.replace({
+                  pathname: '/(auth)/login',
+                  params: { redirect: POST_AUTH_CHECKOUT_PATH },
+                })
+              }
+            >
+              <Text style={styles.signInLink}>Have an account? Sign in</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Muhtasari wa agizo</Text>
+          <View style={styles.summaryCard}>
+            {items.slice(0, 5).map((item) => (
+              <View key={item.id} style={styles.summaryRow}>
+                <Text style={styles.summaryName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.summaryQty}>×{item.quantity}</Text>
+                <Text style={styles.summaryPrice}>TSh {(item.price * item.quantity).toLocaleString()}</Text>
+              </View>
+            ))}
+            {items.length > 5 && (
+              <Text style={styles.moreItems}>+{items.length - 5} more item(s)</Text>
+            )}
+            <View style={styles.breakdownBlock}>
+              {quoteLoading ? (
+                <View style={styles.breakdownRow}>
+                  <ActivityIndicator size="small" color={Theme.primary} />
+                  <Text style={[styles.breakdownLabel, { marginLeft: 10 }]}>Inahesabu usafiri na Buyer Protection…</Text>
+                </View>
+              ) : null}
+              {quoteError ? (
+                <Text style={styles.quoteErrorText}>{quoteError}</Text>
+              ) : null}
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Kiasi cha bidhaa</Text>
+                <Text style={styles.breakdownValue}>TSh {totals.subtotal.toLocaleString()}</Text>
+              </View>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>
+                  Usafirishaji
+                  {totals.shopCount > 1 ? ` (${totals.shopCount} maduka)` : ''}
+                  {quote && totals.distanceKm > 0 ? ` (~${totals.distanceKm} km)` : ''}
+                </Text>
+                <Text style={styles.breakdownValue}>TSh {totals.deliveryFee.toLocaleString()}</Text>
+              </View>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Buyer Protection (1.5%)</Text>
+                <Text style={styles.breakdownValue}>TSh {totals.insuranceFee.toLocaleString()}</Text>
+              </View>
+            </View>
+            <View style={[styles.summaryRow, styles.platformTotalRow]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.platformTotalLabel}>Jumla ya malipo</Text>
+                <Text style={styles.platformTotalHint}>Pamoja na usafiri + Buyer Protection</Text>
+              </View>
+              <Text style={styles.platformTotalValue}>TSh {totals.platformTotal.toLocaleString()}</Text>
+            </View>
+          </View>
+          {!dropoffCoords ? (
+            <Text style={styles.distanceHint}>
+              {buyerCoords
+                ? 'Umbali unatumia mahali pa simu yako. Chagua anwani ya Google ili usahihi bora wa kufikishia.'
+                : 'Chagua anwani kutoka orodha ya Google ili kuhesabu umbali kwa usahihi zaidi. Bila hapo, tunatumia umbali wa wastani wa jiji.'}
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Njia ya usafiri (means of transport)</Text>
+          <Text style={styles.sectionSub}>Chagua delivery method inayofaa mzigo wako.</Text>
+          <View style={styles.transportGrid}>
+            {DELIVERY_OPTIONS.map((opt) => {
+              const active = deliveryOption === opt.id;
+              return (
+                <Pressable
+                  key={opt.id}
+                  style={[styles.transportTile, active && styles.transportTileActive]}
+                  onPress={() => setDeliveryOption(opt.id)}
+                >
+                  <View style={[styles.transportIconRing, active && styles.transportIconRingActive]}>
+                    <MaterialCommunityIcons
+                      name={opt.icon}
+                      size={26}
+                      color={active ? Theme.primary : Theme.textSecondary}
+                    />
+                  </View>
+                  <Text style={[styles.transportTitle, active && styles.transportTitleActive]} numberOfLines={2}>
+                    {opt.label}
+                  </Text>
+                  <Text style={styles.transportSub} numberOfLines={2}>
+                    {opt.sublabel}
+                  </Text>
+                  {active ? (
+                    <FontAwesome name="check-circle" size={18} color={Theme.primary} style={styles.transportCheck} />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Anwani ya kufikishia</Text>
+          <DeliveryAddressAutocomplete
+            value={address}
+            onChangeText={setAddress}
+            onResolvedCoordinates={setDropoffCoords}
+          />
+          {!isGuestCheckout ? (
+            <Pressable
+              style={styles.saveAddressRow}
+              onPress={() => setSaveAddressForNextTime((v) => !v)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: saveAddressForNextTime }}
+            >
+              <FontAwesome
+                name={saveAddressForNextTime ? 'check-square' : 'square-o'}
+                size={22}
+                color={saveAddressForNextTime ? Theme.primary : Theme.textMuted}
+                style={styles.saveAddressIcon}
+              />
+              <View style={styles.saveAddressTextCol}>
+                <Text style={styles.saveAddressTitle}>Save this address</Text>
+                <Text style={styles.saveAddressSub}>We will fill it in automatically next time you check out.</Text>
+              </View>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.tolaPayHeader}>
+            <FontAwesome name="mobile" size={16} color="#fff" />
+            <Text style={styles.tolaPayHeaderText}>TOLA Pay</Text>
+          </View>
+          <Text style={styles.sectionSub}>
+            Chagua mtandao wako kisha lipa kwa namba ya simu iliyosajiliwa.
+          </Text>
+          {PAYMENT_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.id}
+              style={[
+                styles.deliveryCard,
+                paymentMethod === opt.id && styles.deliveryCardActive,
+              ]}
+              onPress={() => setPaymentMethod(opt.id)}
+            >
+              <View style={styles.deliveryIconWrap}>
+                <FontAwesome
+                  name={opt.icon}
+                  size={22}
+                  color={paymentMethod === opt.id ? Theme.primary : Theme.textMuted}
+                />
+              </View>
+              <View style={styles.deliveryInfo}>
+                <Text style={[styles.deliveryLabel, paymentMethod === opt.id && styles.deliveryLabelActive]}>
+                  {opt.label}
+                </Text>
+                <Text style={styles.deliveryDesc}>{opt.desc}</Text>
+              </View>
+              {paymentMethod === opt.id && (
+                <FontAwesome name="check-circle" size={22} color={Theme.primary} />
+              )}
+            </Pressable>
+          ))}
+
+          <View style={styles.paymentFields}>
+            <Text style={styles.paymentFieldsLabel}>Phone number</Text>
+            <Text style={styles.paymentFieldsHint}>Mfano: 07XX XXX XXX</Text>
+            <TextInput
+              style={styles.inputSingle}
+              placeholder="Namba ya simu"
+              placeholderTextColor={Theme.textMuted}
+              value={mobileMoneyPhone}
+              onChangeText={(t) => {
+                userEditedPhoneRef.current = true;
+                setMobileMoneyPhone(t);
+              }}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
+            />
+          </View>
+        </View>
+
+        <Pressable
+          style={[styles.payBtn, (!canProceed || paymentSubmitting) && styles.payBtnDisabled]}
+          onPress={handleProceedToPayment}
+          disabled={!canProceed || paymentSubmitting}
+        >
+          {paymentSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.payBtnText}>Maliza malipo · TSh {totals.platformTotal.toLocaleString()}</Text>
+              <FontAwesome name="lock" size={16} color="#fff" style={{ marginLeft: 8 }} />
+            </>
+          )}
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Theme.background },
+  loadingText: { marginTop: 16, fontSize: 15, color: Theme.textSecondary },
+  container: { flex: 1, backgroundColor: Theme.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: gap.md,
+    paddingBottom: 12,
+    backgroundColor: Theme.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.inputBorder,
+  },
+  backBtn: { padding: 8 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: Theme.text },
+  headerRight: { width: 40 },
+  scroll: { flex: 1 },
+  content: { paddingHorizontal: gap.md, paddingTop: 20 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: Theme.text, marginBottom: 8 },
+  sectionSub: {
+    fontSize: 13,
+    color: Theme.textMuted,
+    lineHeight: 19,
+    marginBottom: 14,
+  },
+  summaryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: Theme.radiusMd,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    ...Theme.shadowSm,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  summaryName: { flex: 1, fontSize: 14, color: Theme.text },
+  summaryQty: { fontSize: 14, color: Theme.textMuted, marginHorizontal: 8 },
+  summaryPrice: { fontSize: 14, fontWeight: '600', color: Theme.text },
+  moreItems: { fontSize: 13, color: Theme.textMuted, marginTop: 4 },
+  breakdownBlock: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Theme.inputBorder,
+    gap: 8,
+  },
+  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  breakdownLabel: { fontSize: 14, color: Theme.textSecondary, flex: 1, marginRight: 8 },
+  breakdownValue: { fontSize: 14, fontWeight: '600', color: Theme.text },
+  platformTotalRow: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 2,
+    borderTopColor: Theme.primary,
+    alignItems: 'center',
+  },
+  platformTotalLabel: { fontSize: 16, fontWeight: '800', color: Theme.text },
+  platformTotalHint: { fontSize: 12, color: Theme.textMuted, marginTop: 2 },
+  platformTotalValue: { fontSize: 20, fontWeight: '800', color: Theme.primary },
+  distanceHint: {
+    fontSize: 12,
+    color: Theme.textMuted,
+    marginTop: 10,
+    lineHeight: 17,
+    fontStyle: 'italic',
+  },
+  quoteErrorText: {
+    fontSize: 13,
+    color: '#b91c1c',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  transportGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
+  transportTile: {
+    width: '48%',
+    backgroundColor: Theme.background,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 4,
+    borderWidth: 2,
+    borderColor: Theme.inputBorder,
+    position: 'relative',
+    ...Theme.shadowSm,
+  },
+  transportTileActive: { borderColor: Theme.primary, backgroundColor: '#ffffff' },
+  transportIconRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Theme.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  transportIconRingActive: { backgroundColor: '#eaf1ff' },
+  transportTitle: { fontSize: 13, fontWeight: '700', color: Theme.text, lineHeight: 17 },
+  transportTitleActive: { color: Theme.primary },
+  transportSub: { fontSize: 11, color: Theme.textMuted, marginTop: 4, lineHeight: 15 },
+  transportCheck: { position: 'absolute', top: 8, right: 8 },
+  deliveryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.background,
+    borderRadius: Theme.radiusMd,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    ...Theme.shadowSm,
+  },
+  deliveryCardActive: { borderColor: Theme.primary, backgroundColor: '#ffffff' },
+  deliveryIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  deliveryInfo: { flex: 1 },
+  deliveryLabel: { fontSize: 16, fontWeight: '600', color: Theme.text },
+  deliveryLabelActive: { color: Theme.primary },
+  deliveryDesc: { fontSize: 13, color: Theme.textMuted, marginTop: 2 },
+  saveAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 16,
+    paddingVertical: 4,
+  },
+  saveAddressIcon: { marginRight: 12, marginTop: 2 },
+  saveAddressTextCol: { flex: 1 },
+  saveAddressTitle: { fontSize: 15, fontWeight: '600', color: Theme.text },
+  saveAddressSub: { fontSize: 13, color: Theme.textMuted, marginTop: 4, lineHeight: 18 },
+  input: {
+    backgroundColor: Theme.background,
+    borderRadius: Theme.radiusMd,
+    padding: 14,
+    fontSize: 15,
+    color: Theme.text,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    minHeight: 88,
+  },
+  inputSingle: {
+    backgroundColor: Theme.background,
+    borderRadius: Theme.radiusMd,
+    padding: 14,
+    fontSize: 15,
+    color: Theme.text,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+  },
+  paymentFields: { marginTop: 14 },
+  paymentFieldsLabel: { fontSize: 15, fontWeight: '700', color: Theme.text, marginBottom: 4 },
+  paymentFieldsHint: { fontSize: 13, color: Theme.textMuted, marginBottom: 10, lineHeight: 18 },
+  tolaPayHeader: {
+    backgroundColor: '#22c55e',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  tolaPayHeaderText: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  payBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Theme.primary,
+    paddingVertical: 16,
+    borderRadius: Theme.radiusMd,
+    marginTop: 8,
+    ...Theme.shadowMd,
+  },
+  payBtnDisabled: { opacity: 0.5 },
+  payBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  signInLink: { fontSize: 15, fontWeight: '600', color: Theme.link },
+});
