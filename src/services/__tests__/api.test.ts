@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete, setOn401Handler } from '@/src/services/api';
+import { AppError } from '@/src/lib/errors';
 
 function mockFetchOnce(status: number, body: unknown, ok = status >= 200 && status < 300) {
   return jest.fn().mockResolvedValueOnce({
@@ -23,13 +24,21 @@ describe('apiGet', () => {
     expect(result).toEqual({ id: 1, name: 'Shop' });
   });
 
-  it('throws with the server message on error', async () => {
+  it('throws an AppError with the server message on error', async () => {
     global.fetch = mockFetchOnce(404, { message: 'Not found' }, false) as any;
 
-    await expect(apiGet('/shops/999')).rejects.toThrow('Not found');
+    try {
+      await apiGet('/shops/999');
+      throw new Error('expected apiGet to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+      expect((err as AppError).message).toBe('Not found');
+      expect((err as AppError).status).toBe(404);
+      expect((err as AppError).kind).toBe('unknown');
+    }
   });
 
-  it('formats a 422 validation error using the first field', async () => {
+  it('formats a 422 validation error using the first field, classified as "validation"', async () => {
     global.fetch = mockFetchOnce(
       422,
       { errors: { shop_id: ['is required'] } },
@@ -37,6 +46,43 @@ describe('apiGet', () => {
     ) as any;
 
     await expect(apiGet('/orders')).rejects.toThrow('Shop id: is required');
+  });
+
+  it('classifies a 401 as an "auth" AppError', async () => {
+    global.fetch = mockFetchOnce(401, { message: 'Unauthorized' }, false) as any;
+
+    try {
+      await apiGet('/profile');
+      throw new Error('expected apiGet to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+      expect((err as AppError).kind).toBe('auth');
+    }
+  });
+
+  it('classifies a 500 as a "server" AppError', async () => {
+    global.fetch = mockFetchOnce(500, { message: 'Boom' }, false) as any;
+
+    try {
+      await apiGet('/orders');
+      throw new Error('expected apiGet to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+      expect((err as AppError).kind).toBe('server');
+    }
+  });
+
+  it('wraps a network failure (fetch itself rejecting) in a "network" AppError', async () => {
+    global.fetch = jest.fn().mockRejectedValueOnce(new Error('Failed to fetch')) as any;
+
+    try {
+      await apiGet('/orders');
+      throw new Error('expected apiGet to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+      expect((err as AppError).kind).toBe('network');
+      expect((err as AppError).message).toBe('Failed to fetch');
+    }
   });
 });
 

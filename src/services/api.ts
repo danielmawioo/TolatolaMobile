@@ -1,5 +1,6 @@
 import { APP_API_URL } from '@/src/config/env';
 import { logger } from '@/src/lib/logger';
+import { AppError, classifyStatus } from '@/src/lib/errors';
 
 const baseUrl = APP_API_URL.replace(/\/$/, '');
 const apiPrefix = '/api';
@@ -29,7 +30,8 @@ export function setOn401Handler(handler: () => Promise<string | null>) {
  * Fetch from the Tolatola backend. Automatically prefixes path with API base and
  * adds Authorization: Bearer <accessToken> when provided.
  *
- * Implements an automatic retry interceptor on 401.
+ * Implements an automatic retry interceptor on 401. Network-level failures
+ * (fetch itself rejecting, e.g. no connectivity) are re-thrown as AppError('network').
  */
 export async function apiFetch(
   path: string,
@@ -47,7 +49,12 @@ export async function apiFetch(
     headers.set('Content-Type', 'application/json');
   }
 
-  const res = await fetch(url, { ...rest, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...rest, headers });
+  } catch (err) {
+    throw new AppError(err instanceof Error ? err.message : 'Network request failed', 'network');
+  }
 
   // On 401, attempt silent token refresh and retry
   if (res.status === 401 && _on401Handler) {
@@ -68,6 +75,25 @@ export async function apiFetch(
 }
 
 /**
+ * Builds the AppError for a non-ok response, extracting the server's message
+ * (including the field-level detail Laravel-style 422 validation errors carry).
+ */
+async function errorFromResponse(res: Response): Promise<AppError> {
+  const errorBody = await res.json().catch(() => ({}));
+  let message = errorBody.message || errorBody.error || res.statusText;
+  if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
+    const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
+    if (first) {
+      const [field, msgs] = first;
+      const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
+      const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
+      message = `${prettyField}: ${msgText}`;
+    }
+  }
+  return new AppError(message || `Request failed with status ${res.status}`, classifyStatus(res.status), res.status);
+}
+
+/**
  * Convenience: GET JSON from API.
  */
 export async function apiGet<T = unknown>(
@@ -76,20 +102,7 @@ export async function apiGet<T = unknown>(
 ): Promise<T> {
   const res = await apiFetch(path, { method: 'GET', accessToken });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    let message = errorBody.message || errorBody.error || res.statusText;
-    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
-      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
-      if (first) {
-        const [field, msgs] = first;
-        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
-        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
-        message = `${prettyField}: ${msgText}`;
-      }
-    }
-    const error = new Error(message || `Request failed with status ${res.status}`);
-    (error as any).status = res.status;
-    throw error;
+    throw await errorFromResponse(res);
   }
   return res.json() as Promise<T>;
 }
@@ -108,20 +121,7 @@ export async function apiPost<T = unknown>(
     accessToken,
   });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    let message = errorBody.message || errorBody.error || res.statusText;
-    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
-      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
-      if (first) {
-        const [field, msgs] = first;
-        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
-        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
-        message = `${prettyField}: ${msgText}`;
-      }
-    }
-    const error = new Error(message || `Request failed with status ${res.status}`);
-    (error as any).status = res.status;
-    throw error;
+    throw await errorFromResponse(res);
   }
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
@@ -141,20 +141,7 @@ export async function apiPatch<T = unknown>(
     accessToken,
   });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    let message = errorBody.message || errorBody.error || res.statusText;
-    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
-      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
-      if (first) {
-        const [field, msgs] = first;
-        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
-        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
-        message = `${prettyField}: ${msgText}`;
-      }
-    }
-    const error = new Error(message || `Request failed with status ${res.status}`);
-    (error as any).status = res.status;
-    throw error;
+    throw await errorFromResponse(res);
   }
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
@@ -174,20 +161,7 @@ export async function apiPut<T = unknown>(
     accessToken,
   });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    let message = errorBody.message || errorBody.error || res.statusText;
-    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
-      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
-      if (first) {
-        const [field, msgs] = first;
-        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
-        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
-        message = `${prettyField}: ${msgText}`;
-      }
-    }
-    const error = new Error(message || `Request failed with status ${res.status}`);
-    (error as any).status = res.status;
-    throw error;
+    throw await errorFromResponse(res);
   }
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
@@ -205,20 +179,7 @@ export async function apiDelete<T = unknown>(
     accessToken,
   });
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    let message = errorBody.message || errorBody.error || res.statusText;
-    if (res.status === 422 && errorBody?.errors && typeof errorBody.errors === 'object') {
-      const first = Object.entries(errorBody.errors)[0] as [string, unknown] | undefined;
-      if (first) {
-        const [field, msgs] = first;
-        const msgText = Array.isArray(msgs) ? msgs[0] : String(msgs);
-        const prettyField = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
-        message = `${prettyField}: ${msgText}`;
-      }
-    }
-    const error = new Error(message || `Request failed with status ${res.status}`);
-    (error as any).status = res.status;
-    throw error;
+    throw await errorFromResponse(res);
   }
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;

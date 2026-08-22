@@ -7,6 +7,7 @@ import {
   type TransportMethod,
 } from '@/src/api/orders';
 import { apiGet } from '@/src/services/api';
+import { AppError } from '@/src/lib/errors';
 import type { CartItem } from '@/src/contexts/CartContext';
 
 jest.mock('@/src/services/api');
@@ -87,6 +88,20 @@ describe('enrichCartItemsForCheckout', () => {
     await expect(enrichCartItemsForCheckout([item({ name: 'Mystery Item' })], 'token')).rejects.toThrow(
       /Mystery Item/
     );
+  });
+
+  it('throws a clear validation AppError instead of silently propagating a malformed product response', async () => {
+    // shop_id as a nested object is not a valid shape per ProductResponseSchema
+    mockedApiGet.mockResolvedValue({ shop_id: { nested: 'garbage' } });
+
+    try {
+      await enrichCartItemsForCheckout([item({ product_id: 'p-bad' })], 'token');
+      throw new Error('expected enrichCartItemsForCheckout to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+      expect((err as AppError).kind).toBe('validation');
+      expect((err as AppError).message).toMatch(/p-bad/);
+    }
   });
 });
 

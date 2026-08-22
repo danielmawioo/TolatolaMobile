@@ -93,7 +93,10 @@ export default function PaymentSuccessScreen() {
           setPaymentStatus('failed');
           return; // Stop polling
         }
-      } catch {}
+      } catch (err) {
+        // Transient poll failure — retried on the next tick, so don't interrupt the user.
+        logger.warn('[PAYMENT SUCCESS] Status poll failed', err);
+      }
 
       attempts++;
       if (attempts >= maxAttempts || cancelled) return;

@@ -1,4 +1,6 @@
 import { apiGet, apiPost } from '@/src/services/api';
+import { AppError } from '@/src/lib/errors';
+import { ProductResponseSchema } from '@/src/api/schemas';
 import type { CartItem } from '@/src/contexts/CartContext';
 import { mapWithConcurrency } from '@/src/lib/mapWithConcurrency';
 import {
@@ -70,8 +72,15 @@ export async function enrichCartItemsForCheckout(
   const PRODUCT_FETCH_CONCURRENCY = 5;
   const tok = accessToken ?? undefined;
   const payloads = await mapWithConcurrency(uniqueIds, PRODUCT_FETCH_CONCURRENCY, async (productId) => {
-    const p = await apiGet<Record<string, unknown>>(`/products/${productId}`, tok);
-    return { productId, p };
+    const raw = await apiGet<unknown>(`/products/${productId}`, tok);
+    const parsed = ProductResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new AppError(
+        `Malformed product response for "${productId}": ${parsed.error.issues[0]?.message ?? 'invalid shape'}`,
+        'validation'
+      );
+    }
+    return { productId, p: parsed.data as Record<string, unknown> };
   });
 
   const productMeta = new Map<string, { shop_id: string; weight_kg_per_unit: number }>();

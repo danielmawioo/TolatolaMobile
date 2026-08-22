@@ -1,0 +1,15 @@
+# Starts the Expo web build in a container. See Dockerfile for why this covers
+# only the web target — Android/iOS need native tooling this container doesn't have.
+#
+# Usage: cp .env.example .env, fill in real values, then `docker compose up`.
+services:
+  app:
+    build: .
+    ports:
+      - "19006:19006"
+      - "8081:8081"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /app/node_modules

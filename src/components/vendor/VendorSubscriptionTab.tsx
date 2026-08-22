@@ -61,7 +61,10 @@ export function VendorSubscriptionTab({ vendorId, accessToken }: Props) {
           setAwaitingPayment(false);
           Alert.alert('Failed', res?.data?.click_pesa_error || 'Transaction unsuccessful.');
         }
-      } catch {}
+      } catch (err) {
+        // Transient poll failure — retried on the next tick, so don't interrupt the user.
+        logger.warn('[VENDOR SUBSCRIPTION] Status poll failed', err);
+      }
       if (attempts >= 40) { clearInterval(pollRef.current!); setAwaitingPayment(false); Alert.alert('Timeout', 'No confirmation yet. Check status later.'); }
     }, 3000);
   };

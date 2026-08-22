@@ -48,6 +48,10 @@ Copy `.env.example` to `.env` and fill in values. For Expo, `app.config.js` read
 
 For a physical device, ensure `APP_API_URL` points to your machine’s IP (e.g. `http://192.168.1.x:8080`) so the device can reach the backend; use the same `/api` path prefix.
 
+### Docker (web preview only)
+
+`docker compose up` (after `cp .env.example .env` and filling in real values) starts the Expo **web** build in a container at `http://localhost:19006`. This is a convenience wrapper, not the primary dev workflow: it cannot run Android or iOS builds (those need native tooling — Xcode/Android Studio — that doesn't run in a Linux container), and it still talks to the real external backend/Supabase project, not a bundled one. For actual mobile development, use `npx expo start` directly as described above.
+
 ## Testing and linting
 
 - **Run tests:** `npm test` (Jest + `jest-expo` + React Native Testing Library)

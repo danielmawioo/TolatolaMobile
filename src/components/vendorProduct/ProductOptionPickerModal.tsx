@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Modal } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
-import type { EditProductFormData } from '@/src/hooks/useEditProductData';
+import type { ProductFormData } from '@/src/lib/productForm';
 
 export type ActiveModal =
   | 'category'
@@ -18,7 +18,7 @@ export type ActiveModal =
   | 'drink_section'
   | null;
 
-interface Props {
+interface Props<T extends ProductFormData> {
   activeModal: ActiveModal;
   setActiveModal: (modal: ActiveModal) => void;
   categories: any[];
@@ -26,21 +26,19 @@ interface Props {
   subCategoryId: string;
   setParentCategoryId: (id: string) => void;
   setSubCategoryId: (id: string) => void;
-  formData: EditProductFormData;
-  setFormData: React.Dispatch<React.SetStateAction<EditProductFormData>>;
+  formData: T;
+  setFormData: React.Dispatch<React.SetStateAction<T>>;
 }
 
 /**
  * Single bottom-sheet-style <Modal> that renders whichever picker list is active
  * (category / subcategory / grade / weight unit / vehicle section / transmission /
  * fuel type / condition / dietary info / prep time / drink section) for the vendor
- * "edit product" form.
- *
- * NOTE: app/(vendor)/product/create.tsx has a near-identical inline modal — it was
- * intentionally left untouched since create.tsx is out of scope for this pass, but
- * it is a strong future dedup candidate against this component.
+ * product create/edit forms. Generic over the form data shape so it works for both
+ * the "create product" (ProductFormData) and "edit product" (EditProductFormData)
+ * screens without needing a duplicate copy.
  */
-export function ProductOptionPickerModal({
+export function ProductOptionPickerModal<T extends ProductFormData>({
   activeModal,
   setActiveModal,
   categories,
@@ -50,7 +48,7 @@ export function ProductOptionPickerModal({
   setSubCategoryId,
   formData,
   setFormData,
-}: Props) {
+}: Props<T>) {
   return (
     <Modal
       visible={activeModal !== null}
