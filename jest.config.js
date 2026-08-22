@@ -9,10 +9,10 @@ module.exports = {
   // why (e.g. a large batch of new UI surface landed faster than its tests).
   coverageThreshold: {
     global: {
-      statements: 65,
+      statements: 68,
       branches: 58,
-      functions: 60,
-      lines: 68,
+      functions: 63,
+      lines: 70,
     },
   },
 };
