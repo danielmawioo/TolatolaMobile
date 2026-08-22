@@ -1,6 +1,6 @@
 import { apiGet, apiPost } from '@/src/services/api';
 import { AppError } from '@/src/lib/errors';
-import { ProductResponseSchema } from '@/src/api/schemas';
+import { OrderResponseSchema, ProductResponseSchema } from '@/src/api/schemas';
 import type { CartItem } from '@/src/contexts/CartContext';
 import { mapWithConcurrency } from '@/src/lib/mapWithConcurrency';
 import {
@@ -276,7 +276,7 @@ export async function createOrder(
     insuranceFee?: number;
   }
 ): Promise<{ id: string; order_number?: string; tracking_code?: string | null; status?: string }> {
-  const res = await apiPost<{ success?: boolean; order: Record<string, unknown> }>(
+  const res = await apiPost<{ success?: boolean; order: unknown }>(
     '/orders',
     {
       items: payload.items,
@@ -289,15 +289,16 @@ export async function createOrder(
     },
     accessToken
   );
-  const order = res.order;
-  if (!order || typeof order.id !== 'string') {
+  const parsed = OrderResponseSchema.safeParse(res.order);
+  if (!parsed.success || parsed.data.id == null) {
     throw new Error('Invalid order response from server');
   }
+  const order = parsed.data;
   return {
-    id: order.id as string,
-    order_number: order.order_number as string | undefined,
-    tracking_code: (order.tracking_code as string | null | undefined) ?? null,
-    status: order.status as string | undefined,
+    id: String(order.id),
+    order_number: order.order_number != null ? String(order.order_number) : undefined,
+    tracking_code: order.tracking_code != null ? String(order.tracking_code) : null,
+    status: order.status ?? undefined,
   };
 }
 
@@ -309,15 +310,18 @@ function unwrapCreatedOrder(res: unknown): {
 } | null {
   if (!res || typeof res !== 'object') return null;
   const o = res as Record<string, unknown>;
-  const order = (o.order ?? o.data) as Record<string, unknown> | undefined;
-  const doc = order && typeof order === 'object' ? order : o;
-  const id = doc.id != null ? String(doc.id) : '';
+  const orderRaw = o.order ?? o.data;
+  const doc = orderRaw && typeof orderRaw === 'object' ? orderRaw : o;
+  const parsed = OrderResponseSchema.safeParse(doc);
+  if (!parsed.success) return null;
+  const order = parsed.data;
+  const id = order.id != null ? String(order.id) : '';
   if (!id) return null;
   return {
     id,
-    order_number: doc.order_number as string | undefined,
-    tracking_code: (doc.tracking_code as string | null | undefined) ?? null,
-    status: doc.status as string | undefined,
+    order_number: order.order_number != null ? String(order.order_number) : undefined,
+    tracking_code: order.tracking_code != null ? String(order.tracking_code) : null,
+    status: order.status ?? undefined,
   };
 }
 

@@ -1,4 +1,6 @@
 import {
+  createGuestOrder,
+  createOrder,
   enrichCartItemsForCheckout,
   getCheckoutQuote,
   resolveTransportMethodId,
@@ -6,13 +8,14 @@ import {
   parseShopCoordsFromApi,
   type TransportMethod,
 } from '@/src/api/orders';
-import { apiGet } from '@/src/services/api';
+import { apiGet, apiPost } from '@/src/services/api';
 import { AppError } from '@/src/lib/errors';
 import type { CartItem } from '@/src/contexts/CartContext';
 
 jest.mock('@/src/services/api');
 
 const mockedApiGet = apiGet as jest.Mock;
+const mockedApiPost = apiPost as jest.Mock;
 
 function item(overrides: Partial<CartItem> = {}): CartItem {
   return {
@@ -173,5 +176,87 @@ describe('mapUiPaymentMethodToApi', () => {
 
   it('passes through an unrecognized value unchanged', () => {
     expect(mapUiPaymentMethodToApi('bitcoin')).toBe('bitcoin');
+  });
+});
+
+function createOrderPayload() {
+  return {
+    items: [{ product_id: 'p1', quantity: 1, price: 1000, shop_id: 'shop-a' }],
+    shippingAddress: { city: 'Dar es Salaam' },
+    totalAmount: 1000,
+    paymentMethod: 'cash-on-delivery',
+  };
+}
+
+describe('createOrder', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('parses a valid order response into the expected shape', async () => {
+    mockedApiPost.mockResolvedValue({
+      order: { id: 'order-1', order_number: 'ORD-001', tracking_code: 'TRK-1', status: 'pending' },
+    });
+    const result = await createOrder('token', createOrderPayload());
+    expect(result).toEqual({
+      id: 'order-1',
+      order_number: 'ORD-001',
+      tracking_code: 'TRK-1',
+      status: 'pending',
+    });
+  });
+
+  it('coerces a numeric id/order_number (backend sometimes sends numbers)', async () => {
+    mockedApiPost.mockResolvedValue({ order: { id: 42, order_number: 7 } });
+    const result = await createOrder('token', createOrderPayload());
+    expect(result.id).toBe('42');
+    expect(result.order_number).toBe('7');
+  });
+
+  it('throws a clear error when the order response has no usable id', async () => {
+    mockedApiPost.mockResolvedValue({ order: { status: 'pending' } });
+    await expect(createOrder('token', createOrderPayload())).rejects.toThrow(
+      'Invalid order response from server'
+    );
+  });
+
+  it('throws a clear error when id is a malformed shape (nested object)', async () => {
+    mockedApiPost.mockResolvedValue({ order: { id: { nested: 'garbage' } } });
+    await expect(createOrder('token', createOrderPayload())).rejects.toThrow(
+      'Invalid order response from server'
+    );
+  });
+});
+
+describe('createGuestOrder', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  function guestPayload() {
+    return {
+      ...createOrderPayload(),
+      guestEmail: 'guest@example.com',
+      guestPhone: '+255700000000',
+      guestName: 'Guest User',
+    };
+  }
+
+  it('parses a valid order response unwrapped from { order: ... }', async () => {
+    mockedApiPost.mockResolvedValue({
+      order: { id: 'order-2', order_number: 'ORD-002', status: 'pending' },
+    });
+    const result = await createGuestOrder(guestPayload());
+    expect(result).toEqual({
+      id: 'order-2',
+      order_number: 'ORD-002',
+      tracking_code: null,
+      status: 'pending',
+    });
+  });
+
+  it('falls through to the next backend path when a response has no usable id', async () => {
+    mockedApiPost
+      .mockResolvedValueOnce({ order: { status: 'pending' } }) // /orders/guest: unusable
+      .mockResolvedValueOnce({ order: { id: 'order-3' } }); // /guest/orders: usable
+    const result = await createGuestOrder(guestPayload());
+    expect(result?.id).toBe('order-3');
+    expect(mockedApiPost).toHaveBeenCalledTimes(2);
   });
 });

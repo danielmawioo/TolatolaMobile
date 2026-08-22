@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from '@/src/services/api';
+import { PaymentStatusResponseSchema } from '@/src/api/schemas';
 
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed';
 
@@ -38,22 +39,25 @@ export async function fetchPaymentStatus(
   lookupId: string
 ): Promise<PaymentStatus> {
   try {
-    const res = await apiGet<Record<string, unknown>>(
+    const raw = await apiGet<unknown>(
       `/payments/${encodeURIComponent(lookupId)}`,
       accessToken ?? undefined
     );
-    const top = String((res.status as string) || '').toLowerCase();
+    const parsed = PaymentStatusResponseSchema.safeParse(raw);
+    // Malformed/unexpected shape falls through to the same 'pending' default
+    // as any other ambiguous response below — this endpoint is polled, so a
+    // transient bad payload should never be treated as a hard failure.
+    const res = parsed.success ? parsed.data : {};
+
+    const top = String(res.status || '').toLowerCase();
     if (top === 'succeeded' || top === 'paid' || top === 'completed') return 'succeeded';
     if (top === 'failed' || top === 'cancelled' || top === 'canceled' || top === 'error') return 'failed';
 
-    const ps = String((res.payment_status as string) || '').toLowerCase();
+    const ps = String(res.payment_status || '').toLowerCase();
     if (ps === 'paid') return 'succeeded';
     if (ps === 'failed') return 'failed';
 
-    const nested =
-      res.data && typeof res.data === 'object'
-        ? String(((res.data as Record<string, unknown>).status as string) || '').toLowerCase()
-        : '';
+    const nested = String(res.data?.status || '').toLowerCase();
     if (nested === 'succeeded' || nested === 'paid') return 'succeeded';
     if (nested === 'failed') return 'failed';
 
