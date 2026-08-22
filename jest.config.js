@@ -4,13 +4,13 @@ module.exports = {
   // roleRedirect.test.ts is a plain node:assert script (run via `tsx`), not a Jest
   // test, and it currently imports functions that don't exist yet on an in-progress
   // auth feature — importing it under Jest would crash test discovery.
-  testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/', 'src/lib/roleRedirect.test.ts'],
+  testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/', '/.claude/worktrees/', 'src/lib/roleRedirect.test.ts'],
   coverageThreshold: {
     global: {
-      statements: 55,
-      branches: 40,
-      functions: 40,
-      lines: 50,
+      statements: 65,
+      branches: 55,
+      functions: 60,
+      lines: 65,
     },
   },
 };

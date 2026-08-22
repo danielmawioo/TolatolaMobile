@@ -55,7 +55,12 @@ For a physical device, ensure `APP_API_URL` points to your machine’s IP (e.g. 
 - **Type check:** `npm run typecheck`
 - **Lint:** `npm run lint`
 
-CI (`.github/workflows/ci.yml`) runs lint and tests on every push/PR to `main`.
+The test suite requires no `.env` file, no live backend, and no real Supabase project — it runs fully offline:
+- `jest.setup.js` provides dummy `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY` values so `src/config/env.ts`'s `requireEnv` check never fails under Jest.
+- `src/services/__mocks__/api.ts` is a manual mock of `src/services/api.ts` (stubs for `apiGet`/`apiPost`/`apiPatch`/`apiPut`/`apiDelete`). Any test file that calls `jest.mock('@/src/services/api')` (no factory needed) gets these stubs automatically instead of hitting a real backend — see `src/hooks/__tests__/useAgentDashboardData.test.ts` for the pattern.
+- `jest.config.js` enforces a coverage floor (`coverageThreshold`) so overall coverage can't silently regress; `npm test -- --coverage` prints the breakdown.
+
+CI (`.github/workflows/ci.yml`) runs `npm audit`, lint, typecheck, and tests (with coverage) on every push/PR to `main`.
 
 ### iOS: "This app is not made for this device" / Apple TV
 
