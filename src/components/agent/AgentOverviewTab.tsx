@@ -6,12 +6,18 @@ import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { formatTzs } from '@/src/lib/currency';
 import { logger } from '@/src/lib/logger';
+import type {
+  AgentProfile,
+  AgentDashboardStats,
+  AgentRegistration,
+  AgentCommission,
+} from '@/src/hooks/useAgentDashboardData';
 
 interface Props {
-  agentProfile: any;
-  dashboardStats: any;
-  registrations: any[];
-  commissions: any[];
+  agentProfile: AgentProfile | null;
+  dashboardStats: AgentDashboardStats | null;
+  registrations: AgentRegistration[];
+  commissions: AgentCommission[];
   referralLink: string;
   onSeeAllRegistrations: () => void;
 }
@@ -168,7 +174,7 @@ export function AgentOverviewTab({
               <View style={styles.regInfo}>
                 <Text style={styles.regName}>{reg.full_name}</Text>
                 <Text style={styles.regDate}>
-                  {new Date(reg.created_at).toLocaleDateString()}
+                  {new Date(reg.created_at || '').toLocaleDateString()}
                 </Text>
               </View>
               <View style={styles.regRight}>

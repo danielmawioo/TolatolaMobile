@@ -10,7 +10,7 @@ describe('VendorShopSettingsTab', () => {
 
   it('shows a location warning when the shop has no address', () => {
     render(
-      <VendorShopSettingsTab shop={{ name: 'Asha Shop' }} vendor={{ business_name: 'Asha Traders' }} onGoToProfile={jest.fn()} />
+      <VendorShopSettingsTab shop={{ id: 's1', name: 'Asha Shop' }} vendor={{ id: 'v1', business_name: 'Asha Traders' }} onGoToProfile={jest.fn()} />
     );
     expect(screen.getByText('Asha Shop')).toBeTruthy();
     expect(screen.getByText(/accurate delivery fees/)).toBeTruthy();
@@ -19,8 +19,8 @@ describe('VendorShopSettingsTab', () => {
   it('shows the full address when present', () => {
     render(
       <VendorShopSettingsTab
-        shop={{ name: 'Asha Shop', address: '123 Main St', region: 'Dar', district: 'Ilala' }}
-        vendor={{}}
+        shop={{ id: 's1', name: 'Asha Shop', address: '123 Main St', region: 'Dar', district: 'Ilala' }}
+        vendor={{ id: 'v1' }}
         onGoToProfile={jest.fn()}
       />
     );
@@ -30,7 +30,7 @@ describe('VendorShopSettingsTab', () => {
 
   it('navigates to shop edit and calls onGoToProfile from their respective buttons', () => {
     const onGoToProfile = jest.fn();
-    render(<VendorShopSettingsTab shop={{}} vendor={{}} onGoToProfile={onGoToProfile} />);
+    render(<VendorShopSettingsTab shop={{ id: 's1', name: 'Asha Shop' }} vendor={{ id: 'v1' }} onGoToProfile={onGoToProfile} />);
 
     fireEvent.press(screen.getByText('Profile'));
     expect(onGoToProfile).toHaveBeenCalled();

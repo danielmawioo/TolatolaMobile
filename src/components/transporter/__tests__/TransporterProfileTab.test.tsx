@@ -21,7 +21,7 @@ const profileData = {
 
 function baseProps(overrides: Partial<Parameters<typeof TransporterProfileTab>[0]> = {}) {
   return {
-    transporter: { kyc_status: 'approved' },
+    transporter: { id: 't1', kyc_status: 'approved' },
     profileData,
     setProfileData: jest.fn(),
     session: { access_token: 'tok', user: { id: 'u1' } } as any,
@@ -47,7 +47,7 @@ describe('TransporterProfileTab', () => {
   });
 
   it('shows "Pending" by default when kyc_status is missing', () => {
-    render(<TransporterProfileTab {...baseProps({ transporter: {} })} />);
+    render(<TransporterProfileTab {...baseProps({ transporter: { id: 't1' } })} />);
     expect(screen.getByText('Pending')).toBeTruthy();
   });
 

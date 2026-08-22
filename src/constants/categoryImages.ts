@@ -30,7 +30,7 @@ export const categoryImages: Record<string, string> = {
 };
 
 interface CategoryLike {
-  image_url?: string;
+  image_url?: string | null;
   slug?: string;
   name?: string;
 }

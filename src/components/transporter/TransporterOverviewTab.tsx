@@ -3,11 +3,12 @@ import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl } from 'r
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
 import { TransporterAssignmentsTab } from '@/src/components/transporter/TransporterAssignmentsTab';
+import type { TransporterProfile } from '@/src/hooks/useTransporterDashboardData';
 
 interface Props {
   transporterId: string;
   accessToken: string;
-  transporter: any;
+  transporter: TransporterProfile | null;
   activeCount: number;
   completedCount: number;
   availableBalance: number;

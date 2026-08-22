@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Theme } from '@/constants/Theme';
 import { formatTzs } from '@/src/lib/currency';
+import type { AgentRegistration, AgentCommission } from '@/src/hooks/useAgentDashboardData';
 
 interface Props {
-  registrations: any[];
-  commissions: any[];
+  registrations: AgentRegistration[];
+  commissions: AgentCommission[];
 }
 
 function withinPeriod(dateStr: string, period: 'week' | 'month' | 'year'): boolean {
@@ -21,8 +22,8 @@ function withinPeriod(dateStr: string, period: 'week' | 'month' | 'year'): boole
 export function AgentPerformanceTab({ registrations, commissions }: Props) {
   const [perfPeriod, setPerfPeriod] = useState<'week' | 'month' | 'year'>('month');
 
-  const registrationsInPeriod = registrations.filter((reg) => withinPeriod(reg.created_at, perfPeriod));
-  const commissionsInPeriod = commissions.filter((comm) => withinPeriod(comm.created_at, perfPeriod));
+  const registrationsInPeriod = registrations.filter((reg) => withinPeriod(reg.created_at || '', perfPeriod));
+  const commissionsInPeriod = commissions.filter((comm) => withinPeriod(comm.created_at || '', perfPeriod));
 
   return (
     <View>

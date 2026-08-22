@@ -67,6 +67,10 @@ export interface Banner {
   description?: string;
   image_url?: string | null;
   price?: number;
+  background_color?: string;
+  text_color?: string;
+  button_text?: string;
+  button_link?: string;
   [key: string]: unknown;
 }
 
@@ -76,5 +80,24 @@ export interface Shop {
   description?: string;
   address?: string;
   phone?: string;
+  [key: string]: unknown;
+}
+
+export interface Vendor {
+  id: string;
+  business_name?: string;
+  phone?: string;
+  description?: string;
+  kyc_status?: string;
+  kyc_notes?: string;
+  [key: string]: unknown;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug?: string;
+  parent_id?: string | null;
+  image_url?: string | null;
   [key: string]: unknown;
 }

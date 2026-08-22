@@ -128,7 +128,7 @@ export default function VendorDashboardScreen() {
                   vendor={vendor}
                   accessToken={session?.access_token || ''}
                   userEmail={session?.user?.email}
-                  onVendorUpdated={(patch) => setVendor((prev: any) => ({ ...prev, ...patch }))}
+                  onVendorUpdated={(patch) => setVendor((prev) => (prev ? { ...prev, ...patch } : prev))}
                 />
               )}
             </>

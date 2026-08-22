@@ -16,7 +16,7 @@ describe('TransporterOverviewTab', () => {
   const baseProps = {
     transporterId: 't1',
     accessToken: 'tok',
-    transporter: { business_name: 'Fast Wheels', rating: 4.8 },
+    transporter: { id: 't1', business_name: 'Fast Wheels', rating: 4.8 },
     activeCount: 2,
     completedCount: 10,
     availableBalance: 5000,

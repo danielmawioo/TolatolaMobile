@@ -41,14 +41,14 @@ export function PromoCarousel({ promotions }: PromoCarouselProps) {
       pagingEnabled
       showsHorizontalScrollIndicator={false}
       data={promotions}
-      keyExtractor={(p: any) => p.id.toString()}
+      keyExtractor={(p: Banner) => p.id.toString()}
       style={styles.heroSlider}
       getItemLayout={(data, index) => ({ length: width, offset: width * index, index })}
       onMomentumScrollEnd={(event) => {
         const newIndex = Math.round(event.nativeEvent.contentOffset.x / width);
         currentSlide.current = newIndex;
       }}
-      renderItem={({ item }: { item: any }) => (
+      renderItem={({ item }: { item: Banner }) => (
         <View style={[styles.heroSlide, { backgroundColor: item.background_color || '#0c0a09' }]}>
           <View style={styles.heroSlideContent}>
             <View style={styles.heroSlideImgBox}>

@@ -6,7 +6,7 @@ import { Theme } from '@/constants/Theme';
 import { apiPatch, apiPost } from '@/src/services/api';
 import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
 import type { Session } from '@/src/contexts/AuthContext';
-import type { TransporterProfileFormData } from '@/src/hooks/useTransporterDashboardData';
+import type { TransporterProfile, TransporterProfileFormData } from '@/src/hooks/useTransporterDashboardData';
 
 const VEHICLE_TYPES = [
   { value: 'bodaboda', label: 'Bodaboda (Motorcycle)' },
@@ -18,7 +18,7 @@ const VEHICLE_TYPES = [
 ];
 
 interface Props {
-  transporter: any;
+  transporter: TransporterProfile | null;
   profileData: TransporterProfileFormData;
   setProfileData: React.Dispatch<React.SetStateAction<TransporterProfileFormData>>;
   session: Session | null;
@@ -30,7 +30,7 @@ interface Props {
   setLoading: (v: boolean) => void;
   refreshing: boolean;
   onRefresh: () => void;
-  onTransporterUpdated: (transporter: any) => void;
+  onTransporterUpdated: (transporter: TransporterProfile) => void;
   onCancelEdit: () => void;
 }
 
@@ -92,7 +92,7 @@ export function TransporterProfileTab({
     ]);
   };
 
-  const getKycBadgeStyle = (status: string) => {
+  const getKycBadgeStyle = (status: string | undefined) => {
     const s = String(status || '').toLowerCase();
     if (s === 'approved') return { backgroundColor: '#16a34a' };
     if (s === 'pending') return { backgroundColor: 'rgba(234, 179, 8, 0.15)', borderColor: '#fef08a', borderWidth: 1 };
@@ -100,7 +100,7 @@ export function TransporterProfileTab({
     return { backgroundColor: '#e2e8f0' };
   };
 
-  const getKycTextStyle = (status: string) => {
+  const getKycTextStyle = (status: string | undefined) => {
     const s = String(status || '').toLowerCase();
     if (s === 'approved' || s === 'rejected') return { color: '#ffffff' };
     if (s === 'pending') return { color: '#a16207' };

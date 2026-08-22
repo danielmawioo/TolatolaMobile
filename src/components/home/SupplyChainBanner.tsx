@@ -4,12 +4,13 @@ import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
 import type { useThemeColors } from '@/src/hooks/useThemeColors';
+import type { SupplyChainNotification } from '@/src/hooks/useHomeScreenData';
 
 type ThemeColors = ReturnType<typeof useThemeColors>;
 
 interface SupplyChainBannerProps {
   theme: ThemeColors;
-  notification: any;
+  notification: SupplyChainNotification;
 }
 
 export function SupplyChainBanner({ theme, notification }: SupplyChainBannerProps) {

@@ -14,7 +14,7 @@ describe('VendorProfileTab', () => {
   it('shows read-only vendor info and a "Pending" KYC badge by default', () => {
     render(
       <VendorProfileTab
-        vendor={{ business_name: 'Asha Traders', kyc_status: 'submitted' }}
+        vendor={{ id: 'v1', business_name: 'Asha Traders', kyc_status: 'submitted' }}
         accessToken="tok"
         userEmail="asha@example.com"
         onVendorUpdated={jest.fn()}
@@ -26,7 +26,7 @@ describe('VendorProfileTab', () => {
 
   it('shows "Approved" when kyc_status is approved', () => {
     render(
-      <VendorProfileTab vendor={{ kyc_status: 'approved' }} accessToken="tok" userEmail={null} onVendorUpdated={jest.fn()} />
+      <VendorProfileTab vendor={{ id: 'v1', kyc_status: 'approved' }} accessToken="tok" userEmail={null} onVendorUpdated={jest.fn()} />
     );
     expect(screen.getByText('Approved')).toBeTruthy();
   });

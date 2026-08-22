@@ -5,15 +5,16 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiPut } from '@/src/services/api';
+import type { Vendor } from '@/src/types';
 
 interface Props {
-  vendor: any;
+  vendor: Vendor | null;
   accessToken: string;
   userEmail?: string | null;
-  onVendorUpdated: (patch: any) => void;
+  onVendorUpdated: (patch: Partial<Vendor>) => void;
 }
 
-function getKycBadge(vendor: any) {
+function getKycBadge(vendor: Vendor | null) {
   const status = vendor?.kyc_status;
   if (status === 'approved') return { label: 'Approved', bg: '#dcfce7', color: '#16a34a' };
   if (status === 'rejected') return { label: 'Rejected', bg: '#fee2e2', color: '#dc2626' };

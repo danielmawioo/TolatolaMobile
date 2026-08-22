@@ -5,7 +5,7 @@ import { TransporterKycGate } from '@/src/components/transporter/TransporterKycG
 describe('TransporterKycGate', () => {
   it('renders the registration prompt for status "missing"', () => {
     render(
-      <TransporterKycGate status="missing" transporter={{}} topInset={0} refreshing={false} onRefresh={jest.fn()} onLogout={jest.fn()} />
+      <TransporterKycGate status="missing" transporter={null} topInset={0} refreshing={false} onRefresh={jest.fn()} onLogout={jest.fn()} />
     );
     expect(screen.getByText('Transporter KYC Required')).toBeTruthy();
     expect(screen.getByText('Register as Transporter')).toBeTruthy();
@@ -15,7 +15,7 @@ describe('TransporterKycGate', () => {
     render(
       <TransporterKycGate
         status="pending"
-        transporter={{ business_name: 'Fast Wheels' }}
+        transporter={{ id: 't1', business_name: 'Fast Wheels' }}
         topInset={0}
         refreshing={false}
         onRefresh={jest.fn()}
@@ -30,7 +30,7 @@ describe('TransporterKycGate', () => {
     render(
       <TransporterKycGate
         status="rejected"
-        transporter={{ kyc_notes: 'License expired' }}
+        transporter={{ id: 't1', kyc_notes: 'License expired' }}
         topInset={0}
         refreshing={false}
         onRefresh={jest.fn()}
@@ -44,7 +44,7 @@ describe('TransporterKycGate', () => {
   it('calls onLogout when the logout button is pressed', () => {
     const onLogout = jest.fn();
     render(
-      <TransporterKycGate status="missing" transporter={{}} topInset={0} refreshing={false} onRefresh={jest.fn()} onLogout={onLogout} />
+      <TransporterKycGate status="missing" transporter={null} topInset={0} refreshing={false} onRefresh={jest.fn()} onLogout={onLogout} />
     );
     fireEvent.press(screen.getByText('Logout'));
     expect(onLogout).toHaveBeenCalled();

@@ -9,7 +9,7 @@ jest.mock('react-native-safe-area-context', () => ({
 
 describe('VendorKycGate', () => {
   it('renders the registration prompt for status "missing"', () => {
-    render(<VendorKycGate status="missing" vendor={{}} refreshing={false} onRefresh={jest.fn()} onLogout={jest.fn()} />);
+    render(<VendorKycGate status="missing" vendor={{ id: 'v1' }} refreshing={false} onRefresh={jest.fn()} onLogout={jest.fn()} />);
     expect(screen.getByText('Vendor KYC Required')).toBeTruthy();
     expect(screen.getByText('Register as Vendor')).toBeTruthy();
   });
@@ -18,7 +18,7 @@ describe('VendorKycGate', () => {
     render(
       <VendorKycGate
         status="pending"
-        vendor={{ business_name: 'Asha Traders' }}
+        vendor={{ id: 'v1', business_name: 'Asha Traders' }}
         refreshing={false}
         onRefresh={jest.fn()}
         onLogout={jest.fn()}
@@ -32,7 +32,7 @@ describe('VendorKycGate', () => {
     render(
       <VendorKycGate
         status="rejected"
-        vendor={{ business_name: 'Asha Traders', kyc_notes: 'ID photo unreadable' }}
+        vendor={{ id: 'v1', business_name: 'Asha Traders', kyc_notes: 'ID photo unreadable' }}
         refreshing={false}
         onRefresh={jest.fn()}
         onLogout={jest.fn()}
@@ -44,7 +44,7 @@ describe('VendorKycGate', () => {
 
   it('calls onLogout when the logout button is pressed', () => {
     const onLogout = jest.fn();
-    render(<VendorKycGate status="missing" vendor={{}} refreshing={false} onRefresh={jest.fn()} onLogout={onLogout} />);
+    render(<VendorKycGate status="missing" vendor={{ id: 'v1' }} refreshing={false} onRefresh={jest.fn()} onLogout={onLogout} />);
     fireEvent.press(screen.getByText('Logout'));
     expect(onLogout).toHaveBeenCalled();
   });

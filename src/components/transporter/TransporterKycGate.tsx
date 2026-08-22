@@ -3,12 +3,13 @@ import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl } from 'r
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import type { TransporterProfile } from '@/src/hooks/useTransporterDashboardData';
 
 type GateStatus = 'missing' | 'pending' | 'rejected';
 
 interface Props {
   status: GateStatus;
-  transporter: any;
+  transporter: TransporterProfile | null;
   topInset: number;
   refreshing: boolean;
   onRefresh: () => void;

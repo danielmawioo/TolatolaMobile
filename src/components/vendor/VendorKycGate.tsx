@@ -4,12 +4,13 @@ import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '@/constants/Theme';
+import type { Vendor } from '@/src/types';
 
 type KycStatus = 'missing' | 'pending' | 'rejected';
 
 interface Props {
   status: KycStatus;
-  vendor: any;
+  vendor: Vendor | null;
   refreshing: boolean;
   onRefresh: () => void;
   onLogout: () => void;
@@ -65,7 +66,7 @@ export function VendorKycGate({ status, vendor, refreshing, onRefresh, onLogout 
               <FontAwesome name="clock-o" size={36} color="#d97706" />
             </View>
             <Text style={styles.gateTitle}>KYC Under Review</Text>
-            <Text style={styles.gateSubtitle}>Your application for {vendor.business_name} is being reviewed</Text>
+            <Text style={styles.gateSubtitle}>Your application for {vendor?.business_name} is being reviewed</Text>
             <Text style={styles.gateDesc}>
               Thank you for submitting your vendor application. Our admin team is currently reviewing your documents and business information.
             </Text>
@@ -82,9 +83,9 @@ export function VendorKycGate({ status, vendor, refreshing, onRefresh, onLogout 
               <FontAwesome name="times-circle" size={36} color={Theme.error} />
             </View>
             <Text style={[styles.gateTitle, { color: Theme.error }]}>Application Rejected</Text>
-            <Text style={styles.gateSubtitle}>Your vendor application for {vendor.business_name} has been rejected</Text>
+            <Text style={styles.gateSubtitle}>Your vendor application for {vendor?.business_name} has been rejected</Text>
 
-            {vendor.kyc_notes && (
+            {vendor?.kyc_notes && (
               <View style={styles.rejectionBox}>
                 <Text style={styles.rejectionTitle}>Rejection Reason:</Text>
                 <Text style={styles.rejectionText}>{vendor.kyc_notes}</Text>

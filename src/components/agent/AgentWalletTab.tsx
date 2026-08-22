@@ -5,12 +5,19 @@ import { Theme } from '@/constants/Theme';
 import { apiPost } from '@/src/services/api';
 import { formatTzs } from '@/src/lib/currency';
 import { logger } from '@/src/lib/logger';
+import type { AgentWalletStats } from '@/src/hooks/useAgentDashboardData';
 
 interface Props {
-  walletStats: any;
+  walletStats: AgentWalletStats;
   accessToken: string | null | undefined;
   agentPhone?: string;
   onWithdrawSuccess: () => void;
+}
+
+interface WithdrawalRequestResponse {
+  success?: boolean;
+  error?: string;
+  [key: string]: unknown;
 }
 
 export function AgentWalletTab({ walletStats, accessToken, agentPhone, onWithdrawSuccess }: Props) {
@@ -43,7 +50,7 @@ export function AgentWalletTab({ walletStats, accessToken, agentPhone, onWithdra
 
     setIsSubmittingWithdraw(true);
     try {
-      const res = await apiPost<any>(
+      const res = await apiPost<WithdrawalRequestResponse>(
         '/agents/withdrawals/request',
         {
           amount,
@@ -61,9 +68,10 @@ export function AgentWalletTab({ walletStats, accessToken, agentPhone, onWithdra
       } else {
         Alert.alert('Ombi Imeshindikana', res?.error || 'Imeshindikana kutuma ombi. Jaribu tena.');
       }
-    } catch (err: any) {
+    } catch (err) {
       logger.error('[AGENT WITHDRAWAL]', err);
-      Alert.alert('Hitilafu', err.message || 'Hitilafu imetokea. Jaribu tena baadae.');
+      const message = err instanceof Error ? err.message : 'Hitilafu imetokea. Jaribu tena baadae.';
+      Alert.alert('Hitilafu', message);
     } finally {
       setIsSubmittingWithdraw(false);
     }
@@ -147,7 +155,7 @@ export function AgentWalletTab({ walletStats, accessToken, agentPhone, onWithdra
           {(walletStats?.commissions || []).length === 0 ? (
             <Text style={styles.emptyText}>Hujapata kamisheni yoyote bado.</Text>
           ) : (
-            (walletStats.commissions).map((comm: any) => (
+            (walletStats.commissions).map((comm) => (
               <View key={comm.id} style={styles.commRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.commRowTitle}>
@@ -156,7 +164,7 @@ export function AgentWalletTab({ walletStats, accessToken, agentPhone, onWithdra
                       : comm.description || 'Bonus / Adjustment'}
                   </Text>
                   <Text style={styles.commRowDate}>
-                    {new Date(comm.created_at).toLocaleDateString()}
+                    {new Date(comm.created_at || '').toLocaleDateString()}
                   </Text>
                   <Text style={styles.commRowType}>{comm.commission_type}</Text>
                 </View>
@@ -178,14 +186,14 @@ export function AgentWalletTab({ walletStats, accessToken, agentPhone, onWithdra
           {(walletStats?.withdrawals || []).length === 0 ? (
             <Text style={styles.emptyText}>Hujafanya muamala wa kutoa salio bado.</Text>
           ) : (
-            (walletStats.withdrawals).map((wdraw: any) => (
+            (walletStats.withdrawals).map((wdraw) => (
               <View key={wdraw.id} style={styles.commRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.commRowTitle, { textTransform: 'uppercase' }]}>
                     {wdraw.payment_method}
                   </Text>
                   <Text style={styles.commRowDate}>
-                    {new Date(wdraw.created_at).toLocaleDateString()}
+                    {new Date(wdraw.created_at || '').toLocaleDateString()}
                   </Text>
                   <Text style={[styles.commRowType, { fontFamily: 'monospace' }]}>
                     {wdraw.payment_details?.phoneNumber || 'M-Money'}

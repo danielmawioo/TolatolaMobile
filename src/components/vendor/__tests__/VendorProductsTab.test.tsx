@@ -27,7 +27,7 @@ describe('VendorProductsTab', () => {
   it('navigates straight to product create when the shop already has a location', () => {
     render(
       <VendorProductsTab
-        shop={{ region: 'Dar', district: 'Ilala' }}
+        shop={{ id: 's1', name: 'Asha Shop', region: 'Dar', district: 'Ilala' }}
         products={[]}
         accessToken="tok"
         onProductsChange={jest.fn()}

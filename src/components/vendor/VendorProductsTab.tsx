@@ -5,15 +5,16 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiDelete, apiPost } from '@/src/services/api';
+import type { VendorProduct, VendorShop } from '@/src/hooks/useVendorDashboardData';
 
 interface Props {
-  shop: any;
-  products: any[];
+  shop: VendorShop | null;
+  products: VendorProduct[];
   accessToken: string;
-  onProductsChange: (products: any[]) => void;
+  onProductsChange: (products: VendorProduct[]) => void;
 }
 
-function hasShopLocation(shopData: any) {
+function hasShopLocation(shopData: VendorShop | null | undefined) {
   return !!(shopData?.region && shopData?.district);
 }
 
@@ -50,10 +51,10 @@ export function VendorProductsTab({ shop, products, accessToken, onProductsChang
     ]);
   };
 
-  const handleToggleOutOfStock = async (product: any) => {
+  const handleToggleOutOfStock = async (product: VendorProduct) => {
     if (!accessToken) return;
     try {
-      const newStockQuantity = product.stock_quantity > 0 ? 0 : 1;
+      const newStockQuantity = (product.stock_quantity || 0) > 0 ? 0 : 1;
       await apiPost('/products/update-stock', { productId: product.id, quantity: newStockQuantity }, accessToken);
       onProductsChange(products.map(p => p.id === product.id ? { ...p, stock_quantity: newStockQuantity } : p));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -80,8 +81,8 @@ export function VendorProductsTab({ shop, products, accessToken, onProductsChang
       ) : (
         <View style={styles.productsGrid}>
           {products.map(product => {
-            const hasImages = product.images && product.images.length > 0;
-            const imageUrl = hasImages ? product.images[0] : (product.image_url || null);
+            const hasImages = !!(product.images && product.images.length > 0);
+            const imageUrl = hasImages ? product.images![0] : (product.image_url || null);
 
             return (
               <View key={product.id} style={styles.productCard}>
@@ -131,8 +132,8 @@ export function VendorProductsTab({ shop, products, accessToken, onProductsChang
                       <Text style={styles.actionBtnText}>Edit</Text>
                     </Pressable>
                     <Pressable style={styles.actionBtn} onPress={() => handleToggleOutOfStock(product)}>
-                      <FontAwesome name={product.stock_quantity > 0 ? "times-circle" : "check-circle"} size={14} color={Theme.text} />
-                      <Text style={styles.actionBtnText}>{product.stock_quantity > 0 ? "Out" : "In"}</Text>
+                      <FontAwesome name={(product.stock_quantity || 0) > 0 ? "times-circle" : "check-circle"} size={14} color={Theme.text} />
+                      <Text style={styles.actionBtnText}>{(product.stock_quantity || 0) > 0 ? "Out" : "In"}</Text>
                     </Pressable>
                     <Pressable style={[styles.actionBtn, { backgroundColor: Theme.error, flex: 0.5 }]} onPress={() => deleteProduct(product.id)}>
                       <FontAwesome name="trash" size={14} color="#fff" />

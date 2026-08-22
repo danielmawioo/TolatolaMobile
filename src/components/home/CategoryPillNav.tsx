@@ -7,12 +7,13 @@ import { OptimizedImage } from '@/components/OptimizedImage';
 import { resolveCategoryImage } from '@/src/constants/categoryImages';
 import { sortTopLevelCategories } from '@/src/hooks/useHomeScreenData';
 import type { useThemeColors } from '@/src/hooks/useThemeColors';
+import type { Category } from '@/src/types';
 
 type ThemeColors = ReturnType<typeof useThemeColors>;
 
 interface CategoryPillNavProps {
   theme: ThemeColors;
-  categories: any[];
+  categories: Category[];
 }
 
 export function CategoryPillNav({ theme, categories }: CategoryPillNavProps) {
@@ -29,7 +30,7 @@ export function CategoryPillNav({ theme, categories }: CategoryPillNavProps) {
         </View>
         <Text style={[styles.catCircleLabel, styles.catCircleLabelActive, { color: theme.primary }]}>All</Text>
       </Pressable>
-      {sortTopLevelCategories(categories).map((c: any) => (
+      {sortTopLevelCategories(categories).map((c) => (
         <Pressable key={c.id} style={styles.catCircleItem} onPress={() => router.push(`(tabs)/shop?category=${c.id}` as any)}>
           <View style={[styles.catCircle, { backgroundColor: theme.catCircleBg, borderColor: theme.catCircleBorder }]}>
             <OptimizedImage source={resolveCategoryImage(c)} width="100%" height="100%" style={{ borderRadius: 18 }} />

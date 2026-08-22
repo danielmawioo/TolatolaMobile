@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { apiGet, apiPut } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
+import { captureException } from '@/src/lib/errorTracking';
 import type { Session } from '@/src/contexts/AuthContext';
 
 export type TransporterProfileFormData = {
@@ -17,6 +18,85 @@ export type TransporterProfileFormData = {
   license_plate: string;
   profile_image_url: string;
 };
+
+/**
+ * The transporter record from `/transporters/me`. Fields are modeled to the
+ * extent the dashboard actually reads them; everything else the API returns
+ * is preserved via the index signature rather than exhaustively typed.
+ */
+export interface TransporterProfile {
+  id: string;
+  business_name?: string;
+  vehicle_type?: string;
+  license_plate?: string;
+  vehicle_registration?: string;
+  kyc_status?: 'pending' | 'approved' | 'rejected' | string;
+  kyc_notes?: string;
+  rating?: number | string;
+  [key: string]: unknown;
+}
+
+/** A delivery/job record from `/transporter/jobs`. */
+export interface TransporterAssignment {
+  id: string;
+  status: string;
+  accepted_at?: string | null;
+  is_available_order?: boolean;
+  is_customer_verified?: boolean;
+  order_id?: string;
+  delivery_fee?: number;
+  delivered_at?: string | null;
+  [key: string]: unknown;
+}
+
+/** A payment record from `/transporters/payments`. */
+export interface TransporterPayment {
+  id: string;
+  status: string;
+  amount: number;
+  description?: string;
+  payment_type?: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+/** The response shape from `/transporter/finance-summary`. */
+export interface FinanceSummary {
+  withdrawable_balance?: number;
+  pending_balance?: number;
+  [key: string]: unknown;
+}
+
+interface ProfileApiUser {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  profile_image_url?: string;
+  transporter_id?: string;
+  [key: string]: unknown;
+}
+
+interface ProfileApiResponse {
+  profile?: ProfileApiUser | null;
+  user?: ProfileApiUser | null;
+}
+
+interface TransporterMeApiResponse {
+  transporter?: TransporterProfile | null;
+}
+
+type AssignmentsApiResponse =
+  | TransporterAssignment[]
+  | { assignments?: TransporterAssignment[]; data?: TransporterAssignment[] };
+
+interface PaymentsApiResponse {
+  payments?: TransporterPayment[];
+}
+
+interface NotificationsApiResponse {
+  unread_count?: number;
+}
 
 const EMPTY_PROFILE_DATA: TransporterProfileFormData = {
   full_name: '',
@@ -35,12 +115,12 @@ export function useTransporterDashboardData(session: Session | null) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [transporter, setTransporter] = useState<any>(null);
+  const [transporter, setTransporter] = useState<TransporterProfile | null>(null);
   const [transporterId, setTransporterId] = useState<string>('');
-  const [assignments, setAssignments] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<TransporterAssignment[]>([]);
+  const [payments, setPayments] = useState<TransporterPayment[]>([]);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
-  const [financeSummary, setFinanceSummary] = useState<any>(null);
+  const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
   const [profileData, setProfileData] = useState<TransporterProfileFormData>(EMPTY_PROFILE_DATA);
 
   // Location update (manual, user-triggered)
@@ -52,8 +132,8 @@ export function useTransporterDashboardData(session: Session | null) {
     if (!silent) setLoading(true);
     try {
       const [profileRes, transporterRes] = await Promise.all([
-        apiGet<any>('/profile', accessToken).catch(() => null),
-        apiGet<any>('/transporters/me', accessToken).catch(() => null),
+        apiGet<ProfileApiResponse>('/profile', accessToken).catch(() => null),
+        apiGet<TransporterMeApiResponse>('/transporters/me', accessToken).catch(() => null),
       ]);
 
       const profile = profileRes?.profile || profileRes?.user || null;
@@ -76,9 +156,9 @@ export function useTransporterDashboardData(session: Session | null) {
       // Fetch assignments, payments, and finance summary for stats
       if (tId) {
         const [assignRes, payRes, financeRes] = await Promise.all([
-          apiGet<any>('/transporter/jobs', accessToken).catch(() => []),
-          apiGet<any>('/transporters/payments', accessToken).catch(() => ({ payments: [] })),
-          apiGet<any>('/transporter/finance-summary', accessToken).catch(() => null),
+          apiGet<AssignmentsApiResponse>('/transporter/jobs', accessToken).catch(() => []),
+          apiGet<PaymentsApiResponse>('/transporters/payments', accessToken).catch(() => ({ payments: [] })),
+          apiGet<FinanceSummary | null>('/transporter/finance-summary', accessToken).catch(() => null),
         ]);
         setAssignments(Array.isArray(assignRes) ? assignRes : assignRes?.assignments || assignRes?.data || []);
         setPayments(payRes?.payments || []);
@@ -90,15 +170,17 @@ export function useTransporterDashboardData(session: Session | null) {
 
       // Notification count
       try {
-        const notifRes = await apiGet<any>('/notifications/unread-count', accessToken);
+        const notifRes = await apiGet<NotificationsApiResponse>('/notifications/unread-count', accessToken);
         setUnreadNotifs(notifRes?.unread_count || 0);
       } catch (err) {
         // Non-critical — the badge just stays at its previous value. Kept
         // non-throwing/non-alerting on purpose, just logged for visibility.
         logger.error('[TRANSPORTER DASHBOARD] Failed to fetch unread notification count:', err);
+        captureException(err, { hook: 'useTransporterDashboardData' });
       }
     } catch (error) {
       logger.error('Transporter Dashboard Fetch Error:', error);
+      captureException(error, { hook: 'useTransporterDashboardData' });
     } finally {
       setLoading(false);
     }
@@ -137,6 +219,7 @@ export function useTransporterDashboardData(session: Session | null) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       logger.error('Location update error:', e);
+      captureException(e, { hook: 'useTransporterDashboardData', action: 'handleUpdateLocation' });
       setLocationStatus('error');
     } finally {
       setIsUpdatingLocation(false);
@@ -151,7 +234,7 @@ export function useTransporterDashboardData(session: Session | null) {
     const hasActiveTrip = assignments.some(a => ['picked_up', 'in_transit'].includes(a.status));
     if (!hasActiveTrip) return;
 
-    let locationInterval: any;
+    let locationInterval: ReturnType<typeof setInterval> | undefined;
 
     const startLocationStreaming = async () => {
       try {

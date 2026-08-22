@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import type { AgentRegistration } from '@/src/hooks/useAgentDashboardData';
 
 interface Props {
-  registrations: any[];
+  registrations: AgentRegistration[];
 }
 
 export function AgentRegistrationsTab({ registrations }: Props) {
@@ -61,7 +62,7 @@ export function AgentRegistrationsTab({ registrations }: Props) {
                 <Text style={styles.regContact}>Phone: {reg.phone}</Text>
                 {reg.email ? <Text style={styles.regContact}>Email: {reg.email}</Text> : null}
                 {reg.region ? <Text style={styles.regContact}>Location: {reg.region}, {reg.district}</Text> : null}
-                <Text style={styles.regDate}>Registered: {new Date(reg.created_at).toLocaleDateString()}</Text>
+                <Text style={styles.regDate}>Registered: {new Date(reg.created_at || '').toLocaleDateString()}</Text>
               </View>
               <View style={{ alignItems: 'flex-end', justifyContent: 'space-between', height: 60 }}>
                 <View style={[styles.badge, reg.registration_type === 'vendor' ? styles.badgeVendor : reg.registration_type === 'customer' ? styles.badgeCustomer : styles.badgeTransporter]}>

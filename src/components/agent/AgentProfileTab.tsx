@@ -2,9 +2,10 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import type { AgentProfile } from '@/src/hooks/useAgentDashboardData';
 
 interface Props {
-  agentProfile: any;
+  agentProfile: AgentProfile | null;
   onLogout: () => void;
 }
 

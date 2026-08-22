@@ -3,15 +3,17 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import type { Order } from '@/src/types';
+import type { VendorProduct, VendorShop } from '@/src/hooks/useVendorDashboardData';
 
 interface Props {
   vendorName?: string | null;
-  shop: any;
-  products: any[];
-  orders: any[];
+  shop: VendorShop | null;
+  products: VendorProduct[];
+  orders: Order[];
 }
 
-function hasShopLocation(shopData: any) {
+function hasShopLocation(shopData: VendorShop | null | undefined) {
   return !!(shopData?.region && shopData?.district);
 }
 
@@ -33,12 +35,12 @@ export function VendorOverviewHeader({ vendorName, shop, products, orders }: Pro
           </View>
           <View style={styles.statCard}>
             <View style={[styles.statIcon, { backgroundColor: '#fef3c7' }]}><FontAwesome name="clock-o" size={16} color="#d97706" /></View>
-            <Text style={styles.statValue}>{orders.filter(o => ['pending', 'pending_payment', 'confirmed', 'paid', 'payment_received'].includes(o.status)).length}</Text>
+            <Text style={styles.statValue}>{orders.filter(o => ['pending', 'pending_payment', 'confirmed', 'paid', 'payment_received'].includes(o.status || '')).length}</Text>
             <Text style={styles.statLabel}>Pending</Text>
           </View>
           <View style={styles.statCard}>
             <View style={[styles.statIcon, { backgroundColor: '#dcfce7' }]}><FontAwesome name="line-chart" size={16} color="#16a34a" /></View>
-            <Text style={styles.statValue}>{orders.filter(o => ['dispatched', 'in_transit', 'delivered', 'shipped', 'completed'].includes(o.status)).length}</Text>
+            <Text style={styles.statValue}>{orders.filter(o => ['dispatched', 'in_transit', 'delivered', 'shipped', 'completed'].includes(o.status || '')).length}</Text>
             <Text style={styles.statLabel}>Completed</Text>
           </View>
           <View style={styles.statCard}>

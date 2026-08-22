@@ -3,10 +3,12 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import type { Vendor } from '@/src/types';
+import type { VendorShop } from '@/src/hooks/useVendorDashboardData';
 
 interface Props {
-  shop: any;
-  vendor: any;
+  shop: VendorShop | null;
+  vendor: Vendor | null;
   onGoToProfile: () => void;
 }
 

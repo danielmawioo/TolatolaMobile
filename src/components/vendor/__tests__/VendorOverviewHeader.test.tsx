@@ -18,9 +18,9 @@ describe('VendorOverviewHeader', () => {
   });
 
   it('shows stats and a location warning when the shop has no region/district', () => {
-    const shop = { id: 's1' };
-    const orders = [{ status: 'pending' }, { status: 'delivered' }, { status: 'cancelled' }];
-    render(<VendorOverviewHeader vendorName="Asha" shop={shop} products={[{ id: 'p1' }]} orders={orders} />);
+    const shop = { id: 's1', name: 'Asha Shop' };
+    const orders = [{ id: 'o1', status: 'pending' }, { id: 'o2', status: 'delivered' }, { id: 'o3', status: 'cancelled' }];
+    render(<VendorOverviewHeader vendorName="Asha" shop={shop} products={[{ id: 'p1', name: 'Widget' }]} orders={orders} />);
 
     expect(screen.getByText('Products')).toBeTruthy();
     expect(screen.getAllByText('1').length).toBeGreaterThan(0); // products count (and possibly others)
@@ -32,7 +32,7 @@ describe('VendorOverviewHeader', () => {
   });
 
   it('does not show the location warning once region and district are set', () => {
-    const shop = { id: 's1', region: 'Dar es Salaam', district: 'Ilala' };
+    const shop = { id: 's1', name: 'Asha Shop', region: 'Dar es Salaam', district: 'Ilala' };
     render(<VendorOverviewHeader vendorName="Asha" shop={shop} products={[]} orders={[]} />);
     expect(screen.queryByText('Shop Location Required')).toBeNull();
   });

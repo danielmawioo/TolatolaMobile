@@ -7,12 +7,13 @@ import { OptimizedImage } from '@/components/OptimizedImage';
 import { resolveCategoryImage } from '@/src/constants/categoryImages';
 import { sortTopLevelCategories } from '@/src/hooks/useHomeScreenData';
 import type { useThemeColors } from '@/src/hooks/useThemeColors';
+import type { Category } from '@/src/types';
 
 type ThemeColors = ReturnType<typeof useThemeColors>;
 
 interface CategoryGridProps {
   theme: ThemeColors;
-  categories: any[];
+  categories: Category[];
 }
 
 export function CategoryGrid({ theme, categories }: CategoryGridProps) {
@@ -21,7 +22,7 @@ export function CategoryGrid({ theme, categories }: CategoryGridProps) {
       <Text style={[styles.sectionSub, { color: theme.primary }]}>Selections for you</Text>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Shop by <Text style={styles.italicPrimary}>Category</Text></Text>
       <View style={styles.catCircleGrid}>
-        {sortTopLevelCategories(categories).slice(0, 12).map((cat: any) => (
+        {sortTopLevelCategories(categories).slice(0, 12).map((cat) => (
           <Pressable key={cat.id} style={styles.catGridItem} onPress={() => router.push(`(tabs)/shop?category=${cat.id}` as any)}>
             <View style={[styles.catGridCircle, { backgroundColor: theme.catCircleBg, borderColor: theme.catCircleBorder }]}>
               <OptimizedImage source={resolveCategoryImage(cat)} width="100%" height="100%" style={{ borderRadius: 22 }} />
