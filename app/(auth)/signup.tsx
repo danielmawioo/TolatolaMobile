@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -13,130 +13,42 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useAuth } from '@/src/contexts/AuthContext';
-import { useGoogleAuth } from '@/src/hooks/useGoogleAuth';
 import { GradientButton } from '@/components/GradientButton';
 import { BackToHomeButton } from '@/components/BackToHomeButton';
 import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
 import { Theme } from '@/constants/Theme';
 import { scaleByWidth, gap } from '@/constants/layout';
-import { apiGet } from '@/src/services/api';
 import { CountryCodePicker } from '@/components/CountryCodePicker';
-import { logger } from '@/src/lib/logger';
+import { useSignupForm, VENDOR_TYPES, type SignupUserType } from '@/src/hooks/useSignupForm';
 
 export default function SignupScreen() {
-  const { signup, isLoading } = useAuth();
-  const { signInWithGoogle, loading: googleLoading, error: googleError } = useGoogleAuth();
   const params = useLocalSearchParams<{ role?: string; ref?: string }>();
-  const initialRole = (params.role === 'vendor' || params.role === 'transporter') ? params.role : 'customer';
-  
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [countryCode, setCountryCode] = useState('+255');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState<'customer' | 'vendor' | 'transporter'>(initialRole);
-  const [vendorType, setVendorType] = useState('');
-  const [acceptedTerms, setAcceptedTerms] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [referrerName, setReferrerName] = useState<string | null>(null);
+  const initialRole: SignupUserType = (params.role === 'vendor' || params.role === 'transporter') ? params.role : 'customer';
 
-  // Referral code manual entry states
-  const [referralCode, setReferralCodeValue] = useState(params.ref || '');
-  const [showReferralField, setShowReferralField] = useState(!!params.ref);
-  const [referralValidating, setReferralValidating] = useState(false);
-  const [referralError, setReferralError] = useState<string | null>(null);
-
-  const validateReferralCode = async (code: string) => {
-    if (!code.trim()) {
-      setReferrerName(null);
-      setReferralError(null);
-      return;
-    }
-    setReferralValidating(true);
-    setReferralError(null);
-    try {
-      const res = await apiGet<any>(`/agents/referral-info?code=${code.trim()}`);
-      if (res?.agent_name) {
-        setReferrerName(res.agent_name);
-        setReferralError(null);
-      } else {
-        setReferrerName(null);
-        setReferralError('Msimbo wa rufaa si sahihi. Tafadhali angalia tena.');
-      }
-    } catch (err) {
-      logger.warn('[SIGNUP] Failed to validate referral code:', err);
-      setReferrerName(null);
-    } finally {
-      setReferralValidating(false);
-    }
-  };
-
-  useEffect(() => {
-    if (params.ref) {
-      validateReferralCode(params.ref);
-    }
-  }, [params.ref]);
-
-  const VENDOR_TYPES = ['Producer', 'Manufacturer', 'Supplier', 'Wholesaler', 'Retail trader'];
-
-  const handleSignup = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setError(null);
-    if (!fullName.trim() || !email.trim() || !password) {
-      setError('Please fill in all required fields');
-      return;
-    }
-    const cleanedPhone = phone.replace(/^0+/, '').replace(/\D/g, '');
-    if (!cleanedPhone || cleanedPhone.length < 7) {
-      setError('Please enter a valid phone number (at least 7 digits)');
-      return;
-    }
-    if (!acceptedTerms) {
-      setError('Please agree to the Terms and Privacy Policy');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-    try {
-      await signup({
-        email: email.trim(),
-        password,
-        fullName: fullName.trim(),
-        phone: countryCode + cleanedPhone,
-        userType,
-        vendorType: userType === 'vendor' ? vendorType : undefined,
-        referralCode: referralCode.trim() || params.ref || undefined,
-      });
-      router.replace('/(auth)/sign-up-success');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sign up failed');
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setError(null);
-    try {
-      const user = await signInWithGoogle({
-        userType,
-        vendorType: userType === 'vendor' ? vendorType : undefined,
-        referralCode: referralCode.trim() || params.ref || undefined,
-      });
-      if (user) {
-        // Since they signed up/logged in via Google, redirect to role-specific dashboard
-        const { getRoleRedirectPath } = await import('@/src/lib/roleRedirect');
-        router.replace(getRoleRedirectPath(user.user_type) as any);
-      }
-    } catch (e: any) {
-      setError(e instanceof Error ? e.message : 'Google sign-in failed');
-    }
-  };
-
-  const isAnyLoading = isLoading || googleLoading;
+  const {
+    fullName, setFullName,
+    phone, setPhone,
+    countryCode, setCountryCode,
+    email, setEmail,
+    password, setPassword,
+    userType, setUserType,
+    vendorType, setVendorType,
+    acceptedTerms, setAcceptedTerms,
+    error, googleError,
+    referrerName,
+    referralCode,
+    onReferralCodeChange,
+    showReferralField, setShowReferralField,
+    referralValidating,
+    referralError,
+    validateReferralCode,
+    hasDeepLinkReferral,
+    handleSignup,
+    handleGoogleSignIn,
+    isLoading,
+    googleLoading,
+    isAnyLoading,
+  } = useSignupForm({ initialRole, initialReferralCode: params.ref });
 
   return (
     <ScreenSafeLayout style={styles.safeWrapper}>
@@ -223,7 +135,7 @@ export default function SignupScreen() {
         </View>
 
         {/* Optional Referral Code Field */}
-        {!showReferralField && !params.ref ? (
+        {!showReferralField && !hasDeepLinkReferral ? (
           <Pressable
             style={styles.referralToggleBtn}
             onPress={() => setShowReferralField(true)}
@@ -251,14 +163,10 @@ export default function SignupScreen() {
                 placeholder="Mfano: TOLA-AG-XXXX"
                 placeholderTextColor={Theme.textMuted}
                 value={referralCode}
-                onChangeText={(text) => {
-                  setReferralCodeValue(text.toUpperCase());
-                  if (referrerName) setReferrerName(null);
-                  if (referralError) setReferralError(null);
-                }}
+                onChangeText={onReferralCodeChange}
                 onBlur={() => validateReferralCode(referralCode)}
                 autoCapitalize="characters"
-                editable={!params.ref && !isAnyLoading}
+                editable={!hasDeepLinkReferral && !isAnyLoading}
               />
               {referralValidating && (
                 <View style={{ marginLeft: 8 }}>

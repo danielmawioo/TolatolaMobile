@@ -17,7 +17,7 @@ import { gap, scaleByWidth } from '@/constants/layout';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { apiGet } from '@/src/services/api';
 import { queryKeys } from '@/src/lib/queryKeys';
-import { fetchOrderTrackingSnapshot } from '@/src/api/orders';
+import { fetchOrderTrackingSnapshot } from '@/src/api/orderTracking';
 import type { Order } from '@/src/types';
 import { useLanguage } from '@/src/contexts/LanguageContext';
 
