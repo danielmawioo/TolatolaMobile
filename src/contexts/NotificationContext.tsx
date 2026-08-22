@@ -39,7 +39,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const notifications = res?.data || [];
       const count = notifications.filter((n: any) => !n.is_read).length;
       setUnreadCount(count);
-      setBadgeCount(count).catch(() => {});
+      setBadgeCount(count).catch((err) => logger.warn('[NotificationContext] badge count sync failed', err));
     } catch {
       // Silently fail
     }
@@ -72,7 +72,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       // Increment badge count immediately
       setUnreadCount(prev => {
         const newCount = prev + 1;
-        setBadgeCount(newCount).catch(() => {});
+        setBadgeCount(newCount).catch((err) => logger.warn('[NotificationContext] badge count sync failed', err));
         return newCount;
       });
     });
@@ -101,7 +101,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         // App has come to the foreground — refresh unread count and re-register token
         refreshUnreadCount();
         if (Platform.OS !== 'web') {
-          registerForPushNotifications(session?.access_token).catch(() => {});
+          registerForPushNotifications(session?.access_token).catch((err) => logger.warn('[NotificationContext] push re-registration failed', err));
         }
       }
       appState.current = nextAppState;
@@ -126,7 +126,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         // Small delay to let navigation mount
         setTimeout(() => handleNotificationNavigation(data), 500);
       }
-    }).catch(() => {});
+    }).catch((err) => logger.warn('[NotificationContext] cold-start notification lookup failed', err));
   }, []);
 
   return (

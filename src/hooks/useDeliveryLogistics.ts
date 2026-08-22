@@ -54,7 +54,7 @@ export function useDeliveryLogistics({ items, onError }: UseDeliveryLogisticsPar
           setTransportMethods(methods);
           if (methods.length > 0) setSelectedTransportId(methods[0].id);
         })
-        .catch(() => {});
+        .catch((err) => logger.warn('[useDeliveryLogistics] failed to load transport methods', err));
 
       // Fetch shop coordinates for cart items that are missing them (backward compat)
       const itemsMissingCoords = items.filter((i) => i.shop_id && (!i.shop_latitude || !i.shop_longitude));

@@ -67,7 +67,7 @@ export function usePaymentStatus({ orderId, paymentMethod, controlNumber, access
         setOrder(data);
         if (data?.payment_status === 'paid' || isCod) setPaymentStatus('paid');
       })
-      .catch(() => {})
+      .catch((err) => logger.warn('[usePaymentStatus] initial order fetch failed', err))
       .finally(() => setLoading(false));
   }, [orderId]);
 

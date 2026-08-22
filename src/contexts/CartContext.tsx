@@ -67,7 +67,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addItem = useCallback(async (product: any, quantity = 1, selectedColor?: any, selectedSize?: string) => {
     try {
       if (isAuthenticated && session?.access_token) {
-        apiPost('/cart/items', { product_id: product.id, quantity, selected_color: selectedColor, selected_size: selectedSize }, session.access_token).catch(() => {});
+        apiPost('/cart/items', { product_id: product.id, quantity, selected_color: selectedColor, selected_size: selectedSize }, session.access_token).catch((err) => logger.warn('[CartContext] background cart sync failed', err));
       }
       
       setState(prev => {

@@ -69,7 +69,7 @@ export function useProductDetailData(id: string | undefined) {
     if (!id) return;
     apiGet<{ data: Product[] }>(`/products/${id}/recommendations`)
       .then(res => setRecommendations(res?.data || []))
-      .catch(() => {});
+      .catch((err) => logger.warn('[useProductDetailData] failed to load recommendations', err));
   }, [id]);
 
   useEffect(() => {
