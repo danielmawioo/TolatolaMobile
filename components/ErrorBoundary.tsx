@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
 import { logger } from '@/src/lib/logger';
+import { captureException } from '@/src/lib/errorTracking';
 
 interface Props {
   children: ReactNode;
@@ -31,6 +32,9 @@ export class ErrorBoundary extends Component<Props, State> {
     if (__DEV__) {
       logger.error('ErrorBoundary caught:', error, errorInfo.componentStack);
     }
+    // Unlike the console log above, this always runs — including in production
+    // builds, where render crashes were previously silent.
+    captureException(error, { componentStack: errorInfo.componentStack });
   }
 
   handleRetry = () => {

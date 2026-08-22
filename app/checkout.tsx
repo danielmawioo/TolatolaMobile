@@ -1,31 +1,34 @@
-import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, TextInput,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
-  InteractionManager,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useCart } from '@/src/contexts/CartContext';
 import { useNotifications } from '@/src/contexts/NotificationContext';
-import { apiGet, apiPost } from '@/src/services/api';
 import { TanzaniaAddressForm } from '@/src/components/checkout/TanzaniaAddressForm';
 import { PaymentMethodPicker } from '@/src/components/checkout/PaymentMethodPicker';
 import { OrderSummary } from '@/src/components/checkout/OrderSummary';
+import { DeliveryLogisticsCard } from '@/src/components/checkout/DeliveryLogisticsCard';
+import { TransportMethodPicker } from '@/src/components/checkout/TransportMethodPicker';
+import { CheckoutErrorModal } from '@/src/components/checkout/CheckoutErrorModal';
+import { PaymentProcessingOverlay } from '@/src/components/checkout/PaymentProcessingOverlay';
+import { CheckoutHeader } from '@/src/components/checkout/CheckoutHeader';
+import { CheckoutBottomBar } from '@/src/components/checkout/CheckoutBottomBar';
 import { useCheckoutSubmit } from '@/src/hooks/useCheckoutSubmit';
-import { logger } from '@/src/lib/logger';
+import { useDeliveryLogistics } from '@/src/hooks/useDeliveryLogistics';
 
 // Lazy-load the map picker so it doesn't block checkout page render
 const MapPicker = lazy(() => import('@/src/components/MapPicker'));
 
 import {
   BUYER_PROTECTION_RATE, INITIAL_ADDRESS,
-  type AddressData, type TransportMethod,
+  type AddressData,
 } from '@/src/constants/checkout';
 
 export default function CheckoutScreen() {
@@ -46,9 +49,7 @@ export default function CheckoutScreen() {
   // Address
   const [addressData, setAddressData] = useState<AddressData>(INITIAL_ADDRESS);
 
-  // Transport
-  const [transportMethods, setTransportMethods] = useState<TransportMethod[]>([]);
-  const [selectedTransportId, setSelectedTransportId] = useState('');
+  // Transport dropdown UI state (data lives in useDeliveryLogistics)
   const [showTransportPicker, setShowTransportPicker] = useState(false);
 
   // Payment
@@ -58,150 +59,30 @@ export default function CheckoutScreen() {
   );
   const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvv: '' });
 
-  // Delivery fee & Logistics
-  const [deliveryFee, setDeliveryFee] = useState(0);
-  const [shopDeliveries, setShopDeliveries] = useState<Record<string, { distanceKm: number, duration: string }>>({});
-  const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
+  // Map UI state
   const [showMap, setShowMap] = useState(false);
   const [isReady, setIsReady] = useState(false);
-
 
   useEffect(() => {
     if (items.length === 0) {
       router.replace('/(tabs)/cart');
       return;
     }
-
     // Mark page as ready immediately so UI renders fast
     setIsReady(true);
-
-    // Defer heavy API work until after the navigation animation completes
-    const handle = InteractionManager.runAfterInteractions(() => {
-      // Load transport methods
-      apiGet<{ data: TransportMethod[] }>('/transport-methods')
-        .then((res) => {
-          const methods = (res as any).data || (Array.isArray(res) ? res : []);
-          setTransportMethods(methods);
-          if (methods.length > 0) setSelectedTransportId(methods[0].id);
-        })
-        .catch(() => {});
-
-      // Fetch shop coordinates for cart items that are missing them (backward compat)
-      const itemsMissingCoords = items.filter(i => i.shop_id && (!i.shop_latitude || !i.shop_longitude));
-      if (itemsMissingCoords.length > 0) {
-        const uniqueProductIds = [...new Set(itemsMissingCoords.map(i => i.product_id))];
-        Promise.all(
-          uniqueProductIds.map(pid =>
-            apiGet<any>(`/products/${pid}`).catch(() => null)
-          )
-        ).then(results => {
-          const coordsMap: Record<string, { lat: number; lng: number }> = {};
-          results.forEach(res => {
-            const product = res?.data || res;
-            if (product?.shop_id && product?.shops?.latitude && product?.shops?.longitude) {
-              coordsMap[product.shop_id] = {
-                lat: product.shops.latitude,
-                lng: product.shops.longitude,
-              };
-            }
-          });
-          // Update items in-place (they are mutable refs from context)
-          items.forEach(item => {
-            if (item.shop_id && coordsMap[item.shop_id]) {
-              item.shop_latitude = coordsMap[item.shop_id].lat;
-              item.shop_longitude = coordsMap[item.shop_id].lng;
-            }
-          });
-        });
-      }
-    });
-
-    return () => handle.cancel();
   }, []);
 
-  // Calculate derived fees per shop based on distances
-  const shopFees = React.useMemo(() => {
-    const method = transportMethods.find((m) => m.id === selectedTransportId);
-    const rateKm = Number(method?.rate_per_km) || 0;
-    const rateKg = Number(method?.rate_per_kg) || 0;
-    
-    const fees: Record<string, number> = {};
-    for (const sId in shopDeliveries) {
-       const distanceKm = shopDeliveries[sId].distanceKm;
-       const weight = items.filter(i => (i.shop_id || 'unknown') === sId).reduce((sum, i) => sum + i.quantity, 0);
-       let fee = 0;
-       if (rateKg > 0) fee = weight * rateKg;
-       else if (rateKm > 0) fee = distanceKm * rateKm;
-       else {
-         if (distanceKm <= 5) fee = 3000;
-         else if (distanceKm <= 15) fee = 5000;
-         else fee = distanceKm * 500;
-       }
-       fees[sId] = Math.round(fee);
-    }
-    return fees;
-  }, [shopDeliveries, selectedTransportId, transportMethods, items]);
-
-  // Recalculate total delivery fee
-  useEffect(() => {
-    if (Object.keys(shopDeliveries).length > 0) {
-      const totalFee = Object.values(shopFees).reduce((a, b) => a + b, 0);
-      setDeliveryFee(totalFee);
-    } else {
-      setDeliveryFee(0);
-    }
-  }, [shopFees, shopDeliveries, selectedTransportId, transportMethods, items.length]);
-
-  const handleAddressComplete = async (fullAddress: string, coords?: { lat: number, lng: number }) => {
-    if (!coords) return;
-    setLatitude(coords.lat);
-    setLongitude(coords.lng);
-    
-    setIsCalculatingDelivery(true);
-
-    const newDeliveries: Record<string, any> = {};
-    
-    try {
-      const shopsData: Record<string, { lat: number, lng: number }> = {};
-      
-      // Group items by shop and extract actual shop coordinates from cart items
-      items.forEach(item => {
-        const sId = item.shop_id || 'unknown';
-        if (!shopsData[sId]) {
-          shopsData[sId] = {
-            lat: item.shop_latitude || -6.7924,   // Use actual vendor coordinates
-            lng: item.shop_longitude || 39.2083,   // Fallback to Dar es Salaam only if truly missing
-          };
-        }
-      });
-
-      for (const sId in shopsData) {
-        const shop = shopsData[sId];
-        const res = await apiPost<any>('/maps/distance', {
-          destLat: coords.lat,
-          destLng: coords.lng,
-          originLat: shop.lat,
-          originLng: shop.lng
-        });
-        
-        if (res && res.distanceKm !== undefined) {
-          newDeliveries[sId] = {
-            distanceKm: res.distanceKm,
-            duration: res.duration || 'Fast',
-          };
-        }
-      }
-      setShopDeliveries(newDeliveries);
-    } catch (err) {
-      logger.error('Failed to calculate delivery', err);
-      setError('Could not calculate delivery routes. Please check your connection and try again.');
+  const {
+    transportMethods, selectedTransportId, setSelectedTransportId,
+    shopDeliveries, shopFees, deliveryFee, isCalculatingDelivery,
+    latitude, longitude, setLatitude, setLongitude, handleAddressComplete,
+  } = useDeliveryLogistics({
+    items,
+    onError: (message) => {
+      setError(message);
       setShowErrorModal(true);
-    } finally {
-      setIsCalculatingDelivery(false);
-    }
-  };
+    },
+  });
 
   const subtotal = totalAmount;
   const insuranceFee = Math.round((subtotal + deliveryFee) * BUYER_PROTECTION_RATE);
@@ -221,98 +102,14 @@ export default function CheckoutScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Payment Processing Overlay */}
-      <Modal visible={isAwaitingPayment} transparent animationType="fade">
-        <View style={styles.overlayBg}>
-          <View style={styles.overlayCard}>
-            <View style={styles.overlayHeader}>
-              <ActivityIndicator size="large" color="#fff" />
-              <Text style={styles.overlayTitle}>Processing Payment</Text>
-            </View>
-            <View style={styles.overlayBody}>
-              <Text style={styles.overlayText}>
-                Please wait while we process your payment...
-              </Text>
-              <View style={styles.overlaySecure}>
-                <FontAwesome name="shield" size={14} color={Theme.success} />
-                <Text style={styles.overlaySecureText}>Encrypted secure transaction</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Custom Error Modal */}
-      <Modal visible={showErrorModal} transparent animationType="fade">
-        <Pressable
-          style={styles.errModalBg}
-          onPress={() => setShowErrorModal(false)}
-        >
-          <Pressable style={styles.errModalCard}>
-            {/* Red header strip */}
-            <View style={styles.errModalHeader}>
-              <View style={styles.errModalIconCircle}>
-                <FontAwesome name="exclamation-triangle" size={28} color="#fff" />
-              </View>
-              <Text style={styles.errModalTitle}>Checkout Error</Text>
-              <Text style={styles.errModalSubtitle}>We couldn't complete your request</Text>
-            </View>
-
-            {/* Body */}
-            <View style={styles.errModalBody}>
-              <Text style={styles.errModalMessage}>{error}</Text>
-
-              {/* Show helpful tip for ClickPesa amount range errors */}
-              {error && (error.toLowerCase().includes('amount must be between') || error.toLowerCase().includes('500') && error.toLowerCase().includes('3000000')) && (
-                <View style={styles.errModalTipCard}>
-                  <View style={styles.errModalTipHeader}>
-                    <FontAwesome name="info-circle" size={16} color={Theme.primary} />
-                    <Text style={styles.errModalTipTitle}>Payment Tip</Text>
-                  </View>
-                  <Text style={styles.errModalTipText}>
-                    Our payment provider accepts amounts between{' '}
-                    <Text style={styles.errModalTipBold}>TSh 500</Text> and{' '}
-                    <Text style={styles.errModalTipBold}>TSh 3,000,000</Text>.{' '}
-                    Try adjusting item quantities or splitting into multiple orders.
-                  </Text>
-                </View>
-              )}
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.errModalBtn,
-                  pressed && styles.errModalBtnPressed,
-                ]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowErrorModal(false);
-                }}
-              >
-                <Text style={styles.errModalBtnText}>Got It</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <PaymentProcessingOverlay visible={isAwaitingPayment} />
+      <CheckoutErrorModal visible={showErrorModal} error={error} onClose={() => setShowErrorModal(false)} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-            <FontAwesome name="arrow-left" size={20} color={Theme.text} />
-          </Pressable>
-          <View>
-            <Text style={styles.headerTitle}>Checkout</Text>
-            <Text style={styles.headerSub}>Secure checkout</Text>
-          </View>
-          <View style={styles.totalBadge}>
-            <Text style={styles.totalBadgeLabel}>Total</Text>
-            <Text style={styles.totalBadgeValue}>TSh {total.toLocaleString()}</Text>
-          </View>
-        </View>
+        <CheckoutHeader total={total} paddingTop={insets.top + 8} onBack={() => router.back()} />
 
         <ScrollView
           style={{ flex: 1 }}
@@ -347,9 +144,9 @@ export default function CheckoutScreen() {
                 </View>
               )}
               <View style={styles.divider} />
-              <TanzaniaAddressForm 
-                value={addressData} 
-                onChange={setAddressData} 
+              <TanzaniaAddressForm
+                value={addressData}
+                onChange={setAddressData}
                 onAddressComplete={handleAddressComplete}
               />
 
@@ -389,46 +186,12 @@ export default function CheckoutScreen() {
                 </Suspense>
               )}
 
-              
-              {isCalculatingDelivery && (
-                <View style={styles.calculatingBox}>
-                  <ActivityIndicator size="small" color={Theme.primary} />
-                  <Text style={styles.calculatingText}>Calculating delivery fee...</Text>
-                </View>
-              )}
-
-              {Object.keys(shopDeliveries).length > 0 && (
-                <View style={styles.logisticsContainer}>
-                  <Text style={styles.logisticsTitle}>DELIVERY LOGISTICS BREAKDOWN</Text>
-                  {Object.entries(shopDeliveries).map(([shopId, info]) => (
-                    <View key={shopId} style={styles.logisticsCard}>
-                      <View style={styles.logisticsHeader}>
-                        <View>
-                          <Text style={styles.logisticsShopLabel}>FROM SHOP</Text>
-                          <Text style={styles.logisticsShopName}>TOLA Verified Vendor</Text>
-                        </View>
-                        <View style={styles.logisticsMethodBadge}>
-                          <Text style={styles.logisticsMethodText}>{selectedMethodName}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.logisticsStats}>
-                        <View style={styles.logisticsStatBox}>
-                          <Text style={styles.logisticsStatLabel}>DISTANCE</Text>
-                          <Text style={styles.logisticsStatValue}>{info.distanceKm} KM</Text>
-                        </View>
-                        <View style={styles.logisticsStatBox}>
-                          <Text style={styles.logisticsStatLabel}>STATUS</Text>
-                          <Text style={styles.logisticsStatValue}>{info.duration}</Text>
-                        </View>
-                        <View style={[styles.logisticsStatBox, styles.logisticsFeeBox]}>
-                          <Text style={[styles.logisticsStatLabel, { color: Theme.primary }]}>FEE</Text>
-                          <Text style={[styles.logisticsStatValue, { color: Theme.primary }]}>TSh {shopFees[shopId]?.toLocaleString() || 0}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
+              <DeliveryLogisticsCard
+                isCalculating={isCalculatingDelivery}
+                shopDeliveries={shopDeliveries}
+                shopFees={shopFees}
+                selectedMethodName={selectedMethodName}
+              />
             </View>
           </View>
 
@@ -438,48 +201,14 @@ export default function CheckoutScreen() {
               <View style={styles.stepBadge}><Text style={styles.stepNumber}>2</Text></View>
               <Text style={styles.stepTitle}>Delivery Method</Text>
             </View>
-            <Pressable
-              style={styles.transportSelector}
-              onPress={() => setShowTransportPicker(!showTransportPicker)}
-            >
-              <View style={styles.transportLeft}>
-                <View style={styles.transportIcon}>
-                  <FontAwesome name="truck" size={20} color={Theme.primary} />
-                </View>
-                <View>
-                  <Text style={styles.transportLabel}>Delivery Method</Text>
-                  <Text style={styles.transportValue}>{selectedMethodName}</Text>
-                </View>
-              </View>
-              <FontAwesome name="chevron-down" size={14} color={Theme.textMuted} />
-            </Pressable>
-            {showTransportPicker && (
-              <View style={styles.transportDropdown}>
-                {transportMethods.map((method) => (
-                  <Pressable
-                    key={method.id}
-                    style={[styles.transportOption, selectedTransportId === method.id && styles.transportOptionActive]}
-                    onPress={() => { setSelectedTransportId(method.id); setShowTransportPicker(false); }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.transportOptionName}>{method.name}</Text>
-                      {method.description ? (
-                        <Text style={styles.transportOptionDesc} numberOfLines={2}>{method.description}</Text>
-                      ) : null}
-                    </View>
-                    <View style={styles.transportRate}>
-                      <Text style={styles.transportRateText}>
-                        {method.rate_per_km
-                          ? `TSh ${method.rate_per_km.toLocaleString()}/KM`
-                          : method.rate_per_kg
-                          ? `TSh ${method.rate_per_kg.toLocaleString()}/KG`
-                          : ''}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+            <TransportMethodPicker
+              transportMethods={transportMethods}
+              selectedTransportId={selectedTransportId}
+              selectedMethodName={selectedMethodName}
+              showPicker={showTransportPicker}
+              onTogglePicker={() => setShowTransportPicker(!showTransportPicker)}
+              onSelect={(transportId) => { setSelectedTransportId(transportId); setShowTransportPicker(false); }}
+            />
           </View>
 
           {/* Step 3: Payment */}
@@ -510,29 +239,15 @@ export default function CheckoutScreen() {
           )}
         </ScrollView>
 
-        {/* Bottom CTA */}
-        <View style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }]}>
-          <View style={styles.bottomInfo}>
-            <Text style={styles.bottomTotal}>TSh {total.toLocaleString()}</Text>
-            <Text style={styles.bottomItems}>{items.length} item(s)</Text>
-          </View>
-          <Pressable
-            style={[styles.submitBtn, (isLoading || paymentMethod === 'm-pesa') && styles.submitBtnDisabled]}
-            onPress={handleSubmit}
-            disabled={isLoading || paymentMethod === 'm-pesa'}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Text style={styles.submitBtnText}>
-                  {paymentMethod === 'm-pesa' ? 'Unavailable' : 'Complete Order'}
-                </Text>
-                <FontAwesome name="arrow-right" size={16} color="#fff" />
-              </>
-            )}
-          </Pressable>
-        </View>
+        <CheckoutBottomBar
+          total={total}
+          itemCount={items.length}
+          isLoading={isLoading}
+          disabled={isLoading || paymentMethod === 'm-pesa'}
+          submitLabel={paymentMethod === 'm-pesa' ? 'Unavailable' : 'Complete Order'}
+          paddingBottom={16 + insets.bottom}
+          onSubmit={handleSubmit}
+        />
       </KeyboardAvoidingView>
     </View>
   );
@@ -540,21 +255,6 @@ export default function CheckoutScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.backgroundSecondary },
-  // Header
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: gap.md, paddingBottom: 14,
-    backgroundColor: Theme.background, borderBottomWidth: 1, borderBottomColor: Theme.inputBorder,
-  },
-  backBtn: { padding: 8 },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: Theme.text },
-  headerSub: { fontSize: 11, color: Theme.textMuted, fontWeight: '600' },
-  totalBadge: {
-    backgroundColor: Theme.primary + '10', paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: Theme.radiusMd, alignItems: 'flex-end',
-  },
-  totalBadgeLabel: { fontSize: 9, fontWeight: '700', color: Theme.primary, textTransform: 'uppercase' },
-  totalBadgeValue: { fontSize: 14, fontWeight: '800', color: Theme.primary },
   // Content
   scrollContent: { paddingHorizontal: gap.md, paddingTop: 16 },
   section: { marginBottom: 24 },
@@ -579,64 +279,6 @@ const styles = StyleSheet.create({
   },
   fieldHint: { fontSize: 10, color: Theme.textMuted, fontStyle: 'italic' },
   divider: { height: 1, backgroundColor: Theme.inputBorder, marginVertical: 4 },
-  // Logistics
-  calculatingBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12,
-    backgroundColor: Theme.backgroundSecondary, borderRadius: Theme.radiusMd,
-    marginTop: 8,
-  },
-  calculatingText: { fontSize: 13, fontWeight: '600', color: Theme.textSecondary },
-  logisticsContainer: { marginTop: 8, gap: 12 },
-  logisticsTitle: { fontSize: 10, fontWeight: '800', color: Theme.textMuted, letterSpacing: 1 },
-  logisticsCard: {
-    backgroundColor: Theme.backgroundSecondary, borderRadius: 16, padding: 16, gap: 16,
-    borderWidth: 1, borderColor: Theme.inputBorder,
-  },
-  logisticsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  logisticsShopLabel: { fontSize: 9, fontWeight: '800', color: Theme.primary, letterSpacing: 1, marginBottom: 2 },
-  logisticsShopName: { fontSize: 13, fontWeight: '800', color: Theme.text },
-  logisticsMethodBadge: {
-    backgroundColor: '#fff', paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 6, borderWidth: 1, borderColor: Theme.inputBorder,
-  },
-  logisticsMethodText: { fontSize: 9, fontWeight: '800', color: Theme.textSecondary, textTransform: 'uppercase' },
-  logisticsStats: { flexDirection: 'row', gap: 8 },
-  logisticsStatBox: {
-    flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: 12,
-    borderWidth: 1, borderColor: Theme.inputBorder, gap: 4,
-  },
-  logisticsFeeBox: { backgroundColor: Theme.primary + '08', borderColor: Theme.primary + '20' },
-  logisticsStatLabel: { fontSize: 8, fontWeight: '800', color: Theme.textMuted, letterSpacing: 1 },
-  logisticsStatValue: { fontSize: 12, fontWeight: '800', color: Theme.text },
-  // Transport
-  transportSelector: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Theme.background, borderRadius: 24,
-    padding: 20, borderWidth: 1.5, borderColor: Theme.inputBorder, ...Theme.shadowLg,
-  },
-  transportLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  transportIcon: {
-    width: 48, height: 48, borderRadius: 14, backgroundColor: Theme.primary + '10',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  transportLabel: { fontSize: 10, fontWeight: '700', color: Theme.textMuted, textTransform: 'uppercase' },
-  transportValue: { fontSize: 16, fontWeight: '800', color: Theme.text },
-  transportDropdown: {
-    backgroundColor: Theme.background, borderRadius: Theme.radiusMd,
-    marginTop: 8, ...Theme.shadowMd, overflow: 'hidden',
-  },
-  transportOption: {
-    padding: 16, borderBottomWidth: 1, borderBottomColor: Theme.inputBorder,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-  },
-  transportOptionActive: { backgroundColor: Theme.primary + '08' },
-  transportOptionName: { fontSize: 15, fontWeight: '700', color: Theme.text },
-  transportOptionDesc: { fontSize: 12, color: Theme.textMuted, marginTop: 2 },
-  transportRate: {
-    backgroundColor: Theme.primary + '10', paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 8,
-  },
-  transportRateText: { fontSize: 10, fontWeight: '800', color: Theme.primary, textTransform: 'uppercase' },
   // Error
   errorBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14,
@@ -644,42 +286,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Theme.error + '20',
   },
   errorText: { flex: 1, fontSize: 13, fontWeight: '600', color: Theme.error },
-  // Bottom bar
-  bottomBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: Theme.background, paddingHorizontal: gap.md, paddingTop: 14,
-    borderTopWidth: 1, borderTopColor: Theme.inputBorder,
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    ...Theme.shadowLg,
-  },
-  bottomInfo: { flex: 1 },
-  bottomTotal: { fontSize: 18, fontWeight: '800', color: Theme.text },
-  bottomItems: { fontSize: 11, color: Theme.textMuted, fontWeight: '600' },
-  submitBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Theme.primary, paddingHorizontal: 28, paddingVertical: 18,
-    borderRadius: 14, ...Theme.shadowLg,
-  },
-  submitBtnDisabled: { opacity: 0.5 },
-  submitBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  // Overlay
-  overlayBg: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center', alignItems: 'center', padding: 24,
-  },
-  overlayCard: { backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', width: '100%', maxWidth: 360 },
-  overlayHeader: {
-    backgroundColor: Theme.primary, padding: 32, alignItems: 'center', gap: 16,
-  },
-  overlayTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  overlayBody: { padding: 24, gap: 16, alignItems: 'center' },
-  overlayText: { fontSize: 14, color: Theme.textSecondary, textAlign: 'center', lineHeight: 22 },
-  overlaySecure: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Theme.backgroundSecondary, paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: Theme.radiusMd,
-  },
-  overlaySecureText: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary, textTransform: 'uppercase' },
   // Show Map Button Styles
   showMapBtn: {
     flexDirection: 'row',
@@ -727,106 +333,4 @@ const styles = StyleSheet.create({
     color: Theme.textMuted,
     fontWeight: '600',
   },
-  // Error Modal
-  errModalBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errModalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    overflow: 'hidden',
-    width: '100%',
-    maxWidth: 380,
-    ...Theme.shadowLg,
-  },
-  errModalHeader: {
-    backgroundColor: Theme.error,
-    paddingVertical: 28,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    gap: 10,
-  },
-  errModalIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  errModalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.3,
-  },
-  errModalSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
-  },
-  errModalBody: {
-    padding: 24,
-    gap: 20,
-  },
-  errModalMessage: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Theme.text,
-    lineHeight: 23,
-    textAlign: 'center',
-  },
-  errModalTipCard: {
-    backgroundColor: Theme.primary + '08',
-    borderRadius: 16,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: Theme.primary + '18',
-  },
-  errModalTipHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  errModalTipTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: Theme.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  errModalTipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Theme.textSecondary,
-    lineHeight: 20,
-  },
-  errModalTipBold: {
-    fontWeight: '800',
-    color: Theme.text,
-  },
-  errModalBtn: {
-    backgroundColor: Theme.error,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    ...Theme.shadowMd,
-  },
-  errModalBtnPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
-  errModalBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.3,
-  },
 });
-

@@ -32,3 +32,7 @@ This repo follows [Conventional Commits](https://www.conventionalcommits.org/) (
 - Screens that outgrow a few hundred lines should have their data-fetching extracted into a hook (`src/hooks/`) and their view broken into components (`src/components/<domain>/`) — see `src/hooks/useAgentDashboardData.ts` + `src/components/agent/` for the reference pattern.
 - Use `logger` from `src/lib/logger.ts` instead of `console.*`.
 - Prefer the typed `AppError` (`src/lib/errors.ts`) over raw `Error` for anything surfaced from `src/services/api.ts` — check `.kind` (`network`/`validation`/`auth`/`server`) rather than parsing `.message`.
+
+## Error tracking
+
+`src/lib/errorTracking.ts` is the app's error-reporting boundary — `components/ErrorBoundary.tsx` already calls `captureException` on every caught render error, in every build (not just `__DEV__`). By default it routes through `logger`; to wire a real service (Sentry, Bugsnag, etc.), call `setErrorTrackingProvider({...})` once at startup (e.g. in `app/_layout.tsx`) with an object matching the `captureException`/`captureMessage`/`setUser` shape — no call sites need to change. Use `captureException`/`captureMessage` directly in any `catch` block that handles a failure a user shouldn't have to report manually.
