@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiPost, getApiBaseUrl, setOn401Handler } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 
 const SESSION_KEY = '@tolatola/session';
@@ -109,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const refreshSession = useCallback(async (): Promise<string | null> => {
     if (refreshPromiseRef.current) {
-      console.log('[AUTH] Token refresh already in progress, reusing promise.');
+      logger.info('[AUTH] Token refresh already in progress, reusing promise.');
       return refreshPromiseRef.current;
     }
 
@@ -125,13 +126,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (createdAtStr) {
           const createdAt = parseInt(createdAtStr, 10);
           if (Date.now() - createdAt > MAX_SESSION_AGE_MS) {
-            console.log('[AUTH] Session exceeded 30-day maximum age. Logging out.');
+            logger.info('[AUTH] Session exceeded 30-day maximum age. Logging out.');
             await setSession(null);
             return null;
           }
         }
 
-        console.log('[AUTH] Attempting silent token refresh...');
+        logger.info('[AUTH] Attempting silent token refresh...');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -144,10 +145,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          console.warn('[AUTH] Token refresh failed with status:', response.status);
+          logger.warn('[AUTH] Token refresh failed with status:', response.status);
           // On 4xx errors (except network), the refresh token is likely invalid
           if (response.status >= 400 && response.status < 500) {
-            console.log('[AUTH] Refresh token rejected by server. Clearing session.');
+            logger.info('[AUTH] Refresh token rejected by server. Clearing session.');
             await setSession(null);
           }
           // On 5xx, keep session — server may be temporarily down
@@ -168,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false,
             isAuthenticated: true,
           });
-          console.log('[AUTH] Token refreshed successfully!');
+          logger.info('[AUTH] Token refreshed successfully!');
           return newSession.access_token;
         }
       } catch (err: any) {
@@ -180,9 +181,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           err?.message?.includes('Failed to fetch');
 
         if (isNetworkError) {
-          console.warn('[AUTH] Token refresh failed due to network issue. Keeping session active.');
+          logger.warn('[AUTH] Token refresh failed due to network issue. Keeping session active.');
         } else {
-          console.error('[AUTH] Silent session refresh error:', err);
+          logger.error('[AUTH] Silent session refresh error:', err);
         }
       } finally {
         refreshPromiseRef.current = null;
@@ -209,14 +210,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (timeUntilRefresh <= 0) {
       // Already near/past expiry — refresh immediately
-      console.log('[AUTH] Token near/past expiry. Refreshing immediately.');
+      logger.info('[AUTH] Token near/past expiry. Refreshing immediately.');
       refreshSession();
       return;
     }
 
-    console.log(`[AUTH] Scheduling proactive refresh in ${Math.round(timeUntilRefresh / 1000 / 60)} minutes`);
+    logger.info(`[AUTH] Scheduling proactive refresh in ${Math.round(timeUntilRefresh / 1000 / 60)} minutes`);
     refreshTimerRef.current = setTimeout(() => {
-      console.log('[AUTH] Proactive token refresh triggered.');
+      logger.info('[AUTH] Proactive token refresh triggered.');
       refreshSession();
     }, timeUntilRefresh);
   }, [clearRefreshTimer, refreshSession]);
@@ -245,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         nextAppState === 'active' &&
         state.session?.refresh_token
       ) {
-        console.log('[AUTH] App came to foreground. Checking token freshness...');
+        logger.info('[AUTH] App came to foreground. Checking token freshness...');
 
         // Only refresh if the token is within the refresh buffer of expiring
         if (state.session.expires_at) {
@@ -253,7 +254,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const timeUntilExpiry = expiresAtMs - Date.now();
 
           if (timeUntilExpiry < REFRESH_BUFFER_MS) {
-            console.log('[AUTH] Token near expiry on foreground. Refreshing...');
+            logger.info('[AUTH] Token near expiry on foreground. Refreshing...');
             refreshSession();
           }
         }
@@ -357,7 +358,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (createdAtStr) {
           const createdAt = parseInt(createdAtStr, 10);
           if (Date.now() - createdAt > MAX_SESSION_AGE_MS) {
-            console.log('[AUTH] Stored session exceeded 30-day limit. Clearing.');
+            logger.info('[AUTH] Stored session exceeded 30-day limit. Clearing.');
             await AsyncStorage.multiRemove([SESSION_KEY, SESSION_CREATED_KEY]);
             setState({ session: null, isLoading: false, isAuthenticated: false });
             return;
@@ -377,7 +378,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Don't block UI — refresh in background
           refreshSession().catch(() => {
             // Silently ignore — user stays logged in with existing token
-            console.warn('[AUTH] Background refresh on boot failed. Keeping existing session.');
+            logger.warn('[AUTH] Background refresh on boot failed. Keeping existing session.');
           });
         }
       } catch {

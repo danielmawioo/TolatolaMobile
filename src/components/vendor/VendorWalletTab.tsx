@@ -6,6 +6,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 const COMMISSION_RATE = 0.05;
 const PAYOUT_METHODS = [
@@ -44,7 +45,7 @@ export function VendorWalletTab({ vendorId, accessToken }: Props) {
       setBalance(res.balance || 0);
       setPendingBalance(res.pendingBalance || 0);
       setPayouts(res.payouts || []);
-    } catch (e) { console.error('Wallet load error', e); }
+    } catch (e) { logger.error('Wallet load error', e); }
     setLoading(false);
   };
 

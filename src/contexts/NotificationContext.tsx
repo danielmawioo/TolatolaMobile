@@ -5,6 +5,7 @@ import { AppState, Platform } from 'react-native';
 import { useAuth } from './AuthContext';
 import { registerForPushNotifications, setBadgeCount } from '@/src/services/pushNotifications';
 import { apiGet } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 type NotificationContextValue = {
   unreadCount: number;
@@ -55,10 +56,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       .then(token => {
         if (token) {
           setExpoPushToken(token);
-          console.log('[NOTIFICATIONS] Push token registered:', token);
+          logger.info('[NOTIFICATIONS] Push token registered:', token);
         }
       })
-      .catch(e => console.warn('[NOTIFICATIONS] Token registration failed:', e));
+      .catch(e => logger.warn('[NOTIFICATIONS] Token registration failed:', e));
   }, [session?.access_token]);
 
   // Set up notification listeners
@@ -67,7 +68,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     // Listener for when a notification is received while app is foregrounded
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('[NOTIFICATIONS] Received in foreground:', notification.request.content.title);
+      logger.info('[NOTIFICATIONS] Received in foreground:', notification.request.content.title);
       // Increment badge count immediately
       setUnreadCount(prev => {
         const newCount = prev + 1;
@@ -79,7 +80,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     // Listener for when user taps a notification
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      console.log('[NOTIFICATIONS] Tapped notification data:', data);
+      logger.info('[NOTIFICATIONS] Tapped notification data:', data);
       handleNotificationNavigation(data);
     });
 
@@ -121,7 +122,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     Notifications.getLastNotificationResponseAsync().then(response => {
       if (response) {
         const data = response.notification.request.content.data;
-        console.log('[NOTIFICATIONS] Cold start from notification:', data);
+        logger.info('[NOTIFICATIONS] Cold start from notification:', data);
         // Small delay to let navigation mount
         setTimeout(() => handleNotificationNavigation(data), 500);
       }
@@ -177,6 +178,6 @@ function handleNotificationNavigation(data: any) {
     // Fallback: go to notifications tab
     router.push('/(tabs)/notifications' as any);
   } catch (e) {
-    console.error('[NOTIFICATIONS] Navigation error:', e);
+    logger.error('[NOTIFICATIONS] Navigation error:', e);
   }
 }

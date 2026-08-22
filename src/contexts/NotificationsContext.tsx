@@ -12,6 +12,7 @@ import {
 import { queryKeys } from '@/src/lib/queryKeys';
 import { getUserRoleFromSession } from '@/src/lib/roleRedirect';
 import { filterNotificationsForRole } from '@/src/lib/notificationsForRole';
+import { logger } from '@/src/lib/logger';
 
 const NOTIFICATIONS_PAGE_SIZE = 64;
 
@@ -95,7 +96,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         );
         queryClient.setQueryData<number>(unreadKey, (c) => Math.max(0, (c ?? 0) - 1));
       } catch (e) {
-        console.error('Failed to mark notification as read:', e);
+        logger.error('Failed to mark notification as read:', e);
         await refresh();
       }
     },
@@ -111,7 +112,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       );
       queryClient.setQueryData<number>(unreadKey, 0);
     } catch (e) {
-      console.error('Failed to mark all notifications as read:', e);
+      logger.error('Failed to mark all notifications as read:', e);
       await refresh();
     }
   }, [queryClient, refresh, token, listKey, unreadKey]);

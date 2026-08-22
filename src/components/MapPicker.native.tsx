@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import { WebView } from 'react-native-webview';
 import { Theme } from '@/constants/Theme';
+import { logger } from '@/src/lib/logger';
 
 interface Props {
   latitude: number | null;
@@ -164,7 +165,7 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
         lng: location.coords.longitude,
       });
     } catch (error: any) {
-      console.error('[MapPicker] Error getting location:', error);
+      logger.error('[MapPicker] Error getting location:', error);
       const msg = error?.message || '';
       if (msg.includes('denied') || msg.includes('permission')) {
         setErrorMsg('Location permission was denied. Tap to open Settings and grant access.');

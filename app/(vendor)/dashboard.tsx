@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VendorOrdersTab } from '@/src/components/vendor/VendorOrdersTab';
 import { VendorWalletTab } from '@/src/components/vendor/VendorWalletTab';
 import { VendorSubscriptionTab } from '@/src/components/vendor/VendorSubscriptionTab';
+import { logger } from '@/src/lib/logger';
 
 const TABS = ['Products', 'Orders', 'Wallet', 'Subscription', 'Shop', 'Profile'] as const;
 
@@ -74,7 +75,7 @@ export default function VendorDashboardScreen() {
         setUnreadNotifs(notifRes?.unread_count || 0);
       } catch { /* silent */ }
     } catch (error) {
-      console.error('Vendor Dashboard Fetch Error:', error);
+      logger.error('Vendor Dashboard Fetch Error:', error);
     } finally {
       setLoading(false);
     }

@@ -23,6 +23,7 @@ import { Theme } from '@/constants/Theme';
 import { scaleByWidth, gap } from '@/constants/layout';
 import { apiGet } from '@/src/services/api';
 import { CountryCodePicker } from '@/components/CountryCodePicker';
+import { logger } from '@/src/lib/logger';
 
 export default function SignupScreen() {
   const { signup, isLoading } = useAuth();
@@ -65,7 +66,7 @@ export default function SignupScreen() {
         setReferralError('Msimbo wa rufaa si sahihi. Tafadhali angalia tena.');
       }
     } catch (err) {
-      console.warn('[SIGNUP] Failed to validate referral code:', err);
+      logger.warn('[SIGNUP] Failed to validate referral code:', err);
       setReferrerName(null);
     } finally {
       setReferralValidating(false);

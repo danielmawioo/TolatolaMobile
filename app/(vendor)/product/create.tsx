@@ -8,7 +8,8 @@ import { apiPost, apiGet } from '@/src/services/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
-import { initialProductFormData, validateProductForm } from '@/src/lib/productForm';
+import { initialProductFormData, validateProductForm, classifyProductCategory } from '@/src/lib/productForm';
+import { logger } from '@/src/lib/logger';
 
 export default function CreateProductScreen() {
   const insets = useSafeAreaInsets();
@@ -44,7 +45,7 @@ export default function CreateProductScreen() {
         const cats = res?.data || res?.categories || [];
         setCategories(cats);
       })
-      .catch(err => console.error('Failed to load categories', err));
+      .catch(err => logger.error('Failed to load categories', err));
 
     // Load shop to resolve shop_id
     apiGet<any>('/vendor/shop', session.access_token)
@@ -54,7 +55,7 @@ export default function CreateProductScreen() {
           setShopId(actualShop.id);
         }
       })
-      .catch(err => console.error('Failed to load shop', err));
+      .catch(err => logger.error('Failed to load shop', err));
   }, [session?.access_token]);
 
   const handleImagePicker = () => {
@@ -151,22 +152,10 @@ export default function CreateProductScreen() {
     }
   };
 
-  const selectedCategory = categories.find(c => c.id === formData.category_id);
-  const selectedParentCategory = selectedCategory?.parent_id
-    ? categories.find(c => c.id === selectedCategory.parent_id)
-    : selectedCategory;
-
-  const selectedCategoryName = selectedParentCategory?.name;
-  const isFashion = selectedParentCategory?.name?.toLowerCase() === 'fashion' ||
-                    selectedCategory?.name?.toLowerCase() === 'fashion' ||
-                    ['men', 'women', 'kids'].includes(selectedCategory?.name?.toLowerCase() || '') ||
-                    ['men', 'women', 'kids'].includes(selectedCategory?.slug?.toLowerCase() || '');
-  const isAgriculture = selectedParentCategory?.name?.toLowerCase() === 'agriculture';
-  const isVehicles = selectedParentCategory?.name?.toLowerCase() === 'vehicles' ||
-                     selectedParentCategory?.name?.toLowerCase() === 'motorcycles' ||
-                     selectedParentCategory?.name?.toLowerCase() === 'motorcyles';
-  const isReadyToEat = selectedParentCategory?.name?.toLowerCase() === 'ready to eat' || selectedParentCategory?.slug === 'ready-to-eat';
-  const isDrinks = selectedParentCategory?.name?.toLowerCase() === 'drinks';
+  const { isFashion, isAgriculture, isVehicles, isReadyToEat, isDrinks } = classifyProductCategory(
+    categories,
+    formData.category_id
+  );
 
   useEffect(() => {
     if (!isAgriculture && formData.weight_unit) {

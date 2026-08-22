@@ -2,9 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { AgentWalletTab } from '@/src/components/agent/AgentWalletTab';
 
-jest.mock('@/src/services/api', () => ({
-  apiPost: jest.fn(),
-}));
+jest.mock('@/src/services/api');
 
 describe('AgentWalletTab', () => {
   const walletStats = {

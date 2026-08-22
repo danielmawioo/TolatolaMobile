@@ -6,6 +6,7 @@ import { useAuth, type User, type Session } from '@/src/contexts/AuthContext';
 import { apiPost } from '@/src/services/api';
 import { GOOGLE_WEB_CLIENT_ID, SUPABASE_URL } from '@/src/config/env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '@/src/lib/logger';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,19 +26,19 @@ export function useGoogleAuth() {
   useEffect(() => {
     if (GOOGLE_WEB_CLIENT_ID) {
       try {
-        console.log('[GOOGLE_AUTH] Configuring GoogleSignin with webClientId:', GOOGLE_WEB_CLIENT_ID);
+        logger.info('[GOOGLE_AUTH] Configuring GoogleSignin with webClientId:', GOOGLE_WEB_CLIENT_ID);
         GoogleSignin.configure({
           webClientId: GOOGLE_WEB_CLIENT_ID,
           offlineAccess: false,
         });
       } catch (err) {
-        console.warn('[GOOGLE_AUTH] Error configuring GoogleSignin native module:', err);
+        logger.warn('[GOOGLE_AUTH] Error configuring GoogleSignin native module:', err);
       }
     }
   }, []);
 
   const signInWithBrowserFallback = async (options?: GoogleAuthOptions): Promise<User | null> => {
-    console.log('[GOOGLE_AUTH] Attempting WebBrowser OAuth fallback...');
+    logger.info('[GOOGLE_AUTH] Attempting WebBrowser OAuth fallback...');
     if (!SUPABASE_URL) {
       throw new Error('Supabase URL is not configured for WebBrowser authentication');
     }
@@ -98,7 +99,7 @@ export function useGoogleAuth() {
         return session.user;
       }
     } else if (authResult.type === 'cancel' || authResult.type === 'dismiss') {
-      console.log('[GOOGLE_AUTH] User closed browser auth session');
+      logger.info('[GOOGLE_AUTH] User closed browser auth session');
       return null;
     }
 
@@ -118,14 +119,14 @@ export function useGoogleAuth() {
 
           // Handle v11+ response structure where cancelled is returned as result.type
           if ((result as any).type === 'cancelled') {
-            console.log('[GOOGLE_AUTH] User cancelled Google Sign-In flow');
+            logger.info('[GOOGLE_AUTH] User cancelled Google Sign-In flow');
             return null;
           }
 
           const idToken = (result as any).data?.idToken || (result as any).idToken;
 
           if (idToken) {
-            console.log('[GOOGLE_AUTH] Google Sign-In success via native module. Communicating with backend...');
+            logger.info('[GOOGLE_AUTH] Google Sign-In success via native module. Communicating with backend...');
             const response = await apiPost<{ user: User; session: Session }>('/auth/google', {
               id_token: idToken,
               userType: options?.userType,
@@ -137,21 +138,21 @@ export function useGoogleAuth() {
               throw new Error('Backend failed to return a valid session');
             }
 
-            console.log('[GOOGLE_AUTH] Backend login verified. Saving session...');
+            logger.info('[GOOGLE_AUTH] Backend login verified. Saving session...');
             await AsyncStorage.setItem(SESSION_CREATED_KEY, Date.now().toString());
             await setSession(response.session);
             return response.user;
           }
         } catch (nativeErr: any) {
           if (nativeErr.code === statusCodes.SIGN_IN_CANCELLED) {
-            console.log('[GOOGLE_AUTH] User cancelled Google Sign-In flow');
+            logger.info('[GOOGLE_AUTH] User cancelled Google Sign-In flow');
             return null;
           } else if (nativeErr.code === statusCodes.IN_PROGRESS) {
-            console.warn('[GOOGLE_AUTH] Google Sign-In already in progress');
+            logger.warn('[GOOGLE_AUTH] Google Sign-In already in progress');
             setError('Sign-in is already in progress');
             return null;
           }
-          console.warn('[GOOGLE_AUTH] Native Google Sign-In unavailable or failed. Trying WebBrowser fallback...', nativeErr?.message);
+          logger.warn('[GOOGLE_AUTH] Native Google Sign-In unavailable or failed. Trying WebBrowser fallback...', nativeErr?.message);
         }
       }
 
@@ -159,7 +160,7 @@ export function useGoogleAuth() {
       return await signInWithBrowserFallback(options);
     } catch (err: any) {
       const errMsg = err instanceof Error ? err.message : 'Google authentication failed';
-      console.error('[GOOGLE_AUTH] Error signing in with Google:', err);
+      logger.error('[GOOGLE_AUTH] Error signing in with Google:', err);
       setError(errMsg);
       return null;
     } finally {

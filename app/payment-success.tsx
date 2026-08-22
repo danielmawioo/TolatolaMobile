@@ -10,6 +10,7 @@ import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
 import { apiGet } from '@/src/services/api';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { logger } from '@/src/lib/logger';
 
 const TRACKING_STEPS = [
   { id: 'ORDER_RECEIVED', label: 'Order Received', icon: 'check-circle' },
@@ -52,7 +53,7 @@ export default function PaymentSuccessScreen() {
     if (isCard && paymentStatus !== 'paid' && paymentUrl && paymentUrl.startsWith('http') && !cardBrowserOpened.current) {
       cardBrowserOpened.current = true;
       WebBrowser.openBrowserAsync(paymentUrl).catch((err) => {
-        console.error('[PAYMENT_SUCCESS] Failed to open card payment browser:', err);
+        logger.error('[PAYMENT_SUCCESS] Failed to open card payment browser:', err);
       });
     }
   }, [isCard, paymentStatus, params.controlNumber, order?.stripe_payment_intent_id]);
@@ -216,7 +217,7 @@ export default function PaymentSuccessScreen() {
                 style={styles.cardPaymentBtn}
                 onPress={() => {
                   WebBrowser.openBrowserAsync(paymentUrl).catch((err) => {
-                    console.error('[PAYMENT_SUCCESS] Failed to open card payment browser:', err);
+                    logger.error('[PAYMENT_SUCCESS] Failed to open card payment browser:', err);
                   });
                 }}
               >

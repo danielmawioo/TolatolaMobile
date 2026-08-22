@@ -10,6 +10,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
 import * as Haptics from 'expo-haptics';
+import { logger } from '@/src/lib/logger';
 
 const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
   order_status_update: { icon: 'shopping-bag', color: '#7c3aed', bg: '#f3e8ff' },
@@ -55,7 +56,7 @@ export default function NotificationsScreen() {
       const res = await apiGet<any>('/notifications?limit=50', session.access_token);
       setNotifications(res?.data || []);
     } catch (e) {
-      console.error('Failed to load notifications', e);
+      logger.error('Failed to load notifications', e);
     }
     setLoading(false);
     setRefreshing(false);
@@ -69,7 +70,7 @@ export default function NotificationsScreen() {
       await apiPost(`/notifications/${id}/read`, {}, session.access_token);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch (e) { console.error('Mark read error', e); }
+    } catch (e) { logger.error('Mark read error', e); }
   };
 
   const handleMarkAllRead = async () => {
@@ -78,7 +79,7 @@ export default function NotificationsScreen() {
       await apiPost('/notifications/read-all', {}, session.access_token);
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (e) { console.error('Mark all read error', e); }
+    } catch (e) { logger.error('Mark all read error', e); }
   };
 
   const handleNotificationPress = (notif: any) => {

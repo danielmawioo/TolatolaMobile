@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
 import { PaymentMethodPicker } from '@/src/components/checkout/PaymentMethodPicker';
+import { logger } from '@/src/lib/logger';
 
 interface Props { vendorId: string; accessToken: string; }
 
@@ -38,7 +39,7 @@ export function VendorSubscriptionTab({ vendorId, accessToken }: Props) {
       ]);
       setCurrentSub(vendorRes?.vendor?.current_subscription || null);
       setPlans(plansRes?.plans || []);
-    } catch (e) { console.error('Sub load error', e); }
+    } catch (e) { logger.error('Sub load error', e); }
     setLoading(false);
   };
 

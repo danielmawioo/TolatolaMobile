@@ -7,6 +7,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 const COMMISSION_RATE = 0.10;
 const PAYOUT_METHODS = [
@@ -52,7 +53,7 @@ export function TransporterWithdrawalsTab({ transporterId, accessToken, availabl
       } else if (res?.availableBalance !== undefined) {
         setBalance(res.availableBalance);
       }
-    } catch (e) { console.error('Withdrawals load error', e); }
+    } catch (e) { logger.error('Withdrawals load error', e); }
     setLoading(false);
   };
 

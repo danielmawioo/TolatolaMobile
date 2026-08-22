@@ -5,6 +5,7 @@ import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
 import { TANZANIA_REGIONS, type AddressData } from '@/src/constants/checkout';
 import { apiGet } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 interface Props {
   value: AddressData;
@@ -44,7 +45,7 @@ export function TanzaniaAddressForm({ value, onChange, onAddressComplete }: Prop
           setSuggestions(res.predictions);
         }
       } catch (error) {
-        console.error('Autocomplete error', error);
+        logger.error('Autocomplete error', error);
       } finally {
         if (currentRequestId === requestIdRef.current) {
           setIsSearching(false);
@@ -102,7 +103,7 @@ export function TanzaniaAddressForm({ value, onChange, onAddressComplete }: Prop
         }
       }
     } catch (error) {
-      console.error('Place details error', error);
+      logger.error('Place details error', error);
     }
   };
 

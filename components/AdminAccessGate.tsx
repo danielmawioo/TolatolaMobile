@@ -7,6 +7,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { adminMyRoleGranted, fetchAdminMyRole } from '@/src/lib/dashboardBootstrap';
 import { queryKeys } from '@/src/lib/queryKeys';
 import { Theme } from '@/constants/Theme';
+import { logger } from '@/src/lib/logger';
 
 type Props = { children: React.ReactNode };
 
@@ -36,7 +37,7 @@ export function AdminAccessGate({ children }: Props) {
     const ok = adminMyRoleGranted(q.data ?? null);
     if (__DEV__) {
       // eslint-disable-next-line no-console
-      console.log('[admin:gate]', { adminRolePresent: ok, raw: q.data });
+      logger.info('[admin:gate]', { adminRolePresent: ok, raw: q.data });
     }
     setGranted(ok);
   }, [token, authLoading, q.isPending, q.data]);

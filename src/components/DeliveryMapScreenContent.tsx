@@ -9,6 +9,7 @@ import { Theme } from '@/constants/Theme';
 import { apiGet } from '@/src/services/api';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { logger } from '@/src/lib/logger';
 
 export default function DeliveryMapScreenContent() {
   const { session } = useAuth();
@@ -58,7 +59,7 @@ export default function DeliveryMapScreenContent() {
           heading: initial.coords.heading || 0
         });
       } catch (err) {
-        console.error('Location setup error', err);
+        logger.error('Location setup error', err);
       }
     };
 
@@ -96,7 +97,7 @@ export default function DeliveryMapScreenContent() {
           }
         }
       } catch (err) {
-        console.error('Error fetching route directions', err);
+        logger.error('Error fetching route directions', err);
       }
     };
 

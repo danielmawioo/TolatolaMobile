@@ -1,4 +1,5 @@
 import { GOOGLE_PLACES_API_KEY } from '@/src/config/env';
+import { logger } from '@/src/lib/logger';
 
 export type PlacePrediction = {
   placeId: string;
@@ -42,7 +43,7 @@ export async function fetchPlacePredictions(
   if (data.status === 'ZERO_RESULTS') return [];
   if (data.status !== 'OK') {
     if (__DEV__ && data.error_message) {
-      console.warn('[googlePlaces]', data.status, data.error_message);
+      logger.warn('[googlePlaces]', data.status, data.error_message);
     }
     return [];
   }

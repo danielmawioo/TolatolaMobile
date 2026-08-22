@@ -1,4 +1,5 @@
 import { APP_API_URL } from '@/src/config/env';
+import { logger } from '@/src/lib/logger';
 
 const baseUrl = APP_API_URL.replace(/\/$/, '');
 const apiPrefix = '/api';
@@ -51,15 +52,15 @@ export async function apiFetch(
   // On 401, attempt silent token refresh and retry
   if (res.status === 401 && _on401Handler) {
     try {
-      console.log('[API] 401 Unauthorized detected. Attempting token refresh...');
+      logger.info('[API] 401 Unauthorized detected. Attempting token refresh...');
       const newToken = await _on401Handler();
       if (newToken) {
-        console.log('[API] Token refresh succeeded. Retrying request with new token.');
+        logger.info('[API] Token refresh succeeded. Retrying request with new token.');
         headers.set('Authorization', `Bearer ${newToken}`);
         return fetch(url, { ...rest, headers });
       }
     } catch (err) {
-      console.error('[API] Direct token refresh intercept failed:', err);
+      logger.error('[API] Direct token refresh intercept failed:', err);
     }
   }
 

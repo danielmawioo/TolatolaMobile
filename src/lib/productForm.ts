@@ -76,3 +76,52 @@ export function validateProductForm(
   }
   return null;
 }
+
+export interface ProductCategoryLike {
+  id: string;
+  parent_id?: string | null;
+  name?: string;
+  slug?: string;
+}
+
+export interface ProductCategoryClassification {
+  selectedCategory: ProductCategoryLike | undefined;
+  selectedParentCategory: ProductCategoryLike | undefined;
+  isFashion: boolean;
+  isAgriculture: boolean;
+  isVehicles: boolean;
+  isReadyToEat: boolean;
+  isDrinks: boolean;
+}
+
+/**
+ * Classifies the selected product category into the special-case category
+ * groups the create/edit forms render extra fields for (fashion variations,
+ * vehicle details, ready-to-eat info, drink type). Previously duplicated
+ * identically in app/(vendor)/product/create.tsx and edit.tsx.
+ */
+export function classifyProductCategory(
+  categories: ProductCategoryLike[],
+  categoryId: string
+): ProductCategoryClassification {
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const selectedParentCategory = selectedCategory?.parent_id
+    ? categories.find((c) => c.id === selectedCategory.parent_id)
+    : selectedCategory;
+
+  const isFashion =
+    selectedParentCategory?.name?.toLowerCase() === 'fashion' ||
+    selectedCategory?.name?.toLowerCase() === 'fashion' ||
+    ['men', 'women', 'kids'].includes(selectedCategory?.name?.toLowerCase() || '') ||
+    ['men', 'women', 'kids'].includes(selectedCategory?.slug?.toLowerCase() || '');
+  const isAgriculture = selectedParentCategory?.name?.toLowerCase() === 'agriculture';
+  const isVehicles =
+    selectedParentCategory?.name?.toLowerCase() === 'vehicles' ||
+    selectedParentCategory?.name?.toLowerCase() === 'motorcycles' ||
+    selectedParentCategory?.name?.toLowerCase() === 'motorcyles';
+  const isReadyToEat =
+    selectedParentCategory?.name?.toLowerCase() === 'ready to eat' || selectedParentCategory?.slug === 'ready-to-eat';
+  const isDrinks = selectedParentCategory?.name?.toLowerCase() === 'drinks';
+
+  return { selectedCategory, selectedParentCategory, isFashion, isAgriculture, isVehicles, isReadyToEat, isDrinks };
+}

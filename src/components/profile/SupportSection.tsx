@@ -5,6 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 const STATUS_COLORS: Record<string, string> = {
   open: '#ef4444', in_progress: '#eab308', resolved: '#16a34a',
@@ -28,7 +29,7 @@ export function SupportSection({ accessToken }: Props) {
     try {
       const res = await apiGet<any>('/support/tickets', accessToken);
       setTickets(Array.isArray(res) ? res : res?.tickets || []);
-    } catch (e) { console.error('Tickets load error', e); }
+    } catch (e) { logger.error('Tickets load error', e); }
     setLoading(false);
   };
 

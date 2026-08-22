@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
 import { apiGet } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 const TYPE_ICON: Record<string, { icon: string; color: string }> = {
   payment: { icon: 'arrow-up', color: '#ef4444' },
@@ -25,7 +26,7 @@ export function TransactionHistorySection({ accessToken }: Props) {
       try {
         const res = await apiGet<any>('/profile/transactions', accessToken);
         setTxns(Array.isArray(res) ? res : res?.data || res?.transactions || []);
-      } catch (e) { console.error('Txn load error', e); }
+      } catch (e) { logger.error('Txn load error', e); }
       setLoading(false);
     })();
   }, [accessToken]);

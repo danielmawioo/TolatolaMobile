@@ -6,6 +6,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { resolveVendorGate } from '@/src/lib/dashboardBootstrap';
 import { queryKeys } from '@/src/lib/queryKeys';
 import { Theme } from '@/constants/Theme';
+import { logger } from '@/src/lib/logger';
 
 const SKIP_SEGMENTS = new Set(['register', 'kyc-pending', 'kyc-rejected']);
 
@@ -43,7 +44,7 @@ export function VendorOnboardingGate({ children }: Props) {
 
     if (__DEV__) {
       // eslint-disable-next-line no-console
-      console.log('[vendor:gate]', snap.screen);
+      logger.info('[vendor:gate]', snap.screen);
     }
 
     if (snap.screen === 'dashboard') return;
@@ -75,7 +76,7 @@ export function VendorOnboardingGate({ children }: Props) {
   if (!skipBootstrap && q.isError) {
     if (__DEV__) {
       // eslint-disable-next-line no-console
-      console.warn('[vendor:gate] bootstrap failed', q.error);
+      logger.warn('[vendor:gate] bootstrap failed', q.error);
     }
     return <>{children}</>;
   }

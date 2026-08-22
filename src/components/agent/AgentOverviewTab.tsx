@@ -5,6 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { formatTzs } from '@/src/lib/currency';
+import { logger } from '@/src/lib/logger';
 
 interface Props {
   agentProfile: any;
@@ -48,7 +49,7 @@ export function AgentOverviewTab({
         message: `Hello! Register on TOLA using my referral link to get started: ${link}`,
       });
     } catch (err) {
-      console.error('Share failed:', err);
+      logger.error('Share failed:', err);
     }
   };
 

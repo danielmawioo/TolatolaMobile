@@ -2,9 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useAgentDashboardData } from '@/src/hooks/useAgentDashboardData';
 import { apiGet } from '@/src/services/api';
 
-jest.mock('@/src/services/api', () => ({
-  apiGet: jest.fn(),
-}));
+jest.mock('@/src/services/api');
 
 jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),

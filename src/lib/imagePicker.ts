@@ -13,6 +13,7 @@ import { Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { uriToBase64 } from './imageUpload';
+import { logger } from '@/src/lib/logger';
 
 export type PickedImage = {
   uri: string;
@@ -107,7 +108,7 @@ export async function pickImageSafe(
       throw error;
     }
 
-    console.warn(
+    logger.warn(
       '[imagePicker] expo-image-picker native module failed, falling back to expo-document-picker:',
       error instanceof Error ? error.message : error,
     );
@@ -155,7 +156,7 @@ async function pickImageViaDocumentPicker(): Promise<PickedImage | null> {
       fileName: asset.name || `image_${Date.now()}.${ext}`,
     };
   } catch (docError: unknown) {
-    console.error('[imagePicker] Document picker also failed:', docError);
+    logger.error('[imagePicker] Document picker also failed:', docError);
     Alert.alert(
       'Upload Error',
       'Unable to select an image. Please make sure the app has storage permissions and try again.',

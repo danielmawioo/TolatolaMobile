@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { apiPost } from './api';
+import { logger } from '@/src/lib/logger';
 
 // Configure how notifications appear when app is foregrounded
 Notifications.setNotificationHandler({
@@ -21,12 +22,12 @@ Notifications.setNotificationHandler({
  */
 export async function registerForPushNotifications(accessToken?: string): Promise<string | null> {
   if (!Device.isDevice && Platform.OS === 'ios') {
-    console.log('[PUSH] Must use physical device for iOS push notifications');
+    logger.info('[PUSH] Must use physical device for iOS push notifications');
     return null;
   }
 
   if (!Device.isDevice) {
-    console.log('[PUSH] Simulator/Emulator detected. Proceeding with Android push registration...');
+    logger.info('[PUSH] Simulator/Emulator detected. Proceeding with Android push registration...');
   }
 
   // Request permissions
@@ -39,7 +40,7 @@ export async function registerForPushNotifications(accessToken?: string): Promis
   }
 
   if (finalStatus !== 'granted') {
-    console.log('[PUSH] Failed to get push token — permission denied');
+    logger.info('[PUSH] Failed to get push token — permission denied');
     return null;
   }
 
@@ -72,33 +73,33 @@ export async function registerForPushNotifications(accessToken?: string): Promis
 
   try {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId || 'e2e4ea34-64fc-4698-9baf-329e34255023';
-    console.log('[PUSH] Retrieving Expo push token with projectId:', projectId);
+    logger.info('[PUSH] Retrieving Expo push token with projectId:', projectId);
     const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
     const token = tokenData.data;
-    console.log('[PUSH] Expo push token retrieved successfully:', token);
+    logger.info('[PUSH] Expo push token retrieved successfully:', token);
 
     // Send token to backend
     if (token) {
       try {
         if (accessToken) {
-          console.log('[PUSH] Attempting to register authenticated token with backend...');
+          logger.info('[PUSH] Attempting to register authenticated token with backend...');
           const result = await apiPost('/profile/fcm-token', { token, platform: Platform.OS }, accessToken);
-          console.log('[PUSH] Authenticated token registered successfully:', result);
+          logger.info('[PUSH] Authenticated token registered successfully:', result);
         } else {
-          console.log('[PUSH] Attempting to register guest token with backend...');
+          logger.info('[PUSH] Attempting to register guest token with backend...');
           const result = await apiPost('/notifications/register-guest-token', { token, platform: Platform.OS });
-          console.log('[PUSH] Guest token registered successfully:', result);
+          logger.info('[PUSH] Guest token registered successfully:', result);
         }
       } catch (e: any) {
-        console.error('[PUSH] Failed to register token with backend. Error details:', e.message || e);
+        logger.error('[PUSH] Failed to register token with backend. Error details:', e.message || e);
       }
     }
 
     return token;
   } catch (error: any) {
-    console.error('[PUSH] Error getting push token:', error.message || error);
+    logger.error('[PUSH] Error getting push token:', error.message || error);
     return null;
   }
 }

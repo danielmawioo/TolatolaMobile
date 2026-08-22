@@ -10,6 +10,7 @@ import React, {
 import { getProductImageUrl } from '@/src/lib/productImage';
 import { getShopIdForNavigation } from '@/src/lib/shopNavigation';
 import type { Product } from '@/src/types';
+import { logger } from '@/src/lib/logger';
 
 const STORAGE_KEY = '@tolatola/wishlist_items_v1';
 
@@ -64,7 +65,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (e) {
-        console.warn('[Wishlist] load failed', e);
+        logger.warn('[Wishlist] load failed', e);
       } finally {
         setIsLoading(false);
       }
@@ -75,7 +76,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch (e) {
-      console.warn('[Wishlist] save failed', e);
+      logger.warn('[Wishlist] save failed', e);
     }
   }, []);
 

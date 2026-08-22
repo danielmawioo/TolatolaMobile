@@ -6,6 +6,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPatch } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 const TAB_NEW = 'new';
 const TAB_PREPARING = 'preparing';
@@ -46,7 +47,7 @@ export function VendorOrdersTab({ shopId, accessToken, onOrdersLoaded }: Props) 
       const list = res?.orders || (Array.isArray(res) ? res : []);
       setOrders(list);
       onOrdersLoaded?.(list);
-    } catch (e) { console.error('Failed to load orders', e); }
+    } catch (e) { logger.error('Failed to load orders', e); }
     setLoading(false);
   }, [shopId, accessToken]);
 

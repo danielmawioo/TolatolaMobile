@@ -6,6 +6,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Location from 'expo-location';
 import { Theme } from '@/constants/Theme';
+import { logger } from '@/src/lib/logger';
 
 // Only import MapView on native platforms
 let MapView: any = null;
@@ -19,7 +20,7 @@ if (Platform.OS !== 'web') {
     Marker = Maps.Marker;
     PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
   } catch (e) {
-    console.warn('[MapPicker] react-native-maps not available:', e);
+    logger.warn('[MapPicker] react-native-maps not available:', e);
   }
 }
 
@@ -127,7 +128,7 @@ export default function MapPicker({
       if (!isExpanded) setIsExpanded(true);
       setTimeout(() => animateToCoords(lat, lng), 300);
     } catch (error: any) {
-      console.error('[MapPicker] Error getting location:', error);
+      logger.error('[MapPicker] Error getting location:', error);
       setErrorMsg('Could not fetch current GPS location.');
     } finally {
       setIsLocating(false);

@@ -7,6 +7,7 @@ import { OptimizedImage } from '@/components/OptimizedImage';
 import type { Product } from '@/src/types';
 
 import { useThemeColors } from '@/src/hooks/useThemeColors';
+import { logger } from '@/src/lib/logger';
 
 interface ProductCardProps {
   product: Product;
@@ -55,7 +56,7 @@ export function ProductCard({
         title: product.name,
       });
     } catch (error) {
-      console.error('[SHARE] Error sharing product:', error);
+      logger.error('[SHARE] Error sharing product:', error);
     }
   };
 

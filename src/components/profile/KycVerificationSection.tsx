@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPost } from '@/src/services/api';
 import { pickImageSafe, requestImagePermissions } from '@/src/lib/imagePicker';
+import { logger } from '@/src/lib/logger';
 
 const ID_TYPES = [
   { id: 'nida', name: 'NIDA (National ID)' },
@@ -56,7 +57,7 @@ export function KycVerificationSection({ accessToken, userId }: Props) {
           selfie_url: kycData.selfie_url || '',
         }));
       }
-    } catch (e) { console.error('KYC load error', e); }
+    } catch (e) { logger.error('KYC load error', e); }
     setLoading(false);
   };
 

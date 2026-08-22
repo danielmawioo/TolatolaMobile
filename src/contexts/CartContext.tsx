@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { apiGet, apiPost, apiDelete } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 const CART_STORAGE_KEY = '@tolatola/cart';
 
@@ -50,7 +51,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const items = raw ? JSON.parse(raw) : [];
       setState({ items, isLoading: false });
     } catch (error) {
-      console.error('Failed to load cart:', error);
+      logger.error('Failed to load cart:', error);
       setState(s => ({ ...s, isLoading: false }));
     }
   }, []);
@@ -103,7 +104,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return { ...prev, items: newItems };
       });
     } catch (error) {
-      console.error('Failed to add item:', error);
+      logger.error('Failed to add item:', error);
     }
   }, [isAuthenticated, session?.access_token]);
 
@@ -115,7 +116,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return { ...prev, items: newItems };
       });
     } catch (error) {
-      console.error('Failed to remove item:', error);
+      logger.error('Failed to remove item:', error);
     }
   }, []);
 
@@ -128,7 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return { ...prev, items: newItems };
       });
     } catch (error) {
-      console.error('Failed to update quantity:', error);
+      logger.error('Failed to update quantity:', error);
     }
   }, [removeItem]);
 
@@ -137,7 +138,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.removeItem(CART_STORAGE_KEY);
       setState(prev => ({ ...prev, items: [] }));
     } catch (error) {
-      console.error('Failed to clear cart:', error);
+      logger.error('Failed to clear cart:', error);
     }
   }, []);
 

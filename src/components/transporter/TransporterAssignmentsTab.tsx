@@ -8,6 +8,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { apiGet, apiPatch, apiPost } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 const TAB_AVAILABLE = 'available';
 const TAB_ACCEPTED = 'accepted';
@@ -39,7 +40,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
     try {
       const res = await apiGet<any>('/transporter/jobs', accessToken);
       setAssignments(Array.isArray(res) ? res : res?.assignments || res?.data || []);
-    } catch (e) { console.error('Fetch assignments error', e); }
+    } catch (e) { logger.error('Fetch assignments error', e); }
     setLoading(false);
   }, [accessToken]);
 

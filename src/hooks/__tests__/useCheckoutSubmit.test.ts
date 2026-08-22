@@ -5,9 +5,7 @@ import { apiPost } from '@/src/services/api';
 import { INITIAL_ADDRESS, type AddressData } from '@/src/constants/checkout';
 import type { CartItem } from '@/src/contexts/CartContext';
 
-jest.mock('@/src/services/api', () => ({
-  apiPost: jest.fn(),
-}));
+jest.mock('@/src/services/api');
 
 jest.mock('expo-router', () => ({
   router: { replace: jest.fn() },

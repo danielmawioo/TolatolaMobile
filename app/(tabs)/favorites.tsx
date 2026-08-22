@@ -21,6 +21,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useCart } from '@/src/contexts/CartContext';
 import { apiGet, apiDelete } from '@/src/services/api';
 import type { Product } from '@/src/types';
+import { logger } from '@/src/lib/logger';
 
 export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
@@ -45,7 +46,7 @@ export default function FavoritesScreen() {
         .filter(p => !!p);
       setProducts(items);
     } catch (err) {
-      console.error('[FAVORITES] Error fetching favorites:', err);
+      logger.error('[FAVORITES] Error fetching favorites:', err);
     } finally {
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export default function FavoritesScreen() {
     try {
       await apiDelete(`/products/${productId}/like`, session.access_token);
     } catch (err) {
-      console.error('[FAVORITES] Error unliking product:', err);
+      logger.error('[FAVORITES] Error unliking product:', err);
       // Re-fetch on error to restore the list
       fetchFavorites(false);
     }

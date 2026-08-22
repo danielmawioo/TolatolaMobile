@@ -1,13 +1,9 @@
 type LogLevel = 'info' | 'warn' | 'error';
-type LogSink = (level: LogLevel, message: string, meta?: unknown) => void;
+type LogSink = (level: LogLevel, message: string, args: unknown[]) => void;
 
-let sink: LogSink = (level, message, meta) => {
+let sink: LogSink = (level, message, args) => {
   const consoleMethod = level === 'info' ? console.log : level === 'warn' ? console.warn : console.error;
-  if (meta !== undefined) {
-    consoleMethod(message, meta);
-  } else {
-    consoleMethod(message);
-  }
+  consoleMethod(message, ...args);
 };
 
 /**
@@ -19,7 +15,7 @@ export function setLogSink(next: LogSink) {
 }
 
 export const logger = {
-  info: (message: string, meta?: unknown) => sink('info', message, meta),
-  warn: (message: string, meta?: unknown) => sink('warn', message, meta),
-  error: (message: string, meta?: unknown) => sink('error', message, meta),
+  info: (message: string, ...args: unknown[]) => sink('info', message, args),
+  warn: (message: string, ...args: unknown[]) => sink('warn', message, args),
+  error: (message: string, ...args: unknown[]) => sink('error', message, args),
 };

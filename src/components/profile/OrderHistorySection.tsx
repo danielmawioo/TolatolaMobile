@@ -5,6 +5,7 @@ import { Theme } from '@/constants/Theme';
 import { apiGet } from '@/src/services/api';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { router } from 'expo-router';
+import { logger } from '@/src/lib/logger';
 
 const STATUS_COLORS: Record<string, string> = {
   delivered: '#16a34a', completed: '#16a34a', shipped: '#2563eb',
@@ -23,7 +24,7 @@ export function OrderHistorySection({ accessToken }: Props) {
       try {
         const res = await apiGet<any>('/orders', accessToken);
         setOrders(Array.isArray(res) ? res : res?.data || res?.orders || []);
-      } catch (e) { console.error('Orders load error', e); }
+      } catch (e) { logger.error('Orders load error', e); }
       setLoading(false);
     })();
   }, [accessToken]);

@@ -22,6 +22,7 @@ import { resolveCategoryImage } from '@/src/constants/categoryImages';
 import { getCachedData, setCachedData, CACHE_KEYS } from '@/src/services/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { OfflineMessage } from '@/components/OfflineMessage';
+import { logger } from '@/src/lib/logger';
 
 type Category = {
   id: string;
@@ -57,7 +58,7 @@ export default function CategoriesScreen() {
         await setCachedData(CACHE_KEYS.CATEGORIES, res.data);
       }
     } catch (error) {
-      console.error('Failed to load categories, trying cache', error);
+      logger.error('Failed to load categories, trying cache', error);
       setIsOffline(true);
       const cached = await getCachedData<Category[]>(CACHE_KEYS.CATEGORIES);
       if (cached) {

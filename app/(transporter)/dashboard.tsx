@@ -13,6 +13,7 @@ import { TransporterAssignmentsTab } from '@/src/components/transporter/Transpor
 import { TransporterPaymentsTab } from '@/src/components/transporter/TransporterPaymentsTab';
 import { TransporterWithdrawalsTab } from '@/src/components/transporter/TransporterWithdrawalsTab';
 import { TransporterSubscriptionTab } from '@/src/components/transporter/TransporterSubscriptionTab';
+import { logger } from '@/src/lib/logger';
 
 const TABS = ['Deliveries', 'Payments', 'Withdrawals', 'Membership', 'Profile'] as const;
 
@@ -112,7 +113,7 @@ export default function TransporterDashboardScreen() {
         setUnreadNotifs(notifRes?.unread_count || 0);
       } catch { /* silent */ }
     } catch (error) {
-      console.error('Transporter Dashboard Fetch Error:', error);
+      logger.error('Transporter Dashboard Fetch Error:', error);
     } finally {
       setLoading(false);
     }
@@ -156,7 +157,7 @@ export default function TransporterDashboardScreen() {
       setLocationStatus('updated');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      console.error('Location update error:', e);
+      logger.error('Location update error:', e);
       setLocationStatus('error');
     } finally {
       setIsUpdatingLocation(false);
@@ -198,11 +199,11 @@ export default function TransporterDashboardScreen() {
               speed: currentLoc.coords.speed || null,
             }, session.access_token);
           } catch (err) {
-            console.warn('Real-time location stream error:', err);
+            logger.warn('Real-time location stream error:', err);
           }
         }, 10000);
       } catch (err) {
-        console.warn('Location streaming setup failed:', err);
+        logger.warn('Location streaming setup failed:', err);
       }
     };
 

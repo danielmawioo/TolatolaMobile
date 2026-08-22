@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { WebView } from 'react-native-webview';
+import { logger } from '@/src/lib/logger';
 
 /**
  * Generates the HTML for the transporter interactive Leaflet/OpenStreetMap inside a WebView.
@@ -187,7 +188,7 @@ export default function DeliveryMapScreenContent() {
           }
         );
       } catch (err) {
-        console.error('Location setup error', err);
+        logger.error('Location setup error', err);
       }
     };
 
@@ -245,7 +246,7 @@ export default function DeliveryMapScreenContent() {
           }
         }
       } catch (err) {
-        console.error('Error fetching route directions', err);
+        logger.error('Error fetching route directions', err);
       } finally {
         setLoading(false);
       }

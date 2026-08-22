@@ -18,6 +18,7 @@ import { TanzaniaAddressForm } from '@/src/components/checkout/TanzaniaAddressFo
 import { PaymentMethodPicker } from '@/src/components/checkout/PaymentMethodPicker';
 import { OrderSummary } from '@/src/components/checkout/OrderSummary';
 import { useCheckoutSubmit } from '@/src/hooks/useCheckoutSubmit';
+import { logger } from '@/src/lib/logger';
 
 // Lazy-load the map picker so it doesn't block checkout page render
 const MapPicker = lazy(() => import('@/src/components/MapPicker'));
@@ -194,7 +195,7 @@ export default function CheckoutScreen() {
       }
       setShopDeliveries(newDeliveries);
     } catch (err) {
-      console.error('Failed to calculate delivery', err);
+      logger.error('Failed to calculate delivery', err);
       setError('Could not calculate delivery routes. Please check your connection and try again.');
       setShowErrorModal(true);
     } finally {

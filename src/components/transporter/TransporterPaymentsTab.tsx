@@ -5,6 +5,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
 import { apiGet } from '@/src/services/api';
+import { logger } from '@/src/lib/logger';
 
 const STATUS_ICON: Record<string, { icon: string; color: string }> = {
   pending: { icon: 'clock-o', color: '#eab308' },
@@ -31,7 +32,7 @@ export function TransporterPaymentsTab({ transporterId, accessToken }: Props) {
       setPayments(paymentsRes?.payments || []);
       setAvailable(financeRes?.withdrawable_balance ?? paymentsRes?.availableBalance ?? 0);
       setPending(financeRes?.pending_balance ?? paymentsRes?.pendingBalance ?? 0);
-    } catch (e) { console.error('Payments load error', e); }
+    } catch (e) { logger.error('Payments load error', e); }
     setLoading(false);
   };
 

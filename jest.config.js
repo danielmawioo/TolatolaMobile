@@ -5,4 +5,12 @@ module.exports = {
   // test, and it currently imports functions that don't exist yet on an in-progress
   // auth feature — importing it under Jest would crash test discovery.
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/', 'src/lib/roleRedirect.test.ts'],
+  coverageThreshold: {
+    global: {
+      statements: 55,
+      branches: 40,
+      functions: 40,
+      lines: 50,
+    },
+  },
 };
