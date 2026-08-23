@@ -22,10 +22,52 @@ const STATUS_COLORS: Record<string, string> = {
   delivered: '#16a34a', cancelled: '#ef4444',
 };
 
+interface AssignmentShop {
+  name?: string;
+  district?: string;
+  region?: string;
+  address?: string;
+  phone?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+interface AssignmentShippingAddress {
+  full_name?: string;
+  district?: string;
+  region?: string;
+  street?: string;
+  address?: string;
+  ward?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+interface AssignmentOrder {
+  order_number?: string;
+  users?: { full_name?: string; phone?: string };
+  shipping_address?: AssignmentShippingAddress;
+}
+
+interface TransporterAssignment {
+  id: string;
+  status: string;
+  is_available_order?: boolean;
+  accepted_at?: string;
+  delivered_at?: string;
+  order_id?: string;
+  delivery_fee?: number;
+  distance_km?: number;
+  transport_methods?: { name?: string };
+  shops?: AssignmentShop;
+  orders?: AssignmentOrder;
+  [key: string]: unknown;
+}
+
 interface Props { transporterId: string; accessToken: string; }
 
 export function TransporterAssignmentsTab({ transporterId, accessToken }: Props) {
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<TransporterAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>(TAB_AVAILABLE);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -66,7 +108,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
       if (isAvailable && newStatus === 'accepted' && orderId) {
         await apiPost(`/assignments/accept/${orderId}`, {}, accessToken);
       } else {
-        const data: any = { status: newStatus };
+        const data: { status: string; picked_up_at?: string; delivered_at?: string } = { status: newStatus };
         if (newStatus === 'picked_up') data.picked_up_at = new Date().toISOString();
         if (newStatus === 'delivered') data.delivered_at = new Date().toISOString();
         await apiPatch(`/assignments/${id}`, data, accessToken);
@@ -124,7 +166,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
 
   const currentData = TABS_DATA.find(t => t.key === activeTab)?.data || [];
 
-  const renderCard = (a: any) => {
+  const renderCard = (a: TransporterAssignment) => {
     const isAccepted = ['accepted', 'picked_up', 'in_transit', 'delivered'].includes(a.status) || !!a.accepted_at;
     const isNotAccepted = ['assigned', 'ready_for_pickup', 'available'].includes(a.status) && !a.accepted_at;
     const displayStatus = (a.status === 'assigned' && a.accepted_at) ? 'accepted' : a.status;
@@ -151,13 +193,13 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
             <Text style={st.locationSub}>{a.shops?.district}, {a.shops?.region}</Text>
             {isAccepted && a.shops?.address && <Text style={st.locationDetail}>{a.shops.address}</Text>}
             {isAccepted && a.shops?.latitude && a.shops?.longitude && (
-              <Pressable style={st.mapLink} onPress={() => openMap(a.shops.latitude, a.shops.longitude)}>
+              <Pressable style={st.mapLink} onPress={() => openMap(a.shops!.latitude!, a.shops!.longitude!)}>
                 <FontAwesome name="map-marker" size={12} color={Theme.primary} />
                 <Text style={st.mapLinkText}>View Pickup Location</Text>
               </Pressable>
             )}
             {isAccepted && a.shops?.phone && (
-              <Pressable style={st.phoneLink} onPress={() => callPhone(a.shops.phone)}>
+              <Pressable style={st.phoneLink} onPress={() => callPhone(a.shops!.phone!)}>
                 <FontAwesome name="phone" size={12} color="#2563eb" />
                 <Text style={st.phoneLinkText}>{a.shops.phone}</Text>
               </Pressable>
@@ -177,7 +219,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
               <>
                 <Text style={st.locationDetail}>{a.orders.shipping_address.street || a.orders.shipping_address.address}, {a.orders.shipping_address.ward}</Text>
                 {a.orders.shipping_address.latitude && a.orders.shipping_address.longitude && (
-                  <Pressable style={st.mapLink} onPress={() => openMap(a.orders.shipping_address.latitude, a.orders.shipping_address.longitude)}>
+                  <Pressable style={st.mapLink} onPress={() => openMap(a.orders!.shipping_address!.latitude!, a.orders!.shipping_address!.longitude!)}>
                     <FontAwesome name="map-marker" size={12} color={Theme.primary} />
                     <Text style={st.mapLinkText}>View Delivery Location</Text>
                   </Pressable>
@@ -185,7 +227,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
               </>
             )}
             {isAccepted && a.orders?.users?.phone && (
-              <Pressable style={st.phoneLink} onPress={() => callPhone(a.orders.users.phone)}>
+              <Pressable style={st.phoneLink} onPress={() => callPhone(a.orders!.users!.phone!)}>
                 <FontAwesome name="phone" size={12} color="#2563eb" />
                 <Text style={st.phoneLinkText}>{a.orders.users.phone}</Text>
               </Pressable>
