@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { Alert } from 'react-native';
 import { apiGet } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
-import { initialProductFormData, classifyProductCategory, type ProductFormData } from '@/src/lib/productForm';
+import { initialProductFormData, classifyProductCategory, type ProductFormData, type ProductCategoryLike } from '@/src/lib/productForm';
 
 export interface ProductColor {
   name: string;
@@ -21,7 +21,7 @@ export interface EditProductFormData extends ProductFormData {
  */
 export function useEditProductData(id: string | undefined, accessToken: string | null | undefined) {
   const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<ProductCategoryLike[]>([]);
 
   const [images, setImages] = useState<string[]>([]);
   const [colors, setColors] = useState<ProductColor[]>([]);
@@ -39,11 +39,11 @@ export function useEditProductData(id: string | undefined, accessToken: string |
       try {
         // Fetch categories and product details
         const [catsRes, productRes] = await Promise.all([
-          apiGet<any>('/categories'),
+          apiGet<{ data?: ProductCategoryLike[]; categories?: ProductCategoryLike[] } | ProductCategoryLike[]>('/categories'),
           apiGet<any>(`/products/${id}`, accessToken)
         ]);
 
-        const cats = catsRes?.data || catsRes?.categories || [];
+        const cats = Array.isArray(catsRes) ? catsRes : (catsRes?.data || catsRes?.categories || []);
         setCategories(cats);
 
         const product = productRes?.data || productRes || {};
@@ -80,7 +80,7 @@ export function useEditProductData(id: string | undefined, accessToken: string |
         setSizes(product.sizes || []);
 
         // Resolve parent and subcategory
-        const cat = cats.find((c: any) => c.id === product.category_id);
+        const cat = cats.find((c) => c.id === product.category_id);
         if (cat) {
           if (cat.parent_id) {
             setParentCategoryId(cat.parent_id);
