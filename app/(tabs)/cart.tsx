@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '@/constants/Theme';
 import { gap } from '@/constants/layout';
-import { useCart } from '@/src/contexts/CartContext';
+import { useCart, type CartItem } from '@/src/contexts/CartContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Skeleton } from '@/components/Skeleton';
@@ -61,9 +61,9 @@ export default function CartScreen() {
     );
   }
 
-  const renderCartItem = ({ item }: { item: any }) => (
+  const renderCartItem = ({ item }: { item: CartItem }) => (
     <View style={styles.cartItem}>
-      <OptimizedImage source={item.image_url || (item.images && item.images[0])} width={88} height={88} style={styles.itemImage} />
+      <OptimizedImage source={item.image_url} width={88} height={88} style={styles.itemImage} />
       <View style={styles.itemInfo}>
         <View style={styles.itemHeaderRow}>
           <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
