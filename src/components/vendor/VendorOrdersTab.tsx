@@ -31,10 +31,48 @@ const STATUS_COLORS: Record<string, string> = {
   completed: '#22c55e', cancelled: '#ef4444',
 };
 
-interface Props { shopId: string; accessToken: string; onOrdersLoaded?: (orders: any[]) => void; }
+interface VendorOrderItem {
+  id: string;
+  quantity: number;
+  unit_price?: number;
+  price?: number;
+  total_price?: number;
+  delivery_fee?: number;
+  products?: { name?: string };
+}
+
+interface VendorOrder {
+  id: string;
+  order_number?: string;
+  status: string;
+  created_at: string;
+  items?: VendorOrderItem[];
+  users?: { full_name?: string; email?: string };
+  shipping_address?: {
+    full_name?: string;
+    phone?: string;
+    address?: string;
+    street?: string;
+    ward?: string;
+    region?: string;
+  };
+  transporter_assignment?: {
+    status?: string;
+    accepted_at?: string;
+    transporters?: {
+      business_name?: string;
+      vehicle_type?: string;
+      vehicle_registration?: string;
+      users?: { full_name?: string; phone?: string };
+    };
+  };
+  [key: string]: unknown;
+}
+
+interface Props { shopId: string; accessToken: string; onOrdersLoaded?: (orders: VendorOrder[]) => void; }
 
 export function VendorOrdersTab({ shopId, accessToken, onOrdersLoaded }: Props) {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<OrderTab>(TAB_NEW);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -91,10 +129,10 @@ export function VendorOrdersTab({ shopId, accessToken, onOrdersLoaded }: Props) 
     return `${Math.floor(h / 24)}d ago`;
   };
 
-  const getTotal = (o: any) =>
-    (o.items || []).reduce((s: number, i: any) => s + Number(i.total_price ?? ((i.unit_price ?? i.price ?? 0) * (i.quantity ?? 0))) + Number(i.delivery_fee || 0), 0);
+  const getTotal = (o: VendorOrder) =>
+    (o.items || []).reduce((s: number, i) => s + Number(i.total_price ?? ((i.unit_price ?? i.price ?? 0) * (i.quantity ?? 0))) + Number(i.delivery_fee || 0), 0);
 
-  const getCustomer = (o: any) =>
+  const getCustomer = (o: VendorOrder) =>
     o.users?.full_name || o.shipping_address?.full_name || o.users?.email || o.shipping_address?.phone || 'Guest';
 
   const newOrders = orders.filter(o => ['pending', 'pending_payment', 'confirmed', 'paid', 'payment_received'].includes(o.status));
@@ -113,7 +151,7 @@ export function VendorOrdersTab({ shopId, accessToken, onOrdersLoaded }: Props) 
 
   const currentTabData = TABS_DATA.find(t => t.key === activeTab);
 
-  const renderActionButton = (order: any) => {
+  const renderActionButton = (order: VendorOrder) => {
     const status = order.status;
     if (status === 'pending' || status === 'paid') {
       return (
@@ -235,7 +273,7 @@ export function VendorOrdersTab({ shopId, accessToken, onOrdersLoaded }: Props) 
                       <View style={s.detailSection}>
                         <Text style={s.detailLabel}>Items ({(order.items || []).length})</Text>
                         <View style={s.itemsList}>
-                          {(order.items || []).map((item: any) => (
+                          {(order.items || []).map((item) => (
                             <View key={item.id} style={s.itemRow}>
                               <Text style={s.itemName} numberOfLines={1}>{item.products?.name || 'Item'} × {item.quantity}</Text>
                               <View style={s.itemPriceCol}>
