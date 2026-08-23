@@ -3,7 +3,8 @@ import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { apiPost } from '@/src/services/api';
-import { validateProductForm, type ProductFormData } from '@/src/lib/productForm';
+import type { ProductFormData } from '@/src/lib/productForm';
+import { ProductInputSchema } from '@/src/schemas/product';
 import type { ProductColor } from '@/src/hooks/useEditProductData';
 import type { ProductCategoryFlags } from '@/src/hooks/useUpdateProductSubmit';
 
@@ -68,9 +69,16 @@ export function useCreateProductSubmit(params: UseCreateProductSubmitParams) {
   const handleCreate = async () => {
     const { accessToken, shopId, formData, images, colors, sizes, flags } = params;
 
-    const formError = validateProductForm(formData, flags.isAgriculture);
-    if (formError) {
-      Alert.alert('Error', formError);
+    const parsedInput = ProductInputSchema.safeParse(formData);
+    if (!parsedInput.success) {
+      Alert.alert('Error', parsedInput.error.issues[0].message);
+      return;
+    }
+    // Not part of the schema: weight_unit is only required when the selected
+    // category classifies as agriculture, which depends on category lookups
+    // outside the form data itself.
+    if (flags.isAgriculture && !formData.weight_unit) {
+      Alert.alert('Error', 'Please select a weight unit for agricultural products.');
       return;
     }
 

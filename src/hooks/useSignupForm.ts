@@ -6,6 +6,7 @@ import { useGoogleAuth } from '@/src/hooks/useGoogleAuth';
 import { apiGet } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
 import { captureException } from '@/src/lib/errorTracking';
+import { SignupInputSchema } from '@/src/schemas/auth';
 
 export type SignupUserType = 'customer' | 'vendor' | 'transporter';
 
@@ -107,8 +108,13 @@ export function useSignupForm({ initialRole, initialReferralCode }: UseSignupFor
       setError('Please agree to the Terms and Privacy Policy');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    const parsedInput = SignupInputSchema.safeParse({
+      email: email.trim(),
+      password,
+      fullName: fullName.trim(),
+    });
+    if (!parsedInput.success) {
+      setError(parsedInput.error.issues[0].message);
       return;
     }
     try {

@@ -58,25 +58,6 @@ export const initialProductFormData: ProductFormData = {
   drink_section: '',
 };
 
-/**
- * Returns a user-facing error message if the form is invalid, or null if it's ready to submit.
- */
-export function validateProductForm(
-  formData: Pick<ProductFormData, 'name' | 'price' | 'stock_quantity' | 'category_id' | 'weight_unit'>,
-  isAgriculture: boolean
-): string | null {
-  if (!formData.name || !formData.price || !formData.stock_quantity) {
-    return 'Please fill in Name, Price, and Stock Quantity.';
-  }
-  if (!formData.category_id) {
-    return 'Please select a product category before uploading.';
-  }
-  if (isAgriculture && !formData.weight_unit) {
-    return 'Please select a weight unit for agricultural products.';
-  }
-  return null;
-}
-
 export interface ProductCategoryLike {
   id: string;
   parent_id?: string | null;
