@@ -10,6 +10,7 @@ import { useCreateProductSubmit } from '@/src/hooks/useCreateProductSubmit';
 import { ProductImagesPicker } from '@/src/components/vendorProduct/ProductImagesPicker';
 import { FashionVariationsEditor } from '@/src/components/vendorProduct/FashionVariationsEditor';
 import { ProductOptionPickerModal, type ActiveModal } from '@/src/components/vendorProduct/ProductOptionPickerModal';
+import { ProductFormFields } from '@/src/components/vendorProduct/ProductFormFields';
 
 export default function CreateProductScreen() {
   const insets = useSafeAreaInsets();
@@ -69,83 +70,21 @@ export default function CreateProductScreen() {
             onUploadingChange={setUploadingImage}
           />
 
-          <Text style={styles.label}>Product Name *</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.name}
-            onChangeText={(t) => setFormData(f => ({ ...f, name: t }))}
-            placeholder="e.g. Premium Basmati Rice"
-            placeholderTextColor={Theme.textMuted}
+          <ProductFormFields
+            name={formData.name}
+            onNameChange={(t) => setFormData(f => ({ ...f, name: t }))}
+            price={formData.price}
+            onPriceChange={(t) => setFormData(f => ({ ...f, price: t }))}
+            stockQuantity={formData.stock_quantity}
+            onStockQuantityChange={(t) => setFormData(f => ({ ...f, stock_quantity: t }))}
+            categories={categories}
+            parentCategoryId={parentCategoryId}
+            subCategoryId={subCategoryId}
+            selectedGradeLabel={selectedGradeLabel}
+            onCategoryPress={() => setActiveModal('category')}
+            onGradePress={() => setActiveModal('grade')}
+            onSubcategoryPress={() => setActiveModal('subcategory')}
           />
-
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Price (TZS) *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.price}
-                onChangeText={(t) => setFormData(f => ({ ...f, price: t }))}
-                placeholder="e.g. 10000"
-                placeholderTextColor={Theme.textMuted}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={{ width: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Stock Quantity *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.stock_quantity}
-                onChangeText={(t) => setFormData(f => ({ ...f, stock_quantity: t }))}
-                placeholder="e.g. 100"
-                placeholderTextColor={Theme.textMuted}
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Category *</Text>
-              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('category')}>
-                <Text
-                  style={parentCategoryId ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
-                  numberOfLines={1}
-                >
-                  {categories.find(c => c.id === parentCategoryId)?.name || 'Select Category'}
-                </Text>
-                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
-              </Pressable>
-            </View>
-            <View style={{ width: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Quality Grade</Text>
-              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('grade')}>
-                <Text
-                  style={selectedGradeLabel ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
-                  numberOfLines={1}
-                >
-                  {selectedGradeLabel || 'Select Grade'}
-                </Text>
-                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
-              </Pressable>
-            </View>
-          </View>
-
-          {categories.filter(c => c.parent_id === parentCategoryId).length > 0 && (
-            <View style={{ marginTop: 12 }}>
-              <Text style={styles.label}>Subcategory *</Text>
-              <Pressable style={styles.pickerButton} onPress={() => setActiveModal('subcategory')}>
-                <Text
-                  style={subCategoryId ? styles.pickerButtonText : styles.pickerButtonPlaceholder}
-                  numberOfLines={1}
-                >
-                  {categories.find(c => c.id === subCategoryId)?.name || 'Select Subcategory'}
-                </Text>
-                <FontAwesome name="chevron-down" size={12} color={Theme.textMuted} />
-              </Pressable>
-            </View>
-          )}
 
           {isAgriculture && (
             <View style={{ marginTop: 12 }}>
