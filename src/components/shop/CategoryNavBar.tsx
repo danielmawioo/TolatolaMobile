@@ -13,8 +13,16 @@ interface ThemeColors {
   catCircleBorder: string;
 }
 
+interface NavCategory {
+  id: string;
+  parent_id?: string | null;
+  name?: string;
+  slug?: string;
+  image_url?: string | null;
+}
+
 interface CategoryNavBarProps {
-  categories: any[];
+  categories: NavCategory[];
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string | null) => void;
   theme: ThemeColors;
@@ -45,7 +53,7 @@ export function CategoryNavBar({ categories, selectedCategory, onSelectCategory,
           </View>
           <Text style={[styles.catCircleLabel, { color: theme.textSecondary }, !selectedCategory && styles.catCircleLabelActive]}>All</Text>
         </Pressable>
-        {categories.filter((c: any) => !c.parent_id).sort((a: any, b: any) => {
+        {categories.filter((c) => !c.parent_id).sort((a, b) => {
           const isAService = a.slug === "services" || a.name?.toLowerCase() === "services"
           const isBService = b.slug === "services" || b.name?.toLowerCase() === "services"
           if (isAService && !isBService) return 1
@@ -77,7 +85,7 @@ export function CategoryNavBar({ categories, selectedCategory, onSelectCategory,
           >
             <Text style={[styles.catPillText, selectedCategory === parentCat.id && styles.catPillTextActive]}>All {parentCat.name}</Text>
           </Pressable>
-          {subCats.map((sub: any) => (
+          {subCats.map((sub) => (
             <Pressable
               key={sub.id}
               style={[styles.catPill, selectedCategory === sub.id && styles.catPillActive]}
@@ -107,4 +115,16 @@ const styles = StyleSheet.create({
   catCircleActive: { backgroundColor: Theme.primary, borderColor: Theme.primary },
   catCircleLabel: { fontSize: 11, fontWeight: '700', color: Theme.textSecondary, textAlign: 'center', marginTop: 6, lineHeight: 14 },
   catCircleLabelActive: { color: Theme.primary, fontWeight: '800' },
+  catPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 16,
+    backgroundColor: Theme.inputBg,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+  },
+  catPillActive: { backgroundColor: Theme.primary, borderColor: Theme.primary },
+  catPillText: { fontSize: 12, fontWeight: '700', color: Theme.textSecondary },
+  catPillTextActive: { color: '#fff' },
 });
