@@ -132,7 +132,7 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
           });
         }
       } catch (e) {
-        /* silent */
+        logger.warn('[useSupportChat] live message poll failed', e);
       }
     }, 3000);
     return () => clearInterval(interval);
