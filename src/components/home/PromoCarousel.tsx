@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
 import { OptimizedImage } from '@/components/OptimizedImage';
+import { logger } from '@/src/lib/logger';
 import type { Banner } from '@/src/types';
 
 const { width } = Dimensions.get('window');
@@ -26,7 +27,9 @@ export function PromoCarousel({ promotions }: PromoCarouselProps) {
           animated: true,
         });
       } catch (e) {
-        // Safe fail if layout is not yet ready
+        // Expected if the FlatList hasn't measured its layout yet — logged at
+        // warn (not error) so it's visible without being treated as a real bug.
+        logger.warn('[PromoCarousel] scrollToIndex failed, layout not ready yet', e);
       }
     }, 4000);
     return () => clearInterval(interval);
