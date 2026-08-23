@@ -114,8 +114,8 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
       if (data.lat !== undefined && data.lng !== undefined) {
         onLocationSelect({ lat: data.lat, lng: data.lng });
       }
-    } catch {
-      // ignore malformed messages
+    } catch (err) {
+      logger.warn('[MapPicker] received malformed WebView message', err);
     }
   };
 
