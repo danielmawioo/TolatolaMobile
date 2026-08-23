@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '@/src/lib/logger';
 
 export type AppLanguage = 'en' | 'sw';
 
@@ -26,8 +27,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         if (raw === 'en' || raw === 'sw') {
           setLang(raw);
         }
-      } catch {
-        // ignore storage read failures
+      } catch (err) {
+        logger.warn('[LanguageContext] failed to read saved language', err);
       }
     })();
     return () => {
@@ -39,8 +40,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLang(next);
     try {
       await AsyncStorage.setItem(LANGUAGE_KEY, next);
-    } catch {
-      // ignore storage write failures
+    } catch (err) {
+      logger.warn('[LanguageContext] failed to persist language', err);
     }
   }, []);
 
