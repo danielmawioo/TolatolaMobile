@@ -384,7 +384,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             logger.warn('[AUTH] Background refresh on boot failed. Keeping existing session.');
           });
         }
-      } catch {
+      } catch (err) {
+        logger.error('[AUTH] Failed to restore session on boot', err);
         if (!cancelled) setState((s) => ({ ...s, isLoading: false }));
       }
     })();
