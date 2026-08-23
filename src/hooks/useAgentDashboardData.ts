@@ -185,8 +185,8 @@ export function useAgentDashboardData(accessToken: string | null | undefined) {
         try {
           const notifRes = await apiGet<UnreadCountResponse>('/notifications/unread-count', accessToken);
           setUnreadNotifs(notifRes?.unread_count || 0);
-        } catch {
-          /* silent */
+        } catch (err) {
+          logger.warn('[AGENT DASHBOARD] Failed to fetch unread notification count', err);
         }
       } catch (err) {
         logger.error('[AGENT DASHBOARD] Fetch Error:', err);
