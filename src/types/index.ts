@@ -22,6 +22,9 @@ export interface Product {
   sku?: string;
   categories?: { name: string };
   category_name?: string;
+  shops?: { latitude?: number; longitude?: number };
+  shop_latitude?: number;
+  shop_longitude?: number;
   colors?: { name: string; image?: string; price?: number }[];
   sizes?: string[];
   size_prices?: Record<string, number> | null;

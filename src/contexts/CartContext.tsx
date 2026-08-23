@@ -3,8 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { apiGet, apiPost, apiDelete } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
+import type { Product } from '@/src/types';
 
 const CART_STORAGE_KEY = '@tolatola/cart';
+
+type SelectedColor = { name: string; image?: string };
 
 export type CartItem = {
   id: string;
@@ -26,7 +29,7 @@ type CartState = {
 };
 
 type CartContextValue = CartState & {
-  addItem: (product: any, quantity?: number, selectedColor?: any, selectedSize?: string) => Promise<void>;
+  addItem: (product: Product, quantity?: number, selectedColor?: SelectedColor | null, selectedSize?: string) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -64,7 +67,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   };
 
-  const addItem = useCallback(async (product: any, quantity = 1, selectedColor?: any, selectedSize?: string) => {
+  const addItem = useCallback(async (product: Product, quantity = 1, selectedColor?: SelectedColor | null, selectedSize?: string) => {
     try {
       if (isAuthenticated && session?.access_token) {
         apiPost('/cart/items', { product_id: product.id, quantity, selected_color: selectedColor, selected_size: selectedSize }, session.access_token).catch((err) => logger.warn('[CartContext] background cart sync failed', err));
@@ -91,7 +94,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             name: product.name,
             price: product.price || 0,
             quantity,
-            image_url: imgUrl,
+            image_url: imgUrl ?? undefined,
             shop_id: product.shop_id,
             shop_latitude: product.shops?.latitude ?? product.shop_latitude,
             shop_longitude: product.shops?.longitude ?? product.shop_longitude,
