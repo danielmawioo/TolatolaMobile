@@ -20,7 +20,13 @@ function defaultSinkMinLevel(): LogLevel {
 export const defaultLogSink: LogSink = (level, message, args) => {
   if (LOG_LEVEL_RANK[level] < LOG_LEVEL_RANK[defaultSinkMinLevel()]) return;
   const consoleMethod = level === 'info' ? console.log : level === 'warn' ? console.warn : console.error;
-  consoleMethod(message, ...args);
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    context: args.length ? args : undefined,
+  };
+  consoleMethod(logEntry);
 };
 
 let sink: LogSink = defaultLogSink;
