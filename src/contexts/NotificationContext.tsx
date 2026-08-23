@@ -6,6 +6,15 @@ import { useAuth } from './AuthContext';
 import { registerForPushNotifications, setBadgeCount } from '@/src/services/pushNotifications';
 import { apiGet } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
+import type { Notification } from '@/src/api/notifications';
+
+interface NotificationNavigationData {
+  screen?: string;
+  for_role?: string;
+  order_id?: string;
+  orderId?: string;
+  [key: string]: unknown;
+}
 
 type NotificationContextValue = {
   unreadCount: number;
@@ -24,8 +33,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [unreadCount, setUnreadCount] = useState(0);
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
 
-  const notificationListener = useRef<any>(null);
-  const responseListener = useRef<any>(null);
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const appState = useRef(AppState.currentState);
 
   // Fetch unread notification count from the backend
@@ -35,13 +44,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       return;
     }
     try {
-      const res = await apiGet<any>('/notifications?limit=100', session.access_token);
-      const notifications = res?.data || [];
-      const count = notifications.filter((n: any) => !n.is_read).length;
+      const res = await apiGet<{ data?: Notification[] } | Notification[]>('/notifications?limit=100', session.access_token);
+      const notifications = (Array.isArray(res) ? res : res?.data) || [];
+      const count = notifications.filter((n) => !n.is_read).length;
       setUnreadCount(count);
       setBadgeCount(count).catch((err) => logger.warn('[NotificationContext] badge count sync failed', err));
-    } catch {
-      // Silently fail
+    } catch (err) {
+      logger.warn('[NotificationContext] failed to refresh unread count', err);
     }
   }, [session?.access_token]);
 
@@ -143,7 +152,7 @@ export function useNotifications() {
 /**
  * Navigate to the appropriate screen based on notification data.
  */
-function handleNotificationNavigation(data: any) {
+function handleNotificationNavigation(data: NotificationNavigationData | null | undefined) {
   if (!data) return;
 
   try {
