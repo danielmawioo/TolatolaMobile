@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiPut, apiDelete, setOn401Handler } from '@/src/services/api';
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete, apiFetch, setOn401Handler } from '@/src/services/api';
 import { AppError } from '@/src/lib/errors';
 
 function mockFetchOnce(status: number, body: unknown, ok = status >= 200 && status < 300) {
@@ -233,5 +233,63 @@ describe('401 retry interceptor', () => {
 
     await expect(apiGet('/profile', 'old-token')).rejects.toThrow('Session expired');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('apiFetch headers', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('sets Authorization when an access token is provided', async () => {
+    const fetchMock = mockFetchOnce(200, {});
+    global.fetch = fetchMock as any;
+
+    await apiFetch('/profile', { accessToken: 'tok-123' });
+
+    const headers = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(headers.get('Authorization')).toBe('Bearer tok-123');
+  });
+
+  it('omits Authorization when no access token is provided', async () => {
+    const fetchMock = mockFetchOnce(200, {});
+    global.fetch = fetchMock as any;
+
+    await apiFetch('/categories');
+
+    const headers = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(headers.has('Authorization')).toBe(false);
+  });
+
+  it('sets Content-Type: application/json for a plain JSON body', async () => {
+    const fetchMock = mockFetchOnce(200, {});
+    global.fetch = fetchMock as any;
+
+    await apiFetch('/orders', { method: 'POST', body: JSON.stringify({ id: 1 }) });
+
+    const headers = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(headers.get('Content-Type')).toBe('application/json');
+  });
+
+  it('omits Content-Type for a FormData body, letting fetch set its own multipart boundary', async () => {
+    const fetchMock = mockFetchOnce(200, {});
+    global.fetch = fetchMock as any;
+
+    const form = new FormData();
+    form.append('file', 'fake-file-contents');
+    await apiFetch('/products/1/images', { method: 'POST', body: form });
+
+    const headers = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(headers.has('Content-Type')).toBe(false);
+  });
+
+  it('does not override a Content-Type the caller already set', async () => {
+    const fetchMock = mockFetchOnce(200, {});
+    global.fetch = fetchMock as any;
+
+    await apiFetch('/export', { headers: { 'Content-Type': 'text/csv' } });
+
+    const headers = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(headers.get('Content-Type')).toBe('text/csv');
   });
 });
