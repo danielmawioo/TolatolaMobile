@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
+import { useThemeColors } from '@/src/hooks/useThemeColors';
 
 interface ProductListHeaderProps {
   isImageSearchMode: boolean;
@@ -31,6 +32,8 @@ export function ProductListHeader({
   productsCount,
   onClearSearch,
 }: ProductListHeaderProps) {
+  const theme = useThemeColors();
+
   if (isImageSearchMode) {
     return (
       <View style={{ marginBottom: 16 }}>
@@ -56,12 +59,12 @@ export function ProductListHeader({
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <FontAwesome name="sparkles" size={14} color="#F59E0B" />
+                    <FontAwesome name="star" size={14} color="#F59E0B" />
                     <Text style={styles.imageResultsTitle}>Image Search Results</Text>
                   </View>
                   {imageAnalysis ? (
                     <Text style={styles.imageResultsAnalysis}>
-                      AI identified: <Text style={{ fontWeight: '800', color: Theme.textPrimary }}>{imageAnalysis}</Text>
+                      AI identified: <Text style={{ fontWeight: '800', color: '#78350F' }}>{imageAnalysis}</Text>
                     </Text>
                   ) : null}
                   {imageKeywords.length > 0 && (
@@ -91,11 +94,11 @@ export function ProductListHeader({
   if (!searchQuery) return null;
   return (
     <View style={styles.searchResultsHeader}>
-      <Text style={styles.searchResultsText}>
+      <Text style={[styles.searchResultsText, { color: theme.text }]}>
         {productsCount} {productsCount === 1 ? 'product' : 'products'} found for "{searchQuery}"
       </Text>
-      <Pressable onPress={onClearSearch} style={styles.clearSearchBtn}>
-        <Text style={styles.clearSearchText}>Clear</Text>
+      <Pressable onPress={onClearSearch} style={[styles.clearSearchBtn, { backgroundColor: theme.inputBg }]}>
+        <Text style={[styles.clearSearchText, { color: theme.textMuted }]}>Clear</Text>
       </Pressable>
     </View>
   );

@@ -1,11 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, ViewStyle, Share, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ViewStyle, Share } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import type { Product } from '@/src/types';
-
 import { useThemeColors } from '@/src/hooks/useThemeColors';
 import { logger } from '@/src/lib/logger';
 
@@ -36,7 +35,7 @@ export function ProductCard({
 
   const shop = product.shops as { region?: string; district?: string } | undefined;
   const locationParts = [shop?.region, shop?.district].filter(Boolean);
-  const locationLabel = locationParts.length > 0 ? locationParts.join(", ") : null;
+  const locationLabel = locationParts.length > 0 ? locationParts.join(', ') : null;
   const distanceKm = product.distance_km as number | undefined;
 
   const handlePress = () => {
@@ -60,6 +59,8 @@ export function ProductCard({
     }
   };
 
+  const priceColor = theme.isDark ? '#60A5FA' : '#0B5ED7';
+
   return (
     <Pressable
       style={[
@@ -74,12 +75,16 @@ export function ProductCard({
     >
       <View style={[styles.imageContainer, { backgroundColor: theme.inputBg }]}>
         <OptimizedImage
-          source={(product.images && Array.isArray(product.images) && product.images.length > 0) ? (product.images[0] as string) : product.image_url}
+          source={
+            product.images && Array.isArray(product.images) && product.images.length > 0
+              ? (product.images[0] as string)
+              : product.image_url
+          }
           width="100%"
           aspectRatio={4 / 3}
           style={[styles.image, isSoldOut && styles.soldOutImage]}
         />
-        
+
         {isSoldOut && (
           <View style={styles.soldOutOverlay}>
             <View style={styles.soldOutBadge}>
@@ -90,15 +95,31 @@ export function ProductCard({
 
         <View style={styles.badgesContainer}>
           {badge ? (
-            <View style={[styles.badge, badge.variant === 'new' ? styles.badgeNew : badge.variant === 'hot' ? styles.badgeHot : styles.badgeDeal]}>
+            <View
+              style={[
+                styles.badge,
+                badge.variant === 'new'
+                  ? styles.badgeNew
+                  : badge.variant === 'hot'
+                  ? styles.badgeHot
+                  : styles.badgeDeal,
+              ]}
+            >
               <Text style={styles.badgeText}>{badge.text}</Text>
             </View>
-          ) : <View />}
+          ) : (
+            <View />
+          )}
 
           {Number(product.compare_at_price ?? 0) > Number(product.price ?? 0) && (
-            <View style={styles.discountBadge}>
+            <View style={[styles.discountBadge, theme.isDark && { backgroundColor: 'rgba(30, 41, 59, 0.95)' }]}>
               <Text style={styles.discountText}>
-                {Math.round((((Number(product.compare_at_price ?? 0)) - Number(product.price ?? 0)) / Number(product.compare_at_price ?? 1)) * 100)}% OFF
+                {Math.round(
+                  ((Number(product.compare_at_price ?? 0) - Number(product.price ?? 0)) /
+                    Number(product.compare_at_price ?? 1)) *
+                    100
+                )}
+                % OFF
               </Text>
             </View>
           )}
@@ -113,53 +134,68 @@ export function ProductCard({
           </View>
           <View style={styles.statsRow}>
             {(Number(product.sales_count) || 0) > 0 && !isSoldOut && (
-              <View style={styles.soldBadge}>
-                <Text style={styles.soldBadgeText}>{String(product.sales_count)} Sold</Text>
+              <View style={[styles.soldBadge, theme.isDark && { backgroundColor: 'rgba(22, 163, 74, 0.2)' }]}>
+                <Text style={[styles.soldBadgeText, theme.isDark && { color: '#4ade80' }]}>
+                  {String(product.sales_count)} Sold
+                </Text>
               </View>
             )}
             {product.quality_grade && (
-              <View style={styles.gradeBadge}>
-                <Text style={styles.gradeText}>Grade {String(product.quality_grade)}</Text>
+              <View style={[styles.gradeBadge, { backgroundColor: theme.inputBg }]}>
+                <Text style={[styles.gradeText, { color: theme.textSecondary }]}>
+                  Grade {String(product.quality_grade)}
+                </Text>
               </View>
             )}
           </View>
         </View>
 
-        <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
+        <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>
+          {product.name}
+        </Text>
 
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
-            <FontAwesome name="shopping-bag" size={10} color="#2563EB" />
-            <Text style={styles.metaText}>MOQ: {product.moq || 1} {product.weight_unit || product.unit || 'Units'}</Text>
+            <FontAwesome name="shopping-bag" size={10} color={theme.isDark ? '#60A5FA' : '#2563EB'} />
+            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+              MOQ: {product.moq || 1} {product.weight_unit || product.unit || 'Units'}
+            </Text>
           </View>
           <View style={styles.metaItem}>
             <FontAwesome name="truck" size={10} color={Theme.success} />
-            <Text style={styles.metaText}>{product.delivery_available !== false ? 'Delivery' : 'Pickup'}</Text>
+            <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+              {product.delivery_available !== false ? 'Delivery' : 'Pickup'}
+            </Text>
           </View>
         </View>
 
         <View style={styles.priceContainer}>
           <View>
-            <Text style={styles.price}>
-              {product.price?.toLocaleString()} <Text style={styles.currency}>TZS{product.weight_unit ? ` / ${product.weight_unit}` : ''}</Text>
+            <Text style={[styles.price, { color: priceColor }]}>
+              {product.price?.toLocaleString()}{' '}
+              <Text style={[styles.currency, { color: theme.textSecondary }]}>
+                TZS{product.weight_unit ? ` / ${product.weight_unit}` : ''}
+              </Text>
             </Text>
             {Number(product.compare_at_price ?? 0) > Number(product.price ?? 0) && (
-              <Text style={styles.oldPrice}>{Number(product.compare_at_price)?.toLocaleString()} TZS</Text>
+              <Text style={[styles.oldPrice, { color: theme.textMuted }]}>
+                {Number(product.compare_at_price)?.toLocaleString()} TZS
+              </Text>
             )}
           </View>
           <View style={styles.locationContainer}>
             {distanceKm !== undefined && distanceKm !== null && distanceKm !== Infinity && (
-              <View style={styles.distanceBadge}>
-                <FontAwesome name="map-marker" size={10} color={Theme.primary} style={{ marginRight: 2 }} />
-                <Text style={styles.distanceText}>
+              <View style={[styles.distanceBadge, theme.isDark && { backgroundColor: 'rgba(96, 165, 250, 0.15)' }]}>
+                <FontAwesome name="map-marker" size={10} color={theme.primary} style={{ marginRight: 2 }} />
+                <Text style={[styles.distanceText, { color: theme.primary }]}>
                   {distanceKm < 1 ? '< 1 km' : `${Math.round(distanceKm)} km`}
                 </Text>
               </View>
             )}
             {locationLabel && (
               <View style={styles.locationLabelRow}>
-                <FontAwesome name="map-marker" size={10} color={Theme.textMuted} style={{ marginRight: 2 }} />
-                <Text style={styles.locationText} numberOfLines={1}>
+                <FontAwesome name="map-marker" size={10} color={theme.textMuted} style={{ marginRight: 2 }} />
+                <Text style={[styles.locationText, { color: theme.textMuted }]} numberOfLines={1}>
                   {locationLabel}
                 </Text>
               </View>
@@ -167,18 +203,22 @@ export function ProductCard({
           </View>
         </View>
 
-        <View style={styles.actionsRow}>
+        <View style={[styles.actionsRow, { borderTopColor: theme.border }]}>
           <Pressable
-            style={[styles.cartButton, isInCart && styles.inCartButton, isSoldOut && styles.disabledButton]}
+            style={[
+              styles.cartButton,
+              isInCart && [styles.inCartButton, { backgroundColor: theme.inputBg, borderColor: theme.border }],
+              isSoldOut && [styles.disabledButton, { backgroundColor: theme.inputBg }],
+            ]}
             onPress={() => !isSoldOut && onAddToCart?.(product)}
             disabled={isSoldOut}
           >
             {isSoldOut ? (
-              <Text style={styles.cartButtonTextDisabled}>Sold Out</Text>
+              <Text style={[styles.cartButtonTextDisabled, { color: theme.textMuted }]}>Sold Out</Text>
             ) : isInCart ? (
               <>
                 <FontAwesome name="check" size={12} color={Theme.success} style={{ marginRight: 6 }} />
-                <Text style={styles.inCartText}>In Cart</Text>
+                <Text style={[styles.inCartText, { color: theme.textSecondary }]}>In Cart</Text>
               </>
             ) : (
               <>
@@ -189,14 +229,14 @@ export function ProductCard({
           </Pressable>
 
           <Pressable
-            style={[styles.actionIcon, isLiked && styles.likedIcon]}
+            style={[styles.actionIcon, { borderColor: theme.border }, isLiked && styles.likedIcon]}
             onPress={() => onToggleLike?.(product.id)}
           >
-            <FontAwesome name={isLiked ? 'heart' : 'heart-o'} size={14} color={isLiked ? Theme.error : Theme.textMuted} />
+            <FontAwesome name={isLiked ? 'heart' : 'heart-o'} size={14} color={isLiked ? Theme.error : theme.textMuted} />
           </Pressable>
 
-          <Pressable style={styles.actionIcon} onPress={handleShare}>
-            <FontAwesome name="share" size={14} color={Theme.textMuted} />
+          <Pressable style={[styles.actionIcon, { borderColor: theme.border }]} onPress={handleShare}>
+            <FontAwesome name="share" size={14} color={theme.textMuted} />
           </Pressable>
         </View>
       </View>

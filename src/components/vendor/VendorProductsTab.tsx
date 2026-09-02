@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
+import { useThemeColors } from '@/src/hooks/useThemeColors';
 import { apiDelete, apiPost } from '@/src/services/api';
 import type { VendorProduct, VendorShop } from '@/src/hooks/useVendorDashboardData';
 
@@ -19,12 +20,18 @@ function hasShopLocation(shopData: VendorShop | null | undefined) {
 }
 
 export function VendorProductsTab({ shop, products, accessToken, onProductsChange }: Props) {
+  const theme = useThemeColors();
+
   const handleAddProductClick = () => {
     if (shop && !hasShopLocation(shop)) {
-      Alert.alert('Shop Location Required', 'You need to add your shop location before you can add products. The location is required to calculate accurate delivery fees for your customers.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Add Shop Location', onPress: () => router.push('/(vendor)/shop/edit') }
-      ]);
+      Alert.alert(
+        'Shop Location Required',
+        'You need to add your shop location before you can add products. The location is required to calculate accurate delivery fees for your customers.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add Shop Location', onPress: () => router.push('/(vendor)/shop/edit') },
+        ]
+      );
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       router.push('/(vendor)/product/create');
@@ -41,13 +48,13 @@ export function VendorProductsTab({ shop, products, accessToken, onProductsChang
           if (!accessToken) return;
           try {
             await apiDelete(`/products/${id}`, accessToken);
-            onProductsChange(products.filter(p => p.id !== id));
+            onProductsChange(products.filter((p) => p.id !== id));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to delete product');
           }
-        }
-      }
+        },
+      },
     ]);
   };
 
@@ -56,7 +63,7 @@ export function VendorProductsTab({ shop, products, accessToken, onProductsChang
     try {
       const newStockQuantity = (product.stock_quantity || 0) > 0 ? 0 : 1;
       await apiPost('/products/update-stock', { productId: product.id, quantity: newStockQuantity }, accessToken);
-      onProductsChange(products.map(p => p.id === product.id ? { ...p, stock_quantity: newStockQuantity } : p));
+      onProductsChange(products.map((p) => (p.id === product.id ? { ...p, stock_quantity: newStockQuantity } : p)));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to update stock');
@@ -66,32 +73,44 @@ export function VendorProductsTab({ shop, products, accessToken, onProductsChang
   return (
     <View style={styles.tabContent}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Your Products</Text>
-        <Pressable style={styles.addBtn} onPress={handleAddProductClick}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Products</Text>
+        <Pressable style={[styles.addBtn, { backgroundColor: theme.isDark ? Theme.primary : Theme.text }]} onPress={handleAddProductClick}>
           <FontAwesome name="plus" size={12} color="#fff" />
           <Text style={styles.addBtnText}>Add Product</Text>
         </Pressable>
       </View>
 
       {products.length === 0 ? (
-        <View style={styles.empty}>
-          <FontAwesome name="cube" size={48} color={Theme.textMuted} />
-          <Text style={styles.emptyText}>No products yet. Add your first product!</Text>
+        <View style={[styles.empty, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+          <FontAwesome name="cube" size={48} color={theme.textMuted} />
+          <Text style={[styles.emptyText, { color: theme.textMuted }]}>No products yet. Add your first product!</Text>
         </View>
       ) : (
         <View style={styles.productsGrid}>
-          {products.map(product => {
+          {products.map((product) => {
             const hasImages = !!(product.images && product.images.length > 0);
-            const imageUrl = hasImages ? product.images![0] : (product.image_url || null);
+            const imageUrl = hasImages ? product.images![0] : product.image_url || null;
 
             return (
-              <View key={product.id} style={styles.productCard}>
+              <View
+                key={product.id}
+                style={[styles.productCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+              >
                 <View style={styles.productImageContainer}>
                   {imageUrl ? (
                     <Image source={{ uri: imageUrl }} style={styles.productImage} />
                   ) : (
-                    <View style={[styles.productImage, { backgroundColor: Theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }]}>
-                      <FontAwesome name="cube" size={32} color={Theme.textMuted} />
+                    <View
+                      style={[
+                        styles.productImage,
+                        {
+                          backgroundColor: theme.inputBg,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        },
+                      ]}
+                    >
+                      <FontAwesome name="cube" size={32} color={theme.textMuted} />
                     </View>
                   )}
                   {product.stock_quantity === 0 && (
@@ -102,40 +121,53 @@ export function VendorProductsTab({ shop, products, accessToken, onProductsChang
                 </View>
 
                 <View style={styles.productCardBody}>
-                  <Text style={styles.productName} numberOfLines={1}>{product.name}</Text>
-                  <Text style={styles.productDesc} numberOfLines={2}>{product.description || 'No description'}</Text>
+                  <Text style={[styles.productName, { color: theme.text }]} numberOfLines={1}>
+                    {product.name}
+                  </Text>
+                  <Text style={[styles.productDesc, { color: theme.textSecondary }]} numberOfLines={2}>
+                    {product.description || 'No description'}
+                  </Text>
 
                   <View style={styles.productRow}>
-                    <Text style={styles.productPrice}>TZS {product.price?.toLocaleString()}</Text>
+                    <Text style={[styles.productPrice, { color: theme.isDark ? '#60A5FA' : Theme.primary }]}>
+                      TZS {product.price?.toLocaleString()}
+                    </Text>
                   </View>
 
                   <View style={styles.productRow}>
-                    <Text style={styles.productLabel}>Stock:</Text>
-                    <Text style={styles.productValue}>{product.stock_quantity}</Text>
+                    <Text style={[styles.productLabel, { color: theme.textSecondary }]}>Stock:</Text>
+                    <Text style={[styles.productValue, { color: theme.text }]}>{product.stock_quantity}</Text>
                   </View>
 
                   <View style={styles.productRow}>
-                    <Text style={styles.productLabel}>Status:</Text>
-                    <Text style={[
-                      styles.productValue,
-                      product.status === 'approved' ? { color: Theme.success } :
-                      product.status === 'rejected' ? { color: Theme.error } :
-                      { color: '#d97706' }
-                    ]}>
+                    <Text style={[styles.productLabel, { color: theme.textSecondary }]}>Status:</Text>
+                    <Text
+                      style={[
+                        styles.productValue,
+                        product.status === 'approved'
+                          ? { color: Theme.success }
+                          : product.status === 'rejected'
+                          ? { color: Theme.error }
+                          : { color: '#d97706' },
+                      ]}
+                    >
                       {product.status || 'pending'}
                     </Text>
                   </View>
 
                   <View style={styles.productActionsRow}>
-                    <Pressable style={styles.actionBtn} onPress={() => router.push({ pathname: '/(vendor)/product/edit', params: { id: product.id } })}>
-                      <FontAwesome name="edit" size={14} color={Theme.text} />
-                      <Text style={styles.actionBtnText}>Edit</Text>
+                    <Pressable
+                      style={[styles.actionBtn, { borderColor: theme.border }]}
+                      onPress={() => router.push({ pathname: '/(vendor)/product/edit', params: { id: product.id } })}
+                    >
+                      <FontAwesome name="edit" size={14} color={theme.text} />
+                      <Text style={[styles.actionBtnText, { color: theme.text }]}>Edit</Text>
                     </Pressable>
-                    <Pressable style={styles.actionBtn} onPress={() => handleToggleOutOfStock(product)}>
-                      <FontAwesome name={(product.stock_quantity || 0) > 0 ? "times-circle" : "check-circle"} size={14} color={Theme.text} />
-                      <Text style={styles.actionBtnText}>{(product.stock_quantity || 0) > 0 ? "Out" : "In"}</Text>
+                    <Pressable style={[styles.actionBtn, { borderColor: theme.border }]} onPress={() => handleToggleOutOfStock(product)}>
+                      <FontAwesome name={(product.stock_quantity || 0) > 0 ? 'times-circle' : 'check-circle'} size={14} color={theme.text} />
+                      <Text style={[styles.actionBtnText, { color: theme.text }]}>{(product.stock_quantity || 0) > 0 ? 'Out' : 'In'}</Text>
                     </Pressable>
-                    <Pressable style={[styles.actionBtn, { backgroundColor: Theme.error, flex: 0.5 }]} onPress={() => deleteProduct(product.id)}>
+                    <Pressable style={[styles.actionBtn, { backgroundColor: Theme.error, flex: 0.5, borderColor: Theme.error }]} onPress={() => deleteProduct(product.id)}>
                       <FontAwesome name="trash" size={14} color="#fff" />
                     </Pressable>
                   </View>
