@@ -20,6 +20,13 @@ module.exports = {
         {
           "iosUrlScheme": iosUrlScheme
         }
+      ],
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow TOLA to use Face ID for quick sign-in."
+        }
       ]
     ],
     extra: {

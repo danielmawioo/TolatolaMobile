@@ -1,8 +1,17 @@
-import React from 'react';
-import { View, Text, Pressable, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Pressable, TextInput, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
 import { ThemeToggle } from '@/src/components/ThemeToggle';
+import {
+  isBiometricsAvailable,
+  isBiometricLoginEnabled,
+  saveCredentials,
+  clearCredentials,
+  getBiometricType,
+  type BiometricType,
+} from '@/src/services/biometricAuth';
 
 interface PasswordData {
   current: string;
@@ -17,13 +26,111 @@ interface Props {
   onChangePassword: () => void;
   onLogout: () => void;
   onDeleteAccount: () => void;
+  userEmail?: string;
 }
 
 /**
- * "Settings" tab: password change form, appearance toggle, and the
+ * "Settings" tab: password change form, biometric toggle, appearance toggle, and the
  * danger-zone actions (sign out / delete account).
  */
-export function AccountSettingsSection({ passwordData, setPasswordData, changingPw, onChangePassword, onLogout, onDeleteAccount }: Props) {
+export function AccountSettingsSection({
+  passwordData,
+  setPasswordData,
+  changingPw,
+  onChangePassword,
+  onLogout,
+  onDeleteAccount,
+  userEmail = '',
+}: Props) {
+  // Biometric settings state
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState<BiometricType>('Biometrics');
+  const [togglingBiometric, setTogglingBiometric] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const available = await isBiometricsAvailable();
+      setBiometricAvailable(available);
+      if (available) {
+        const enabled = await isBiometricLoginEnabled();
+        setBiometricEnabled(enabled);
+        const type = await getBiometricType();
+        setBiometricType(type);
+      }
+    })();
+  }, []);
+
+  const handleToggleBiometric = async () => {
+    setTogglingBiometric(true);
+    try {
+      if (biometricEnabled) {
+        // Disable: clear stored credentials
+        await clearCredentials();
+        setBiometricEnabled(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Disabled', `${biometricType} login has been disabled.`);
+      } else {
+        // Enable: verify biometrics first, then ask for password to store
+        Alert.prompt
+          ? Alert.prompt(
+              `Enable ${biometricType} Login`,
+              'Enter your current password to enable biometric login.',
+              async (pw: string) => {
+                if (!pw) {
+                  setTogglingBiometric(false);
+                  return;
+                }
+                try {
+                  await saveCredentials(userEmail, pw);
+                  setBiometricEnabled(true);
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  Alert.alert('Enabled', `${biometricType} login is now active!`);
+                } catch {
+                  Alert.alert('Error', 'Failed to enable biometric login.');
+                }
+                setTogglingBiometric(false);
+              },
+              'secure-text',
+              '',
+              'default'
+            )
+          : Alert.alert(
+              `Enable ${biometricType} Login`,
+              'To enable biometric login, enter your current password in the "Current Password" field above, then tap this toggle again.',
+              [
+                {
+                  text: 'OK',
+                  onPress: async () => {
+                    if (passwordData.current) {
+                      try {
+                        await saveCredentials(userEmail, passwordData.current);
+                        setBiometricEnabled(true);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        Alert.alert('Enabled', `${biometricType} login is now active!`);
+                      } catch {
+                        Alert.alert('Error', 'Failed to enable biometric login.');
+                      }
+                    } else {
+                      Alert.alert(
+                        'Password Required',
+                        'Please enter your current password in the "Current Password" field above, then tap this toggle again.'
+                      );
+                    }
+                    setTogglingBiometric(false);
+                  },
+                },
+                { text: 'Cancel', style: 'cancel', onPress: () => setTogglingBiometric(false) },
+              ]
+            );
+        return;
+      }
+    } catch {
+      Alert.alert('Error', 'Something went wrong.');
+    }
+    setTogglingBiometric(false);
+  };
+
   return (
     <View style={styles.tabContentInner}>
       <Text style={styles.settingsTitle}>Security</Text>
@@ -45,6 +152,48 @@ export function AccountSettingsSection({ passwordData, setPasswordData, changing
           {changingPw ? <ActivityIndicator color="#fff" /> : <Text style={styles.editProfileBtnText}>Update Password</Text>}
         </Pressable>
       </View>
+
+      {/* Biometric Login Toggle */}
+      {biometricAvailable && (
+        <>
+          <Text style={[styles.settingsTitle, { marginTop: 24 }]}>{biometricType} Login</Text>
+          <Text style={styles.settingsDesc}>
+            {biometricEnabled
+              ? `${biometricType} login is enabled. Tap to disable.`
+              : `Enable ${biometricType} to sign in quickly without typing your password.`}
+          </Text>
+          <View style={[styles.infoCard, { paddingTop: 4, paddingBottom: 4 }]}>
+            <View style={styles.biometricRow}>
+              <View style={styles.biometricInfo}>
+                <FontAwesome
+                  name={biometricType === 'Face ID' ? 'user-circle' : 'lock'}
+                  size={20}
+                  color={biometricEnabled ? Theme.success : Theme.textMuted}
+                />
+                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>
+                  {biometricEnabled ? `${biometricType} Active` : `Enable ${biometricType}`}
+                </Text>
+              </View>
+              <Pressable
+                style={[
+                  styles.biometricToggle,
+                  biometricEnabled && styles.biometricToggleActive,
+                  togglingBiometric && { opacity: 0.5 },
+                ]}
+                onPress={handleToggleBiometric}
+                disabled={togglingBiometric}
+              >
+                <View
+                  style={[
+                    styles.biometricToggleThumb,
+                    biometricEnabled && styles.biometricToggleThumbActive,
+                  ]}
+                />
+              </Pressable>
+            </View>
+          </View>
+        </>
+      )}
 
       <Text style={[styles.settingsTitle, { marginTop: 24 }]}>Appearance & Theme</Text>
       <Text style={styles.settingsDesc}>Switch between Light and Dark mode.</Text>
@@ -126,4 +275,41 @@ const styles = StyleSheet.create({
   dangerBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#fecaca', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
   dangerBtnText: { fontSize: 13, fontWeight: '700', color: Theme.error },
   dangerDivider: { height: 1, backgroundColor: '#fecaca', marginVertical: 8 },
+  // Biometric toggle
+  biometricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  biometricInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  biometricToggle: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e2e8f0',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  biometricToggleActive: {
+    backgroundColor: Theme.success,
+  },
+  biometricToggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  biometricToggleThumbActive: {
+    alignSelf: 'flex-end',
+  },
 });

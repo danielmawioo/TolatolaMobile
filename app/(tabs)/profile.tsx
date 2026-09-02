@@ -203,6 +203,7 @@ export default function ProfileScreen() {
             onChangePassword={handlePasswordChange}
             onLogout={handleLogout}
             onDeleteAccount={handleDeleteAccount}
+            userEmail={userEmail}
           />
         )}
       </View>

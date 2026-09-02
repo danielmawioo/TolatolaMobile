@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Platform,
   ScrollView,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -22,6 +24,14 @@ import { ScreenSafeLayout } from '@/components/ScreenSafeLayout';
 import { Theme } from '@/constants/Theme';
 import { getRoleRedirectPath } from '@/src/lib/roleRedirect';
 import { scaleByWidth, gap } from '@/constants/layout';
+import {
+  isBiometricsAvailable,
+  isBiometricLoginEnabled,
+  authenticateWithBiometrics,
+  saveCredentials,
+  getBiometricType,
+  type BiometricType,
+} from '@/src/services/biometricAuth';
 
 export default function LoginScreen() {
   const { login, isLoading } = useAuth();
@@ -30,6 +40,26 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Biometric state
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState<BiometricType>('Biometrics');
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  // Check biometric availability on mount
+  useEffect(() => {
+    (async () => {
+      const available = await isBiometricsAvailable();
+      setBiometricAvailable(available);
+      if (available) {
+        const enabled = await isBiometricLoginEnabled();
+        setBiometricEnabled(enabled);
+        const type = await getBiometricType();
+        setBiometricType(type);
+      }
+    })();
+  }, []);
 
   const handleLogin = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -40,9 +70,53 @@ export default function LoginScreen() {
     }
     try {
       const user = await login(email.trim(), password);
+      // After successful login, offer biometric enrollment if available but not yet enabled
+      if (biometricAvailable && !biometricEnabled) {
+        promptBiometricEnrollment(email.trim(), password);
+      }
       router.replace(getRoleRedirectPath(user?.user_type) as any);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Login failed');
+    }
+  };
+
+  const promptBiometricEnrollment = (userEmail: string, userPassword: string) => {
+    const typeLabel = biometricType === 'Face ID' ? 'Face ID' : biometricType === 'Fingerprint' ? 'fingerprint' : 'biometric';
+    Alert.alert(
+      `Enable ${typeLabel} login?`,
+      `Sign in faster next time using your ${typeLabel}. You can change this anytime in Profile → Settings.`,
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Enable',
+          onPress: async () => {
+            try {
+              await saveCredentials(userEmail, userPassword);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              // silently fail — non-critical
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBiometricLogin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setError(null);
+    setBiometricLoading(true);
+    try {
+      const credentials = await authenticateWithBiometrics();
+      if (!credentials) {
+        setBiometricLoading(false);
+        return; // User cancelled or failed
+      }
+      const user = await login(credentials.email, credentials.password);
+      router.replace(getRoleRedirectPath(user?.user_type) as any);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Biometric login failed');
+      setBiometricLoading(false);
     }
   };
 
@@ -59,7 +133,9 @@ export default function LoginScreen() {
     }
   };
 
-  const isAnyLoading = isLoading || googleLoading;
+  const isAnyLoading = isLoading || googleLoading || biometricLoading;
+
+  const biometricIconName = biometricType === 'Face ID' ? 'scan-outline' : 'finger-print-outline';
 
   return (
     <ScreenSafeLayout style={styles.safeWrapper}>
@@ -153,6 +229,21 @@ export default function LoginScreen() {
             <Ionicons name="logo-facebook" size={28} color="#1877F2" />
             <Text style={styles.socialLabel}>Facebook</Text>
           </Pressable>
+          {/* Biometric quick-login button — only shown when enrolled */}
+          {biometricAvailable && biometricEnabled && (
+            <Pressable
+              style={[styles.socialBtn, isAnyLoading && { opacity: 0.5 }]}
+              onPress={handleBiometricLogin}
+              disabled={isAnyLoading}
+            >
+              {biometricLoading ? (
+                <ActivityIndicator size={28} color={Theme.primary} />
+              ) : (
+                <Ionicons name={biometricIconName as any} size={28} color={Theme.primary} />
+              )}
+              <Text style={styles.socialLabel}>{biometricType}</Text>
+            </Pressable>
+          )}
         </View>
 
         <Pressable
