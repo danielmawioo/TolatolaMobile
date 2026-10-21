@@ -7,8 +7,14 @@ import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 import { Theme } from '@/constants/Theme';
-import { apiGet, apiPatch, apiPost } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
+import {
+  fetchTransporterAssignments,
+  requestDeliveryConfirmation,
+  updateAssignmentStatus,
+  verifyAssignmentPin,
+} from '@/src/services/assignments';
+import type { TransporterAssignment } from '@/src/schemas/assignments';
 
 const TAB_AVAILABLE = 'available';
 const TAB_ACCEPTED = 'accepted';
@@ -21,48 +27,6 @@ const STATUS_COLORS: Record<string, string> = {
   accepted: '#2563eb', picked_up: '#7c3aed', in_transit: '#7c3aed',
   delivered: '#16a34a', cancelled: '#ef4444',
 };
-
-interface AssignmentShop {
-  name?: string;
-  district?: string;
-  region?: string;
-  address?: string;
-  phone?: string;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface AssignmentShippingAddress {
-  full_name?: string;
-  district?: string;
-  region?: string;
-  street?: string;
-  address?: string;
-  ward?: string;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface AssignmentOrder {
-  order_number?: string;
-  users?: { full_name?: string; phone?: string };
-  shipping_address?: AssignmentShippingAddress;
-}
-
-interface TransporterAssignment {
-  id: string;
-  status: string;
-  is_available_order?: boolean;
-  accepted_at?: string;
-  delivered_at?: string;
-  order_id?: string;
-  delivery_fee?: number;
-  distance_km?: number;
-  transport_methods?: { name?: string };
-  shops?: AssignmentShop;
-  orders?: AssignmentOrder;
-  [key: string]: unknown;
-}
 
 interface Props { transporterId: string; accessToken: string; }
 
@@ -80,8 +44,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
   const fetchAssignments = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await apiGet<any>('/transporter/jobs', accessToken);
-      setAssignments(Array.isArray(res) ? res : res?.assignments || res?.data || []);
+      setAssignments(await fetchTransporterAssignments(accessToken));
     } catch (e) { logger.error('Fetch assignments error', e); }
     setLoading(false);
   }, [accessToken]);
@@ -101,18 +64,22 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
     { key: TAB_COMPLETED, label: 'Done', count: completedTrips.length, data: completedTrips },
   ];
 
-  const updateStatus = async (id: string, newStatus: string, isAvailable?: boolean, orderId?: string) => {
+  const updateStatus = async (
+    id: string,
+    newStatus: string,
+    isAvailable?: boolean | null,
+    orderId?: string | null,
+  ) => {
     setUpdatingId(id);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      if (isAvailable && newStatus === 'accepted' && orderId) {
-        await apiPost(`/assignments/accept/${orderId}`, {}, accessToken);
-      } else {
-        const data: { status: string; picked_up_at?: string; delivered_at?: string } = { status: newStatus };
-        if (newStatus === 'picked_up') data.picked_up_at = new Date().toISOString();
-        if (newStatus === 'delivered') data.delivered_at = new Date().toISOString();
-        await apiPatch(`/assignments/${id}`, data, accessToken);
-      }
+      await updateAssignmentStatus({
+        id,
+        newStatus,
+        isAvailable: Boolean(isAvailable),
+        orderId: orderId ?? undefined,
+        accessToken,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await fetchAssignments(true);
     } catch (e: any) {
@@ -130,7 +97,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
     }
     setUpdatingId(selectedId);
     try {
-      await apiPost(`/assignments/${selectedId}/verify-pin`, { pin: deliveryPin }, accessToken);
+      await verifyAssignmentPin(selectedId, deliveryPin, accessToken);
       setPinModalOpen(false); setSelectedId(null); setDeliveryPin('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Success', 'Delivery completed and verified!');
@@ -145,7 +112,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
     if (!selectedId) return;
     setRequestingPush(true);
     try {
-      await apiPost(`/assignments/${selectedId}/request-delivery-confirmation`, {}, accessToken);
+      await requestDeliveryConfirmation(selectedId, accessToken);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         'Request Sent 🚚',
@@ -193,7 +160,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
             <Text style={st.locationSub}>{a.shops?.district}, {a.shops?.region}</Text>
             {isAccepted && a.shops?.address && <Text style={st.locationDetail}>{a.shops.address}</Text>}
             {isAccepted && a.shops?.latitude && a.shops?.longitude && (
-              <Pressable style={st.mapLink} onPress={() => openMap(a.shops!.latitude!, a.shops!.longitude!)}>
+              <Pressable style={st.mapLink} onPress={() => openMap(Number(a.shops!.latitude), Number(a.shops!.longitude))}>
                 <FontAwesome name="map-marker" size={12} color={Theme.primary} />
                 <Text style={st.mapLinkText}>View Pickup Location</Text>
               </Pressable>
@@ -219,7 +186,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
               <>
                 <Text style={st.locationDetail}>{a.orders.shipping_address.street || a.orders.shipping_address.address}, {a.orders.shipping_address.ward}</Text>
                 {a.orders.shipping_address.latitude && a.orders.shipping_address.longitude && (
-                  <Pressable style={st.mapLink} onPress={() => openMap(a.orders!.shipping_address!.latitude!, a.orders!.shipping_address!.longitude!)}>
+                  <Pressable style={st.mapLink} onPress={() => openMap(Number(a.orders!.shipping_address!.latitude), Number(a.orders!.shipping_address!.longitude))}>
                     <FontAwesome name="map-marker" size={12} color={Theme.primary} />
                     <Text style={st.mapLinkText}>View Delivery Location</Text>
                   </Pressable>

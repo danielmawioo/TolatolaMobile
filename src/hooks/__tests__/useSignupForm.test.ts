@@ -149,7 +149,11 @@ describe('useSignupForm', () => {
       await result.current.validateReferralCode('TOLA-AG-1234');
     });
 
-    expect(mockedApiGet).toHaveBeenCalledWith('/agents/referral-info?code=TOLA-AG-1234');
+    expect(mockedApiGet).toHaveBeenCalledWith(
+      '/agents/referral-info?code=TOLA-AG-1234',
+      undefined,
+      expect.anything(),
+    );
     expect(result.current.referrerName).toBe('Agent Smith');
     expect(result.current.referralError).toBeNull();
     expect(result.current.referralValidating).toBe(false);
@@ -177,7 +181,11 @@ describe('useSignupForm', () => {
     );
 
     await waitFor(() => expect(result.current.referrerName).toBe('Deep Link Agent'));
-    expect(mockedApiGet).toHaveBeenCalledWith('/agents/referral-info?code=TOLA-DL-0001');
+    expect(mockedApiGet).toHaveBeenCalledWith(
+      '/agents/referral-info?code=TOLA-DL-0001',
+      undefined,
+      expect.anything(),
+    );
     expect(result.current.hasDeepLinkReferral).toBe(true);
   });
 

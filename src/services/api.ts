@@ -1,6 +1,12 @@
+import type { ZodType } from 'zod';
 import { APP_API_URL } from '@/src/config/env';
 import { logger } from '@/src/lib/logger';
 import { AppError, classifyStatus } from '@/src/lib/errors';
+import { parseApiResponse } from '@/src/lib/parseApi';
+
+function decode<T>(json: unknown, schema?: ZodType<T>): T {
+  return schema ? parseApiResponse(schema, json) : (json as T);
+}
 
 const baseUrl = APP_API_URL.replace(/\/$/, '');
 const apiPrefix = '/api';
@@ -98,13 +104,14 @@ async function errorFromResponse(res: Response): Promise<AppError> {
  */
 export async function apiGet<T = unknown>(
   path: string,
-  accessToken?: string | null
+  accessToken?: string | null,
+  schema?: ZodType<T>
 ): Promise<T> {
   const res = await apiFetch(path, { method: 'GET', accessToken });
   if (!res.ok) {
     throw await errorFromResponse(res);
   }
-  return res.json() as Promise<T>;
+  return decode(await res.json(), schema);
 }
 
 /**
@@ -113,7 +120,8 @@ export async function apiGet<T = unknown>(
 export async function apiPost<T = unknown>(
   path: string,
   body?: object,
-  accessToken?: string | null
+  accessToken?: string | null,
+  schema?: ZodType<T>
 ): Promise<T> {
   const res = await apiFetch(path, {
     method: 'POST',
@@ -124,7 +132,7 @@ export async function apiPost<T = unknown>(
     throw await errorFromResponse(res);
   }
   const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return decode(text ? JSON.parse(text) : undefined, schema);
 }
 
 /**

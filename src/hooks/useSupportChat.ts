@@ -4,7 +4,13 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { apiGet, apiPost } from '@/src/services/api';
+import {
+  createSupportTicket,
+  fetchConversationMessages,
+  fetchSupportTickets,
+  postConversationMessage,
+  postSupportAiChat,
+} from '@/src/services/supportChat';
 import { matchUserQuery } from '@/src/lib/supportAgent';
 import { logger } from '@/src/lib/logger';
 
@@ -82,8 +88,7 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
 
   const checkExistingTickets = useCallback(async () => {
     try {
-      const res = await apiGet<any>('/support/tickets', accessToken!);
-      const tickets = Array.isArray(res) ? res : res?.tickets || [];
+      const tickets = await fetchSupportTickets(accessToken!);
       const openTicket = tickets.find((t: any) => t.status === 'open' || t.status === 'in_progress');
       if (openTicket) {
         setActiveTicket(openTicket);
@@ -108,8 +113,7 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
     if (!liveConversationId || !accessToken) return;
     const interval = setInterval(async () => {
       try {
-        const res = await apiGet<any>(`/conversations/${liveConversationId}/messages`, accessToken);
-        const msgs = res?.data || res?.messages || (Array.isArray(res) ? res : []);
+        const msgs = await fetchConversationMessages(liveConversationId, accessToken);
         if (Array.isArray(msgs) && msgs.length > 0) {
           setMessages((prev) => {
             let updated = [...prev];
@@ -122,9 +126,9 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
                   id: msgId,
                   sender: m.sender_type === 'bot' ? 'bot' : m.sender_type === 'agent' ? 'agent' : 'user',
                   text: m.message || '[Attachment]',
-                  timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-                  attachmentUrl: m.attachment_url,
-                  attachmentType: m.attachment_type,
+                  timestamp: new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                  attachmentUrl: m.attachment_url || undefined,
+                  attachmentType: m.attachment_type || undefined,
                 });
               }
             }
@@ -286,8 +290,8 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
     // If connected to live human support, send message to live conversation
     if (liveConversationId && accessToken) {
       try {
-        await apiPost(
-          `/conversations/${liveConversationId}/messages`,
+        await postConversationMessage(
+          liveConversationId,
           {
             message: userMsgText,
             attachment_url: currentAttachment?.uri,
@@ -327,11 +331,7 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
         };
       }
 
-      const res = await apiPost<any>(
-        '/support/ai-chat',
-        payload,
-        accessToken
-      );
+      const res = await postSupportAiChat(payload, accessToken);
 
       if (res?.response) {
         const botMsg: Message = {
@@ -396,8 +396,7 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
       const subject = lastUserMsg ? lastUserMsg.text.slice(0, 45) : 'General Inquiry';
       const messageBody = messages.map(m => `${m.sender.toUpperCase()}: ${m.text}`).join('\n');
 
-      const res = await apiPost<any>(
-        '/support/tickets',
+      const res = await createSupportTicket(
         {
           subject,
           message: messageBody,

@@ -19,7 +19,8 @@ Do not place TolatolaMobile inside `TolatolaAPI/` or `Tolatola-Client/`.
 
 - **React Native** with **Expo** (SDK 54+), TypeScript
 - **Supabase JS** (`@supabase/supabase-js`) — same project as backend; optional for auth/realtime
-- **API client** — `fetch`-based helpers in `src/services/api.ts` that call the TOLA backend with `Authorization: Bearer <access_token>`
+- **API client** — `fetch`-based helpers in `src/services/api.ts` that call the TOLA backend with `Authorization: Bearer <access_token>`. Domain services in `src/services/` (checkout, assignments, support) validate those payloads with Zod schemas in `src/schemas/` before UI state changes.
+- **Errors** — `src/lib/errorTracking.ts` forwards exceptions and structured logs to Sentry when `EXPO_PUBLIC_SENTRY_DSN` is set.
 - **Auth** — `AuthContext` in `src/contexts/AuthContext.tsx` holds session (from `POST /api/auth/login` or signup), persists with AsyncStorage, exposes `login`, `signup`, `logout`, and `accessToken` for API calls
 - **Navigation** — Expo Router (file-based), with tabs template
 
@@ -35,6 +36,7 @@ Set these before building or running (e.g. in your shell, `.env` loaded by your 
 | `APP_URL` | (Optional) App URL scheme for deep links, e.g. `tola://` |
 | `EXPO_PUBLIC_APP_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_APP_URL` | Same values as above, prefixed for `EXPO_PUBLIC_*` access. `src/config/env.ts` uses these as a fallback when `Constants.expoConfig?.extra` isn't populated (e.g. running under Jest). Keep both sets of vars in sync. |
 | `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_IOS_URL_SCHEME` | Google Sign-In OAuth client config |
+| `EXPO_PUBLIC_SENTRY_DSN` | Optional Sentry DSN. When empty, `captureException` stays on the local logger and Sentry is not initialized. |
 
 Copy `.env.example` to `.env` and fill in values. For Expo, `app.config.js` reads `process.env` and passes them into the app via `expo-constants`; `src/config/env.ts` reads them from there (or from `EXPO_PUBLIC_*` in some setups). `SUPABASE_URL`/`SUPABASE_ANON_KEY` have no hardcoded fallback — the app throws a clear startup error if they're missing, so `.env` must be set up before running.
 

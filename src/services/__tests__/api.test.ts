@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete, apiFetch, setOn401Handler } from '@/src/services/api';
 import { AppError } from '@/src/lib/errors';
 
@@ -82,6 +83,19 @@ describe('apiGet', () => {
       expect(err).toBeInstanceOf(AppError);
       expect((err as AppError).kind).toBe('network');
       expect((err as AppError).message).toBe('Failed to fetch');
+    }
+  });
+
+  it('throws a validation AppError when the response fails the provided schema', async () => {
+    global.fetch = mockFetchOnce(200, { id: 'not-a-number' }) as any;
+    const schema = z.object({ id: z.number() });
+
+    try {
+      await apiGet('/shops/1', null, schema);
+      throw new Error('expected apiGet to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+      expect((err as AppError).kind).toBe('validation');
     }
   });
 });

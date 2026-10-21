@@ -14,6 +14,9 @@ import { CartProvider } from '@/src/contexts/CartContext';
 import { NotificationProvider } from '@/src/contexts/NotificationContext';
 import { FloatingSupportFab } from '@/src/components/FloatingSupportFab';
 import { OfflineBanner } from '@/src/components/OfflineBanner';
+import { initErrorTracking } from '@/src/lib/errorTracking';
+
+initErrorTracking();
 
 export {
   // Catch any errors thrown by the Layout component.

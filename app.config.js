@@ -22,6 +22,7 @@ module.exports = {
         }
       ],
       "expo-secure-store",
+      "@sentry/react-native",
       [
         "expo-local-authentication",
         {
@@ -40,6 +41,7 @@ module.exports = {
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
       APP_URL: process.env.APP_URL ?? 'tola://',
       GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID ?? '',
+      SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN || '',
     },
   },
 };

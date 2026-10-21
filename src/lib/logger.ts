@@ -1,6 +1,20 @@
 type LogLevel = 'info' | 'warn' | 'error';
 type LogSink = (level: LogLevel, message: string, args: unknown[]) => void;
 
+export type StructuredLogEntry = {
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  context?: unknown[];
+};
+
+let structuredLogObserver: ((entry: StructuredLogEntry) => void) | null = null;
+
+/** Receive every structured record the default sink actually emits (warn/error in production, all levels in dev). */
+export function setStructuredLogObserver(next: ((entry: StructuredLogEntry) => void) | null) {
+  structuredLogObserver = next;
+}
+
 const LOG_LEVEL_RANK: Record<LogLevel, number> = { info: 0, warn: 1, error: 2 };
 
 /**
@@ -20,12 +34,13 @@ function defaultSinkMinLevel(): LogLevel {
 export const defaultLogSink: LogSink = (level, message, args) => {
   if (LOG_LEVEL_RANK[level] < LOG_LEVEL_RANK[defaultSinkMinLevel()]) return;
   const consoleMethod = level === 'info' ? console.log : level === 'warn' ? console.warn : console.error;
-  const logEntry = {
+  const logEntry: StructuredLogEntry = {
     timestamp: new Date().toISOString(),
     level,
     message,
     context: args.length ? args : undefined,
   };
+  structuredLogObserver?.(logEntry);
   consoleMethod(logEntry);
 };
 

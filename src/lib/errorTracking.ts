@@ -1,4 +1,6 @@
-import { logger } from '@/src/lib/logger';
+import Constants from 'expo-constants';
+import * as Sentry from '@sentry/react-native';
+import { logger, setStructuredLogObserver, type StructuredLogEntry } from '@/src/lib/logger';
 
 export type ErrorTrackingUser = { id: string; email?: string } | null;
 
@@ -9,9 +11,8 @@ interface ErrorTrackingProvider {
 }
 
 /**
- * Default provider: routes through the existing logger. Swap this out in
- * app/_layout.tsx via `setErrorTrackingProvider(...)` to wire a real service
- * (Sentry, Bugsnag, etc.) without touching any of the call sites below.
+ * Default provider: structured logs only. Sentry is installed by
+ * `initErrorTracking()` when EXPO_PUBLIC_SENTRY_DSN (or extra.SENTRY_DSN) is set.
  */
 const consoleProvider: ErrorTrackingProvider = {
   captureException(error, context) {
@@ -25,22 +26,69 @@ const consoleProvider: ErrorTrackingProvider = {
   },
 };
 
+const sentryProvider: ErrorTrackingProvider = {
+  captureException(error, context) {
+    Sentry.captureException(error, { extra: context });
+  },
+  captureMessage(message, level = 'info') {
+    Sentry.captureMessage(message, level);
+  },
+  setUser(user) {
+    Sentry.setUser(user);
+  },
+};
+
 let provider: ErrorTrackingProvider = consoleProvider;
 
-/**
- * Plug in a real error-tracking SDK. Call once at startup, e.g.:
- *
- *   setErrorTrackingProvider({
- *     captureException: (e, ctx) => Sentry.captureException(e, { extra: ctx }),
- *     captureMessage: (m, level) => Sentry.captureMessage(m, level),
- *     setUser: (u) => Sentry.setUser(u),
- *   });
- */
+/** Plug in a provider. Tests and `initErrorTracking` both use this. */
 export function setErrorTrackingProvider(next: ErrorTrackingProvider) {
   provider = next;
 }
 
+export function resolveSentryDsn(): string {
+  const extra = Constants.expoConfig?.extra as { SENTRY_DSN?: string } | undefined;
+  return extra?.SENTRY_DSN || process.env.EXPO_PUBLIC_SENTRY_DSN || '';
+}
+
+function forwardStructuredLog(entry: StructuredLogEntry) {
+  const attributes = entry.context ? { context: entry.context } : undefined;
+  Sentry.addBreadcrumb({
+    category: 'log',
+    level: entry.level === 'warn' ? 'warning' : entry.level,
+    message: entry.message,
+    data: attributes,
+  });
+  const sentryLogger = Sentry.logger;
+  if (entry.level === 'error') sentryLogger.error(entry.message, attributes);
+  else if (entry.level === 'warn') sentryLogger.warn(entry.message, attributes);
+  else sentryLogger.info(entry.message, attributes);
+}
+
+/**
+ * Initialize Sentry when a DSN is configured. With no DSN this is a no-op:
+ * captureException keeps the local logger and never calls Sentry.
+ */
+export function initErrorTracking() {
+  const dsn = resolveSentryDsn();
+  if (!dsn) {
+    provider = consoleProvider;
+    setStructuredLogObserver(null);
+    return;
+  }
+
+  Sentry.init({
+    dsn,
+    enabled: true,
+    enableLogs: true,
+    tracesSampleRate: 0.2,
+  });
+  provider = sentryProvider;
+  setStructuredLogObserver(forwardStructuredLog);
+}
+
 export function captureException(error: unknown, context?: Record<string, unknown>) {
+  // No DSN: console provider only. Sentry.init is never called, so this does not
+  // leave the device. With a DSN, initErrorTracking has swapped in the Sentry provider.
   provider.captureException(error, context);
 }
 

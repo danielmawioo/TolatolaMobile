@@ -83,7 +83,12 @@ describe('useCheckoutSubmit', () => {
       await result.current.handleSubmit();
     });
 
-    expect(mockedApiPost).toHaveBeenCalledWith('/orders', expect.objectContaining({ totalAmount: 3045 }), undefined);
+    expect(mockedApiPost).toHaveBeenCalledWith(
+      '/orders',
+      expect.objectContaining({ totalAmount: 3045 }),
+      undefined,
+      expect.anything(),
+    );
     expect(params.clearCart).toHaveBeenCalled();
     expect(router.replace).toHaveBeenCalledWith({
       pathname: '/payment-success',

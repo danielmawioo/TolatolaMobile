@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { apiPost } from '@/src/services/api';
+import { createOrder, initiateCheckoutPayment } from '@/src/services/checkout';
 import { MOBILE_MONEY_PROVIDERS, CARD_PROVIDERS, type AddressData } from '@/src/constants/checkout';
 import type { CartItem } from '@/src/contexts/CartContext';
 import type { Session } from '@/src/contexts/AuthContext';
@@ -125,8 +125,7 @@ export function useCheckoutSubmit(params: UseCheckoutSubmitParams) {
         pushToken: expoPushToken || null,
       };
 
-      // 1. Create order
-      const orderRes = await apiPost<any>('/orders', orderPayload, session?.access_token);
+      const orderRes = await createOrder(orderPayload, session?.access_token);
       const orderId = orderRes?.order?.id || orderRes?.id;
 
       if (!orderId) throw new Error('Order ID not returned from API');
@@ -142,8 +141,15 @@ export function useCheckoutSubmit(params: UseCheckoutSubmitParams) {
       setIsAwaitingPayment(true);
 
       // Use the mobile-specific payment endpoint
-      const payBody: any = {
-        orderId,
+      const payBody: {
+        orderId: string;
+        provider: string;
+        amount: number;
+        currency: string;
+        phone?: string;
+        paymentDetails?: { cardNumber: string; expiryDate: string; cvv: string };
+      } = {
+        orderId: String(orderId),
         provider: paymentMethod,
         amount: total,
         currency: 'TZS',
@@ -158,11 +164,7 @@ export function useCheckoutSubmit(params: UseCheckoutSubmitParams) {
         payBody.phone = paymentPhone;
       }
 
-      const payRes = await apiPost<any>(
-        '/payments/mobile/initiate',
-        payBody,
-        session?.access_token
-      );
+      const payRes = await initiateCheckoutPayment(payBody, session?.access_token);
 
       if (payRes.success) {
         await clearCart();

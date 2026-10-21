@@ -6,7 +6,9 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Location from 'expo-location';
 import { Theme } from '@/constants/Theme';
+import { UBER_MAP_STYLE } from '@/src/constants/mapStyle';
 import { logger } from '@/src/lib/logger';
+import { MapPickerWebFallback } from '@/src/components/MapPickerWebFallback';
 
 // Only import MapView on native platforms
 let MapView: any = null;
@@ -139,56 +141,16 @@ export default function MapPicker({
     setIsExpanded((prev) => !prev);
   };
 
-  // Web fallback
   if (Platform.OS === 'web' || !MapView) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <FontAwesome name="map" size={16} color={Theme.primary} />
-            <Text style={styles.title}>{title}</Text>
-          </View>
-          <Pressable
-            style={({ pressed }) => [styles.gpsBtn, pressed && styles.btnPressed]}
-            onPress={requestCurrentLocation}
-            disabled={isLocating}
-          >
-            {isLocating ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <FontAwesome name="location-arrow" size={12} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.gpsBtnText}>Current GPS</Text>
-              </>
-            )}
-          </Pressable>
-        </View>
-        {errorMsg && (
-          <View style={styles.errorBanner}>
-            <FontAwesome name="exclamation-circle" size={14} color="#D32F2F" style={{ marginRight: 6 }} />
-            <Text style={styles.errorText}>{errorMsg}</Text>
-          </View>
-        )}
-        <View style={styles.webFallback}>
-          <FontAwesome name="map-o" size={40} color={Theme.textMuted} style={{ marginBottom: 8 }} />
-          <Text style={styles.webFallbackText}>
-            Interactive Map is not available on Web.
-          </Text>
-          <Text style={styles.webFallbackSub}>
-            Use the Address Search or press "Current GPS" to set your coordinates.
-          </Text>
-        </View>
-        <View style={styles.coordRow}>
-          <View style={styles.coordBadge}>
-            <Text style={styles.coordLabel}>Lat:</Text>
-            <Text style={styles.coordVal}>{latitude ? latitude.toFixed(6) : 'Not set'}</Text>
-          </View>
-          <View style={styles.coordBadge}>
-            <Text style={styles.coordLabel}>Lng:</Text>
-            <Text style={styles.coordVal}>{longitude ? longitude.toFixed(6) : 'Not set'}</Text>
-          </View>
-        </View>
-      </View>
+      <MapPickerWebFallback
+        title={title}
+        latitude={latitude}
+        longitude={longitude}
+        isLocating={isLocating}
+        errorMsg={errorMsg}
+        onRequestLocation={requestCurrentLocation}
+      />
     );
   }
 
@@ -263,7 +225,7 @@ export default function MapPicker({
             showsCompass={false}
             toolbarEnabled={false}
             mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
-            customMapStyle={mapStyle}
+            customMapStyle={UBER_MAP_STYLE}
           >
             {latitude && longitude && (
               <Marker
@@ -312,28 +274,6 @@ export default function MapPicker({
     </View>
   );
 }
-
-// Uber-inspired subtle map style
-const mapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
-  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
-  { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
-  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-  { featureType: 'road.arterial', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#dadada' }] },
-  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
-  { featureType: 'transit.line', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
-  { featureType: 'transit.station', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9c9c9' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
-];
 
 const styles = StyleSheet.create({
   container: {
@@ -506,30 +446,5 @@ const styles = StyleSheet.create({
   coordValActive: {
     color: Theme.primary,
     fontWeight: '700',
-  },
-  // Web fallback
-  webFallback: {
-    height: 160,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    marginBottom: 10,
-  },
-  webFallbackText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  webFallbackSub: {
-    fontSize: 11,
-    color: '#64748B',
-    textAlign: 'center',
   },
 });

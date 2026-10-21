@@ -71,6 +71,7 @@ export default function CartScreen() {
             style={styles.removeBtn}
             onPress={() => handleRemove(item.id)}
             hitSlop={8}
+            testID={`cart-remove-${item.id}`}
           >
             <FontAwesome name="trash" size={16} color={Theme.error} />
           </Pressable>
@@ -104,6 +105,7 @@ export default function CartScreen() {
               style={[styles.qtyBtn, item.quantity <= 1 && styles.qtyBtnDisabled]}
               onPress={() => handleUpdateQty(item.id, item.quantity - 1)}
               disabled={item.quantity <= 1}
+              testID={`cart-qty-decrease-${item.id}`}
             >
               <FontAwesome name="minus" size={10} color={item.quantity <= 1 ? Theme.textMuted : Theme.text} />
             </Pressable>
@@ -111,6 +113,7 @@ export default function CartScreen() {
             <Pressable
               style={styles.qtyBtn}
               onPress={() => handleUpdateQty(item.id, item.quantity + 1)}
+              testID={`cart-qty-increase-${item.id}`}
             >
               <FontAwesome name="plus" size={10} color={Theme.text} />
             </Pressable>

@@ -7,14 +7,11 @@ import { apiGet } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
 import { captureException } from '@/src/lib/errorTracking';
 import { SignupInputSchema } from '@/src/schemas/auth';
+import { ReferralInfoSchema, type ReferralInfo } from '@/src/schemas/referral';
 
 export type SignupUserType = 'customer' | 'vendor' | 'transporter';
 
-/** Response shape from GET /agents/referral-info?code=... */
-export interface ReferralInfo {
-  agent_name?: string;
-  [key: string]: unknown;
-}
+export type { ReferralInfo };
 
 export const VENDOR_TYPES = ['Producer', 'Manufacturer', 'Supplier', 'Wholesaler', 'Retail trader'];
 
@@ -61,9 +58,10 @@ export function useSignupForm({ initialRole, initialReferralCode }: UseSignupFor
     setReferralValidating(true);
     setReferralError(null);
     try {
-      const res = await apiGet<ReferralInfo>(`/agents/referral-info?code=${code.trim()}`);
-      if (res?.agent_name) {
-        setReferrerName(res.agent_name);
+      const res = await apiGet(`/agents/referral-info?code=${code.trim()}`, undefined, ReferralInfoSchema);
+      const parsed = ReferralInfoSchema.safeParse(res);
+      if (parsed.success && parsed.data.agent_name) {
+        setReferrerName(parsed.data.agent_name);
         setReferralError(null);
       } else {
         setReferrerName(null);
