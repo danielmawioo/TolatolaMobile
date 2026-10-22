@@ -58,8 +58,34 @@ export function setLogSink(next: LogSink) {
   sink = next;
 }
 
+/** Prevents consoleProvider.captureException → logger.error → captureException loops. */
+let forwardingErrorToTracking = false;
+
+function forwardErrorToTracking(message: string, args: unknown[]) {
+  if (forwardingErrorToTracking) return;
+  forwardingErrorToTracking = true;
+  try {
+    // Lazy require avoids a static cycle with errorTracking → logger.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { captureException } = require('@/src/lib/errorTracking') as typeof import('@/src/lib/errorTracking');
+    const err = args.find((a): a is Error => a instanceof Error) ?? new Error(message);
+    const extra = args.filter((a) => !(a instanceof Error));
+    captureException(err, {
+      logMessage: message,
+      ...(extra.length ? { context: extra } : {}),
+    });
+  } catch {
+    // Tracking must never break the caller.
+  } finally {
+    forwardingErrorToTracking = false;
+  }
+}
+
 export const logger = {
   info: (message: string, ...args: unknown[]) => sink('info', message, args),
   warn: (message: string, ...args: unknown[]) => sink('warn', message, args),
-  error: (message: string, ...args: unknown[]) => sink('error', message, args),
+  error: (message: string, ...args: unknown[]) => {
+    sink('error', message, args);
+    forwardErrorToTracking(message, args);
+  },
 };

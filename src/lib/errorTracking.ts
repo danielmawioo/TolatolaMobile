@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
-import { logger, setStructuredLogObserver, type StructuredLogEntry } from '@/src/lib/logger';
+import { setStructuredLogObserver, type StructuredLogEntry } from '@/src/lib/logger';
 
 export type ErrorTrackingUser = { id: string; email?: string } | null;
 
@@ -14,15 +14,20 @@ interface ErrorTrackingProvider {
  * Default provider: structured logs only. Sentry is installed by
  * `initErrorTracking()` when EXPO_PUBLIC_SENTRY_DSN (or extra.SENTRY_DSN) is set.
  */
+/**
+ * Default provider: console only. Uses console.* (not logger) so that
+ * logger.error → captureException cannot recurse through this provider.
+ */
 const consoleProvider: ErrorTrackingProvider = {
   captureException(error, context) {
-    logger.error('[error-tracking] captureException', error, context);
+    console.error('[error-tracking] captureException', error, context);
   },
   captureMessage(message, level = 'info') {
-    logger[level === 'warning' ? 'warn' : level](`[error-tracking] ${message}`);
+    const method = level === 'warning' ? console.warn : level === 'error' ? console.error : console.log;
+    method(`[error-tracking] ${message}`);
   },
   setUser(user) {
-    logger.info('[error-tracking] setUser', user);
+    console.log('[error-tracking] setUser', user);
   },
 };
 

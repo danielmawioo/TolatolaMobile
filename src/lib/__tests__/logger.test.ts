@@ -1,4 +1,13 @@
 import { logger, setLogSink, defaultLogSink } from '@/src/lib/logger';
+import { captureException, setErrorTrackingProvider } from '@/src/lib/errorTracking';
+
+jest.mock('@/src/lib/errorTracking', () => {
+  const actual = jest.requireActual('@/src/lib/errorTracking');
+  return {
+    ...actual,
+    captureException: jest.fn(),
+  };
+});
 
 describe('logger', () => {
   const originalDev = (global as any).__DEV__;
@@ -9,6 +18,12 @@ describe('logger', () => {
     // Always restore the real default sink so mutations in one test (e.g.
     // installing a custom sink) can't leak into unrelated tests.
     setLogSink(defaultLogSink);
+    setErrorTrackingProvider({
+      captureException: jest.fn(),
+      captureMessage: jest.fn(),
+      setUser: jest.fn(),
+    });
+    (captureException as jest.Mock).mockClear();
   });
 
   it('forwards info/warn/error to the matching console method as a structured log entry', () => {
@@ -86,5 +101,28 @@ describe('logger', () => {
     logger.info('info for custom sink', { a: 1 });
 
     expect(sink).toHaveBeenCalledWith('info', 'info for custom sink', [{ a: 1 }]);
+  });
+
+  it('forwards error-level calls to captureException with the Error arg when present', () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const err = new Error('network down');
+
+    logger.error('[API] request failed', err, { path: '/orders' });
+
+    expect(captureException).toHaveBeenCalledWith(err, {
+      logMessage: '[API] request failed',
+      context: [{ path: '/orders' }],
+    });
+  });
+
+  it('forwards error-level calls to captureException wrapping the message when no Error arg', () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    logger.error('plain failure');
+
+    expect(captureException).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'plain failure' }),
+      { logMessage: 'plain failure' },
+    );
   });
 });
