@@ -20,6 +20,7 @@ import { Theme } from '@/constants/Theme';
 import { scaleByWidth, gap } from '@/constants/layout';
 import { CountryCodePicker } from '@/components/CountryCodePicker';
 import { useSignupForm, VENDOR_TYPES, type SignupUserType } from '@/src/hooks/useSignupForm';
+import { ReferralCodeField } from '@/components/auth/ReferralCodeField';
 
 export default function SignupScreen() {
   const params = useLocalSearchParams<{ role?: string; ref?: string }>();
@@ -134,62 +135,18 @@ export default function SignupScreen() {
           />
         </View>
 
-        {/* Optional Referral Code Field */}
-        {!showReferralField && !hasDeepLinkReferral ? (
-          <Pressable
-            style={styles.referralToggleBtn}
-            onPress={() => setShowReferralField(true)}
-          >
-            <Ionicons name="gift" size={14} color="#059669" style={{ marginRight: 6 }} />
-            <Text style={styles.referralToggleText}>Una msimbo wa rufaa? (Have a referral code?)</Text>
-          </Pressable>
-        ) : null}
-
-        {showReferralField && (
-          <View style={styles.referralFieldWrap}>
-            <Text style={styles.referralFieldLabel}>
-              Msimbo wa Rufaa (Referral Code)
-              <Text style={{ fontWeight: '400', color: Theme.textMuted }}> — si lazima</Text>
-            </Text>
-            <View style={[
-              styles.inputWrap,
-              referrerName ? { borderColor: '#10b981', borderWidth: 1.5 } :
-              referralError ? { borderColor: '#ef4444', borderWidth: 1.5 } : {},
-              { marginBottom: 0 },
-            ]}>
-              <Ionicons name="gift" size={20} color={referrerName ? '#10b981' : Theme.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { letterSpacing: 2, textTransform: 'uppercase' }]}
-                placeholder="Mfano: TOLA-AG-XXXX"
-                placeholderTextColor={Theme.textMuted}
-                value={referralCode}
-                onChangeText={onReferralCodeChange}
-                onBlur={() => validateReferralCode(referralCode)}
-                autoCapitalize="characters"
-                editable={!hasDeepLinkReferral && !isAnyLoading}
-              />
-              {referralValidating && (
-                <View style={{ marginLeft: 8 }}>
-                  <Text style={{ fontSize: 10, color: Theme.textMuted }}>...</Text>
-                </View>
-              )}
-              {!referralValidating && referrerName && (
-                <Ionicons name="checkmark-circle" size={20} color="#10b981" style={{ marginLeft: 8 }} />
-              )}
-              {!referralValidating && referralError && (
-                <Ionicons name="close-circle" size={20} color="#ef4444" style={{ marginLeft: 8 }} />
-              )}
-            </View>
-            {referrerName ? (
-              <Text style={styles.referralSuccessText}>
-                Umependekezwa na wakala: {referrerName}
-              </Text>
-            ) : null}
-            {referralError ? (
-              <Text style={styles.referralErrorText}>{referralError}</Text>
-            ) : null}
-          </View>
-        )}
+        <ReferralCodeField
+          referralCode={referralCode}
+          onReferralCodeChange={onReferralCodeChange}
+          showReferralField={showReferralField}
+          setShowReferralField={setShowReferralField}
+          referralValidating={referralValidating}
+          referralError={referralError}
+          referrerName={referrerName}
+          validateReferralCode={validateReferralCode}
+          hasDeepLinkReferral={hasDeepLinkReferral}
+          isAnyLoading={isAnyLoading}
+        />
 
         <Text style={styles.sectionLabel}>I want to:</Text>
         <View style={styles.roleRow}>
@@ -405,40 +362,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#15803d',
     fontWeight: '500',
-  },
-  referralToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 2,
-  },
-  referralToggleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#059669',
-  },
-  referralFieldWrap: {
-    marginBottom: 16,
-    gap: 6,
-  },
-  referralFieldLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Theme.text,
-    marginBottom: 4,
-  },
-  referralSuccessText: {
-    fontSize: 11,
-    color: '#059669',
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  referralErrorText: {
-    fontSize: 11,
-    color: '#ef4444',
-    fontWeight: '500',
-    marginTop: 4,
   },
 });
