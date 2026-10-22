@@ -14,12 +14,20 @@ npm test -- --coverage
 
 `<type>/<short-description>`, e.g. `fix/checkout-delivery-fee`, `feat/vendor-wallet-tab`.
 
+## Branching & review
+
+1. Branch from `main` with `<type>/<short-description>` (see Branch naming).
+2. Keep PRs small: one concern per PR when practical. Multi-file features should land as **2–3 commits** scoped by layer (e.g. schema → service/UI → tests), not one bulk commit.
+3. Every feature/fix PR must include the source change **and** its corresponding test file in the same commit (or an immediately following `test:` commit on the same PR).
+4. Request review before merge; CI (`lint`, `typecheck`, `test --coverage`, `npm audit`) must be green.
+
 ## Commits
 
 This repo follows [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`). Keep each commit focused on one change:
 
 - Ship a feature or fix together with the tests that pin its behavior, in the same commit.
 - Don't bundle formatting, refactors, and feature work into one commit — split them so each one is reviewable and revertable on its own.
+- Prefer pairing `src/components/<domain>/` changes with `src/components/<domain>/__tests__/` (or nearest `__tests__/`) updates in that same commit.
 
 ## Tests
 
