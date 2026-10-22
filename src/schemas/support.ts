@@ -61,10 +61,37 @@ export const SupportTicketCreatedSchema = z
   })
   .passthrough();
 
+/** Body of POST /support/tickets before the request leaves the client. */
+export const SupportTicketInputSchema = z
+  .object({
+    subject: z.string().min(1),
+    message: z.string().min(1),
+    priority: z.string().min(1).optional(),
+    history: z
+      .array(
+        z
+          .object({
+            sender: z.string(),
+            text: z.string(),
+          })
+          .passthrough()
+      )
+      .optional(),
+  })
+  .passthrough();
+
 export const LiveMessageInputSchema = z
   .object({
     message: z.string(),
     attachment_url: z.string().optional(),
     attachment_type: z.string().optional(),
+  })
+  .passthrough();
+
+/** Body of POST /profile/fcm-token and guest token registration. */
+export const PushTokenInputSchema = z
+  .object({
+    token: z.string().min(1),
+    platform: z.string().min(1),
   })
   .passthrough();

@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { apiPost } from './api';
 import { logger } from '@/src/lib/logger';
+import { PushTokenInputSchema } from '@/src/schemas/support';
 
 // Configure how notifications appear when app is foregrounded
 Notifications.setNotificationHandler({
@@ -83,13 +84,14 @@ export async function registerForPushNotifications(accessToken?: string): Promis
     // Send token to backend
     if (token) {
       try {
+        const body = PushTokenInputSchema.parse({ token, platform: Platform.OS });
         if (accessToken) {
           logger.info('[PUSH] Attempting to register authenticated token with backend...');
-          const result = await apiPost('/profile/fcm-token', { token, platform: Platform.OS }, accessToken);
+          const result = await apiPost('/profile/fcm-token', body, accessToken);
           logger.info('[PUSH] Authenticated token registered successfully:', result);
         } else {
           logger.info('[PUSH] Attempting to register guest token with backend...');
-          const result = await apiPost('/notifications/register-guest-token', { token, platform: Platform.OS });
+          const result = await apiPost('/notifications/register-guest-token', body);
           logger.info('[PUSH] Guest token registered successfully:', result);
         }
       } catch (e: any) {

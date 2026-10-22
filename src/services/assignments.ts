@@ -36,12 +36,12 @@ export async function updateAssignmentStatus(params: {
   const data: { status: string; picked_up_at?: string; delivered_at?: string } = { status: newStatus };
   if (newStatus === 'picked_up') data.picked_up_at = new Date().toISOString();
   if (newStatus === 'delivered') data.delivered_at = new Date().toISOString();
-  const body = parseApiResponse(AssignmentStatusBodySchema, data);
+  const body = AssignmentStatusBodySchema.parse(data);
   await apiPatch(`/assignments/${id}`, body, accessToken);
 }
 
 export async function verifyAssignmentPin(id: string, pin: string, accessToken: string): Promise<void> {
-  const body = parseApiResponse(DeliveryPinSchema, { pin });
+  const body = DeliveryPinSchema.parse({ pin });
   await apiPost(`/assignments/${id}/verify-pin`, body, accessToken);
 }
 

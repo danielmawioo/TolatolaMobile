@@ -6,6 +6,7 @@ import {
   ConversationMessagesResponseSchema,
   LiveMessageInputSchema,
   SupportTicketCreatedSchema,
+  SupportTicketInputSchema,
   SupportTicketsResponseSchema,
   type LiveSupportMessage,
   type SupportTicket,
@@ -29,17 +30,18 @@ export async function fetchConversationMessages(
 }
 
 export async function postConversationMessage(conversationId: string, body: object, accessToken: string) {
-  parseApiResponse(LiveMessageInputSchema, body);
+  LiveMessageInputSchema.parse(body);
   return apiPost(`/conversations/${conversationId}/messages`, body, accessToken);
 }
 
 export async function postSupportAiChat(payload: object, accessToken?: string | null) {
-  parseApiResponse(AiChatInputSchema, payload);
+  AiChatInputSchema.parse(payload);
   const res = await apiPost<unknown>('/support/ai-chat', payload, accessToken);
   return parseApiResponse(AiChatResponseSchema, res);
 }
 
 export async function createSupportTicket(body: object, accessToken?: string | null) {
+  SupportTicketInputSchema.parse(body);
   const res = await apiPost<unknown>('/support/tickets', body, accessToken);
   return parseApiResponse(SupportTicketCreatedSchema, res);
 }
