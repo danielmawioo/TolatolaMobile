@@ -10,11 +10,17 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MOUREEN_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
 const FAB_SIZE = 60;
+/** Default bottom-tab-bar height in @react-navigation/bottom-tabs, before safe-area insets. */
+const TAB_BAR_HEIGHT = 49;
+/** Breathing room between the FAB and the top edge of the bottom tab bar. */
+const FAB_NAV_GAP = 16;
 
 export function FloatingSupportFab() {
+  const insets = useSafeAreaInsets();
   const pan = useRef(new Animated.ValueXY()).current;
   // Track whether the gesture was a drag vs. a tap
   const isDragging = useRef(false);
@@ -80,6 +86,7 @@ export function FloatingSupportFab() {
       style={[
         styles.fabContainer,
         {
+          bottom: TAB_BAR_HEIGHT + insets.bottom + FAB_NAV_GAP,
           transform: [{ translateX: pan.x }, { translateY: pan.y }],
         },
       ]}
@@ -99,7 +106,6 @@ export function FloatingSupportFab() {
 const styles = StyleSheet.create({
   fabContainer: {
     position: 'absolute',
-    bottom: 90,
     right: 20,
     zIndex: 999,
     shadowColor: '#000',
