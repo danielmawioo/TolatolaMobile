@@ -8,6 +8,7 @@ const ShopSchema = z
     name: optionalText,
     district: optionalText,
     region: optionalText,
+    ward: optionalText,
     address: optionalText,
     phone: optionalText,
     latitude: optionalNumber,
