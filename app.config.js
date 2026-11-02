@@ -42,6 +42,17 @@ module.exports = {
       APP_URL: process.env.APP_URL ?? 'tola://',
       GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID ?? '',
       SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN || '',
+      // Public Mapbox token (pk.*). Used by the in-app navigation WebView for
+      // map tiles/styles. Safe to ship in the client; restrict it to the
+      // Tolatola bundle/URLs in the Mapbox dashboard. When empty the
+      // navigation screen falls back to the OpenStreetMap/Leaflet renderer
+      // instead of breaking.
+      MAPBOX_ACCESS_TOKEN:
+        process.env.MAPBOX_ACCESS_TOKEN ?? process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '',
+      MAPBOX_STYLE_URL:
+        process.env.MAPBOX_STYLE_URL ??
+        process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL ??
+        'mapbox://styles/mapbox/navigation-day-v1',
     },
   },
 };

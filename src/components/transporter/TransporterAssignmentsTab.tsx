@@ -14,6 +14,11 @@ import {
   updateAssignmentStatus,
   verifyAssignmentPin,
 } from '@/src/services/assignments';
+import {
+  getProductPosition,
+  productPositionDescription,
+  productPositionLabel,
+} from '@/src/lib/navigation';
 import type { TransporterAssignment } from '@/src/schemas/assignments';
 
 const TAB_AVAILABLE = 'available';
@@ -125,8 +130,44 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
     }
   };
 
-  const openMap = (lat: number, lng: number) => {
-    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
+  /**
+   * Opens the in-app navigator. `auto` lets the navigator pick the right leg
+   * from the trip status (pickup first, then drop-off); the explicit targets
+   * are used by the per-stop links so a transporter can preview either stop.
+   */
+  const openNavigation = (a: TransporterAssignment, target: 'pickup' | 'dropoff' | 'auto') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({
+      pathname: '/(transporter)/delivery-map',
+      params: {
+        assignmentId: a.id,
+        orderId: a.order_id || '',
+        target,
+        status: a.status,
+        shopLat: a.shops?.latitude || '',
+        shopLng: a.shops?.longitude || '',
+        shopName: a.shops?.name || 'Shop',
+        shopAddress: [a.shops?.address, a.shops?.ward, a.shops?.district, a.shops?.region]
+          .filter(Boolean)
+          .join(', '),
+        shopPhone: a.shops?.phone || '',
+        custLat: a.orders?.shipping_address?.latitude || '',
+        custLng: a.orders?.shipping_address?.longitude || '',
+        custName:
+          a.orders?.users?.full_name ||
+          a.orders?.shipping_address?.full_name ||
+          'Customer',
+        custAddress: [
+          a.orders?.shipping_address?.street || a.orders?.shipping_address?.address,
+          a.orders?.shipping_address?.ward,
+          a.orders?.shipping_address?.district,
+          a.orders?.shipping_address?.region,
+        ]
+          .filter(Boolean)
+          .join(', '),
+        custPhone: a.orders?.users?.phone || '',
+      },
+    } as any);
   };
 
   const callPhone = (phone: string) => { Linking.openURL(`tel:${phone}`); };
@@ -137,6 +178,8 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
     const isAccepted = ['accepted', 'picked_up', 'in_transit', 'delivered'].includes(a.status) || !!a.accepted_at;
     const isNotAccepted = ['assigned', 'ready_for_pickup', 'available'].includes(a.status) && !a.accepted_at;
     const displayStatus = (a.status === 'assigned' && a.accepted_at) ? 'accepted' : a.status;
+    const productPosition = getProductPosition(displayStatus);
+    const delivered = displayStatus === 'delivered';
 
     return (
       <View key={a.id} style={[st.card, !isAccepted && { borderColor: Theme.primary + '30', backgroundColor: Theme.primary + '05' }]}>
@@ -159,10 +202,10 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
             <Text style={st.locationLabel}>Pickup from: {a.shops?.name || 'Shop'}</Text>
             <Text style={st.locationSub}>{a.shops?.district}, {a.shops?.region}</Text>
             {isAccepted && a.shops?.address && <Text style={st.locationDetail}>{a.shops.address}</Text>}
-            {isAccepted && a.shops?.latitude && a.shops?.longitude && (
-              <Pressable style={st.mapLink} onPress={() => openMap(Number(a.shops!.latitude), Number(a.shops!.longitude))}>
-                <FontAwesome name="map-marker" size={12} color={Theme.primary} />
-                <Text style={st.mapLinkText}>View Pickup Location</Text>
+            {isAccepted && !delivered && a.shops?.latitude && a.shops?.longitude && (
+              <Pressable style={st.mapLink} onPress={() => openNavigation(a, 'pickup')}>
+                <FontAwesome name="location-arrow" size={12} color={Theme.primary} />
+                <Text style={st.mapLinkText}>Navigate to pickup</Text>
               </Pressable>
             )}
             {isAccepted && a.shops?.phone && (
@@ -185,10 +228,10 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
             {isAccepted && a.orders?.shipping_address && (
               <>
                 <Text style={st.locationDetail}>{a.orders.shipping_address.street || a.orders.shipping_address.address}, {a.orders.shipping_address.ward}</Text>
-                {a.orders.shipping_address.latitude && a.orders.shipping_address.longitude && (
-                  <Pressable style={st.mapLink} onPress={() => openMap(Number(a.orders!.shipping_address!.latitude), Number(a.orders!.shipping_address!.longitude))}>
-                    <FontAwesome name="map-marker" size={12} color={Theme.primary} />
-                    <Text style={st.mapLinkText}>View Delivery Location</Text>
+                {!delivered && a.orders.shipping_address.latitude && a.orders.shipping_address.longitude && (
+                  <Pressable style={st.mapLink} onPress={() => openNavigation(a, 'dropoff')}>
+                    <FontAwesome name="location-arrow" size={12} color="#7c3aed" />
+                    <Text style={[st.mapLinkText, { color: '#7c3aed' }]}>Navigate to drop-off</Text>
                   </Pressable>
                 )}
               </>
@@ -201,6 +244,51 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
             )}
           </View>
         </View>
+
+        {/* Where the product is right now, so the transporter never has to guess */}
+        {isAccepted && (
+          <View
+            style={[
+              st.productStatusBox,
+              productPosition === 'delivered' && st.productStatusDelivered,
+              productPosition === 'with_driver' && st.productStatusWithDriver,
+            ]}
+          >
+            <View
+              style={[
+                st.productStatusIcon,
+                productPosition === 'delivered' && { backgroundColor: '#dcfce7' },
+                productPosition === 'with_driver' && { backgroundColor: '#f3e8ff' },
+              ]}
+            >
+              <FontAwesome
+                name={
+                  productPosition === 'delivered'
+                    ? 'check-circle'
+                    : productPosition === 'with_driver'
+                      ? 'cube'
+                      : 'shopping-bag'
+                }
+                size={14}
+                color={
+                  productPosition === 'delivered'
+                    ? Theme.success
+                    : productPosition === 'with_driver'
+                      ? '#7c3aed'
+                      : '#0284c7'
+                }
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={st.productStatusLabel}>
+                Product: {productPositionLabel(productPosition)}
+              </Text>
+              <Text style={st.productStatusDesc}>
+                {productPositionDescription(productPosition)}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Pre-accept notice */}
         {!isAccepted && (
@@ -233,26 +321,14 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
         {isAccepted && ['accepted', 'picked_up', 'in_transit'].includes(a.status) && (
           <Pressable
             style={[st.fullActionBtn, { backgroundColor: '#0284c7', marginBottom: 8 }]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push({
-                pathname: '/(transporter)/delivery-map',
-                params: {
-                  assignmentId: a.id,
-                  orderId: a.order_id,
-                  shopLat: a.shops?.latitude || '',
-                  shopLng: a.shops?.longitude || '',
-                  shopName: a.shops?.name || 'Shop',
-                  custLat: a.orders?.shipping_address?.latitude || '',
-                  custLng: a.orders?.shipping_address?.longitude || '',
-                  custName: a.orders?.users?.full_name || a.orders?.shipping_address?.full_name || 'Customer',
-                  status: a.status
-                }
-              } as any);
-            }}
+            onPress={() => openNavigation(a, 'auto')}
           >
             <FontAwesome name="compass" size={16} color="#fff" />
-            <Text style={st.fullActionText}>Live GPS Guidance & Map</Text>
+            <Text style={st.fullActionText}>
+              {displayStatus === 'accepted'
+                ? 'Start pickup navigation'
+                : 'Start delivery navigation'}
+            </Text>
           </Pressable>
         )}
 
@@ -389,6 +465,29 @@ const st = StyleSheet.create({
   mapLinkText: { fontSize: 11, fontWeight: '600', color: Theme.primary },
   phoneLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   phoneLinkText: { fontSize: 12, color: '#2563eb', fontWeight: '600' },
+  // Product location
+  productStatusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 11,
+    borderRadius: Theme.radiusSm,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  productStatusWithDriver: { backgroundColor: '#faf5ff', borderColor: '#e9d5ff' },
+  productStatusDelivered: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+  productStatusIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e0f2fe',
+  },
+  productStatusLabel: { fontSize: 12, fontWeight: '800', color: Theme.text },
+  productStatusDesc: { fontSize: 10, color: Theme.textSecondary, marginTop: 2, lineHeight: 14 },
   // Notice
   noticeBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#fef3c7', borderRadius: Theme.radiusSm, borderWidth: 1, borderColor: '#fde68a' },
   noticeText: { fontSize: 12, color: '#92400e', fontWeight: '600' },

@@ -6,6 +6,8 @@ const extra = Constants.expoConfig?.extra as {
   SUPABASE_ANON_KEY?: string;
   APP_URL?: string;
   GOOGLE_WEB_CLIENT_ID?: string;
+  MAPBOX_ACCESS_TOKEN?: string;
+  MAPBOX_STYLE_URL?: string;
 } | undefined;
 
 /**
@@ -61,3 +63,20 @@ export const APP_URL =
  */
 export const GOOGLE_WEB_CLIENT_ID =
   extra?.GOOGLE_WEB_CLIENT_ID ?? process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
+
+/**
+ * Public Mapbox token (pk.*) for the in-app navigation map. Optional: when it
+ * is empty the navigator renders an OpenStreetMap/Leaflet map instead of
+ * failing, so the screen still works in local development.
+ */
+export const MAPBOX_ACCESS_TOKEN =
+  extra?.MAPBOX_ACCESS_TOKEN ?? process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '';
+
+/**
+ * Mapbox style URI used by the navigation map. `navigation-day-v1` is the
+ * Uber/Bolt-style road-focused style with clear labels and junctions.
+ */
+export const MAPBOX_STYLE_URL =
+  extra?.MAPBOX_STYLE_URL ??
+  process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL ??
+  'mapbox://styles/mapbox/navigation-day-v1';
