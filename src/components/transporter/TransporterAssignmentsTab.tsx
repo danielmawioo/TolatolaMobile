@@ -27,10 +27,15 @@ const TAB_IN_TRANSIT = 'in_transit';
 const TAB_COMPLETED = 'completed';
 type Tab = typeof TAB_AVAILABLE | typeof TAB_ACCEPTED | typeof TAB_IN_TRANSIT | typeof TAB_COMPLETED;
 
-const STATUS_COLORS: Record<string, string> = {
-  assigned: '#6b7280', ready_for_pickup: '#6b7280', available: '#6b7280',
-  accepted: '#2563eb', picked_up: '#7c3aed', in_transit: '#7c3aed',
-  delivered: '#16a34a', cancelled: '#ef4444',
+const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+  assigned: { bg: '#f3f4f6', text: '#4b5563', dot: '#9ca3af' },
+  ready_for_pickup: { bg: '#fef3c7', text: '#b45309', dot: '#f59e0b' },
+  available: { bg: '#f3f4f6', text: '#4b5563', dot: '#9ca3af' },
+  accepted: { bg: '#dbeafe', text: '#1d4ed8', dot: '#2563eb' },
+  picked_up: { bg: '#ede9fe', text: '#6d28d9', dot: '#7c3aed' },
+  in_transit: { bg: '#ede9fe', text: '#6d28d9', dot: '#7c3aed' },
+  delivered: { bg: '#dcfce7', text: '#15803d', dot: '#16a34a' },
+  cancelled: { bg: '#fee2e2', text: '#b91c1c', dot: '#ef4444' },
 };
 
 interface Props { transporterId: string; accessToken: string; }
@@ -180,72 +185,91 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
     const displayStatus = (a.status === 'assigned' && a.accepted_at) ? 'accepted' : a.status;
     const productPosition = getProductPosition(displayStatus);
     const delivered = displayStatus === 'delivered';
+    const sc = STATUS_COLORS[displayStatus] || STATUS_COLORS.assigned;
 
     return (
-      <View key={a.id} style={[st.card, !isAccepted && { borderColor: Theme.primary + '30', backgroundColor: Theme.primary + '05' }]}>
-        {/* Header */}
+      <View key={a.id} style={[st.card, !isAccepted && st.cardUnaccepted]}>
+        {/* Card Header */}
         <View style={st.cardHeader}>
-          <View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={st.orderNum}>Order #{a.orders?.order_number || a.order_id?.slice(0, 8)}</Text>
-            <Text style={st.cardMeta}>{a.transport_methods?.name || 'Standard'} • {a.distance_km || '?'} km</Text>
+            <View style={st.cardMetaRow}>
+              <FontAwesome name="truck" size={11} color={Theme.primary} />
+              <Text style={st.cardMeta}>{a.transport_methods?.name || 'Standard'} • {a.distance_km || '?'} km</Text>
+            </View>
           </View>
-          <View style={[st.statusBadge, { backgroundColor: (STATUS_COLORS[displayStatus] || '#6b7280') + '18' }]}>
-            <View style={[st.statusDot, { backgroundColor: STATUS_COLORS[displayStatus] || '#6b7280' }]} />
-            <Text style={[st.statusText, { color: STATUS_COLORS[displayStatus] || '#6b7280' }]}>{displayStatus.replace('_', ' ')}</Text>
-          </View>
-        </View>
-
-        {/* Pickup Info */}
-        <View style={st.locationBox}>
-          <FontAwesome name="cube" size={16} color={Theme.textMuted} />
-          <View style={{ flex: 1 }}>
-            <Text style={st.locationLabel}>Pickup from: {a.shops?.name || 'Shop'}</Text>
-            <Text style={st.locationSub}>{a.shops?.district}, {a.shops?.region}</Text>
-            {isAccepted && a.shops?.address && <Text style={st.locationDetail}>{a.shops.address}</Text>}
-            {isAccepted && !delivered && a.shops?.latitude && a.shops?.longitude && (
-              <Pressable style={st.mapLink} onPress={() => openNavigation(a, 'pickup')}>
-                <FontAwesome name="location-arrow" size={12} color={Theme.primary} />
-                <Text style={st.mapLinkText}>Navigate to pickup</Text>
-              </Pressable>
-            )}
-            {isAccepted && a.shops?.phone && (
-              <Pressable style={st.phoneLink} onPress={() => callPhone(a.shops!.phone!)}>
-                <FontAwesome name="phone" size={12} color="#2563eb" />
-                <Text style={st.phoneLinkText}>{a.shops.phone}</Text>
-              </Pressable>
-            )}
+          <View style={[st.statusBadge, { backgroundColor: sc.bg }]}>
+            <View style={[st.statusDot, { backgroundColor: sc.dot }]} />
+            <Text style={[st.statusText, { color: sc.text }]}>{displayStatus.replace('_', ' ')}</Text>
           </View>
         </View>
 
-        {/* Delivery Info */}
-        <View style={st.locationBox}>
-          <FontAwesome name="map-marker" size={16} color={Theme.textMuted} />
-          <View style={{ flex: 1 }}>
-            <Text style={st.locationLabel}>
-              Deliver to: {a.orders?.users?.full_name || a.orders?.shipping_address?.full_name || 'Customer'}
-            </Text>
-            <Text style={st.locationSub}>{a.orders?.shipping_address?.district}, {a.orders?.shipping_address?.region}</Text>
-            {isAccepted && a.orders?.shipping_address && (
-              <>
-                <Text style={st.locationDetail}>{a.orders.shipping_address.street || a.orders.shipping_address.address}, {a.orders.shipping_address.ward}</Text>
-                {!delivered && a.orders.shipping_address.latitude && a.orders.shipping_address.longitude && (
-                  <Pressable style={st.mapLink} onPress={() => openNavigation(a, 'dropoff')}>
-                    <FontAwesome name="location-arrow" size={12} color="#7c3aed" />
-                    <Text style={[st.mapLinkText, { color: '#7c3aed' }]}>Navigate to drop-off</Text>
+        {/* Visual Route Journey (Pickup to Delivery Stepper) */}
+        <View style={st.journeyContainer}>
+          <View style={st.journeyTimeline}>
+            <View style={st.journeyNodePickup}>
+              <View style={st.journeyNodeDotPickup} />
+            </View>
+            <View style={st.journeyTrack} />
+            <View style={st.journeyNodeDropoff}>
+              <View style={st.journeyNodeDotDropoff} />
+            </View>
+          </View>
+
+          <View style={st.journeyContent}>
+            {/* Pickup Stop Node */}
+            <View style={st.locationBox}>
+              <View style={st.locationHeaderRow}>
+                <Text style={st.stopTagPickup}>PICKUP STOP</Text>
+                {isAccepted && a.shops?.phone && (
+                  <Pressable style={st.phonePill} onPress={() => callPhone(a.shops!.phone!)}>
+                    <FontAwesome name="phone" size={11} color="#15803d" />
+                    <Text style={st.phonePillText}>{a.shops.phone}</Text>
                   </Pressable>
                 )}
-              </>
-            )}
-            {isAccepted && a.orders?.users?.phone && (
-              <Pressable style={st.phoneLink} onPress={() => callPhone(a.orders!.users!.phone!)}>
-                <FontAwesome name="phone" size={12} color="#2563eb" />
-                <Text style={st.phoneLinkText}>{a.orders.users.phone}</Text>
-              </Pressable>
-            )}
+              </View>
+              <Text style={st.locationLabel}>Pickup from: {a.shops?.name || 'Shop'}</Text>
+              <Text style={st.locationSub}>{a.shops?.district}, {a.shops?.region}</Text>
+              {isAccepted && a.shops?.address && <Text style={st.locationDetail}>{a.shops.address}</Text>}
+              {isAccepted && !delivered && a.shops?.latitude && a.shops?.longitude && (
+                <Pressable style={st.mapLink} onPress={() => openNavigation(a, 'pickup')}>
+                  <FontAwesome name="location-arrow" size={12} color={Theme.primary} />
+                  <Text style={st.mapLinkText}>Navigate to pickup</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* Drop-off Destination Node */}
+            <View style={st.locationBox}>
+              <View style={st.locationHeaderRow}>
+                <Text style={st.stopTagDropoff}>DROP-OFF DESTINATION</Text>
+                {isAccepted && a.orders?.users?.phone && (
+                  <Pressable style={st.phonePillDropoff} onPress={() => callPhone(a.orders!.users!.phone!)}>
+                    <FontAwesome name="phone" size={11} color="#6d28d9" />
+                    <Text style={st.phonePillDropoffText}>{a.orders.users.phone}</Text>
+                  </Pressable>
+                )}
+              </View>
+              <Text style={st.locationLabel}>
+                Deliver to: {a.orders?.users?.full_name || a.orders?.shipping_address?.full_name || 'Customer'}
+              </Text>
+              <Text style={st.locationSub}>{a.orders?.shipping_address?.district}, {a.orders?.shipping_address?.region}</Text>
+              {isAccepted && a.orders?.shipping_address && (
+                <>
+                  <Text style={st.locationDetail}>{a.orders.shipping_address.street || a.orders.shipping_address.address}, {a.orders.shipping_address.ward}</Text>
+                  {!delivered && a.orders.shipping_address.latitude && a.orders.shipping_address.longitude && (
+                    <Pressable style={st.mapLinkDropoff} onPress={() => openNavigation(a, 'dropoff')}>
+                      <FontAwesome name="location-arrow" size={12} color="#7c3aed" />
+                      <Text style={st.mapLinkDropoffText}>Navigate to drop-off</Text>
+                    </Pressable>
+                  )}
+                </>
+              )}
+            </View>
           </View>
         </View>
 
-        {/* Where the product is right now, so the transporter never has to guess */}
+        {/* Product position card */}
         {isAccepted && (
           <View
             style={[
@@ -298,29 +322,19 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
           </View>
         )}
 
-        {/* Delivery Fee */}
+        {/* Delivery Fee Card */}
         <View style={st.feeRow}>
-          <Text style={st.feeLabel}>Delivery Fee</Text>
+          <View>
+            <Text style={st.feeLabel}>Delivery Fee</Text>
+            <Text style={st.feeSub}>Paid into wallet upon completion</Text>
+          </View>
           <Text style={st.feeValue}>TSh {Number(a.delivery_fee || 0).toLocaleString()}</Text>
         </View>
 
-        {/* Action Buttons */}
-        {isNotAccepted && (
-          <View style={st.actionRow}>
-            {!a.is_available_order && (
-              <Pressable style={[st.rejectBtn]} onPress={() => updateStatus(a.id, 'rejected', a.is_available_order, a.order_id)} disabled={updatingId === a.id}>
-                <Text style={st.rejectBtnText}>Reject</Text>
-              </Pressable>
-            )}
-            <Pressable style={[st.acceptBtn, { flex: 1 }]} onPress={() => updateStatus(a.id, 'accepted', a.is_available_order, a.order_id)} disabled={updatingId === a.id}>
-              {updatingId === a.id ? <ActivityIndicator color="#fff" size="small" /> : <><FontAwesome name="check-circle" size={14} color="#fff" /><Text style={st.acceptBtnText}>Accept Cargo</Text></>}
-            </Pressable>
-          </View>
-        )}
-
+        {/* GPS Navigator Action */}
         {isAccepted && ['accepted', 'picked_up', 'in_transit'].includes(a.status) && (
           <Pressable
-            style={[st.fullActionBtn, { backgroundColor: '#0284c7', marginBottom: 8 }]}
+            style={[st.fullActionBtn, { backgroundColor: '#0284c7' }]}
             onPress={() => openNavigation(a, 'auto')}
           >
             <FontAwesome name="compass" size={16} color="#fff" />
@@ -330,6 +344,20 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
                 : 'Start delivery navigation'}
             </Text>
           </Pressable>
+        )}
+
+        {/* Action Buttons */}
+        {isNotAccepted && (
+          <View style={st.actionRow}>
+            {!a.is_available_order && (
+              <Pressable style={st.rejectBtn} onPress={() => updateStatus(a.id, 'rejected', a.is_available_order, a.order_id)} disabled={updatingId === a.id}>
+                <Text style={st.rejectBtnText}>Reject</Text>
+              </Pressable>
+            )}
+            <Pressable style={[st.acceptBtn, { flex: 1 }]} onPress={() => updateStatus(a.id, 'accepted', a.is_available_order, a.order_id)} disabled={updatingId === a.id}>
+              {updatingId === a.id ? <ActivityIndicator color="#fff" size="small" /> : <><FontAwesome name="check-circle" size={14} color="#fff" /><Text style={st.acceptBtnText}>Accept Cargo</Text></>}
+            </Pressable>
+          </View>
         )}
 
         {(displayStatus === 'accepted') && isAccepted && (
@@ -434,50 +462,246 @@ const st = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   loadingText: { marginTop: 8, color: Theme.textMuted },
+
   // Sub-tabs
   subTabScroll: { maxHeight: 44, backgroundColor: Theme.background, borderBottomWidth: 1, borderBottomColor: Theme.inputBorder },
-  subTabRow: { flexDirection: 'row', paddingHorizontal: 12, gap: 4, alignItems: 'center', height: 44 },
-  subTab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
+  subTabRow: { flexDirection: 'row', paddingHorizontal: 12, gap: 6, alignItems: 'center', height: 44 },
+  subTab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   subTabActive: { backgroundColor: Theme.primary },
   subTabText: { fontSize: 13, fontWeight: '600', color: Theme.textSecondary },
-  subTabTextActive: { color: '#fff' },
+  subTabTextActive: { color: '#fff', fontWeight: '700' },
   countBadge: { backgroundColor: Theme.textMuted, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1, minWidth: 20, alignItems: 'center' },
   countBadgeActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
   countText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+
   // List
   list: { padding: 16, gap: 14, paddingBottom: 40 },
   empty: { alignItems: 'center', padding: 48, gap: 12 },
   emptyText: { fontSize: 14, color: Theme.textMuted },
+
   // Card
-  card: { backgroundColor: Theme.background, borderRadius: Theme.radiusLg, borderWidth: 1, borderColor: Theme.inputBorder, padding: 16, gap: 12, ...Theme.shadowSm },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  orderNum: { fontSize: 16, fontWeight: '700', color: Theme.text },
-  cardMeta: { fontSize: 11, color: Theme.textMuted, marginTop: 2 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
-  // Location
-  locationBox: { flexDirection: 'row', gap: 10, padding: 12, backgroundColor: Theme.backgroundSecondary, borderRadius: Theme.radiusSm },
-  locationLabel: { fontSize: 13, fontWeight: '600', color: Theme.text },
-  locationSub: { fontSize: 11, color: Theme.textMuted, marginTop: 2 },
-  locationDetail: { fontSize: 11, color: Theme.textSecondary, marginTop: 4, borderTopWidth: 0.5, borderTopColor: Theme.inputBorder, paddingTop: 4 },
-  mapLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  mapLinkText: { fontSize: 11, fontWeight: '600', color: Theme.primary },
-  phoneLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  phoneLinkText: { fontSize: 12, color: '#2563eb', fontWeight: '600' },
+  card: {
+    backgroundColor: Theme.background,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    padding: 16,
+    gap: 14,
+    ...Theme.shadowSm,
+  },
+  cardUnaccepted: {
+    borderColor: Theme.primary + '40',
+    backgroundColor: Theme.primary + '06',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  orderNum: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Theme.text,
+    letterSpacing: -0.3,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 3,
+  },
+  cardMeta: {
+    fontSize: 11,
+    color: Theme.textMuted,
+    fontWeight: '500',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+
+  // Journey Stepper
+  journeyContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  journeyTimeline: {
+    width: 14,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  journeyNodePickup: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#dcfce7',
+    borderWidth: 1.5,
+    borderColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  journeyNodeDotPickup: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#16a34a',
+  },
+  journeyTrack: {
+    flex: 1,
+    width: 2,
+    backgroundColor: Theme.inputBorder,
+    marginVertical: 4,
+  },
+  journeyNodeDropoff: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#ede9fe',
+    borderWidth: 1.5,
+    borderColor: '#7c3aed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  journeyNodeDotDropoff: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#7c3aed',
+  },
+  journeyContent: {
+    flex: 1,
+    gap: 10,
+  },
+
+  // Location Nodes
+  locationBox: {
+    padding: 12,
+    backgroundColor: Theme.backgroundSecondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.inputBorder,
+    gap: 3,
+  },
+  locationHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  stopTagPickup: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#15803d',
+    letterSpacing: 0.5,
+  },
+  stopTagDropoff: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#6d28d9',
+    letterSpacing: 0.5,
+  },
+  phonePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  phonePillText: {
+    fontSize: 11,
+    color: '#15803d',
+    fontWeight: '700',
+  },
+  phonePillDropoff: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ede9fe',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  phonePillDropoffText: {
+    fontSize: 11,
+    color: '#6d28d9',
+    fontWeight: '700',
+  },
+  locationLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Theme.text,
+  },
+  locationSub: {
+    fontSize: 11,
+    color: Theme.textMuted,
+  },
+  locationDetail: {
+    fontSize: 11,
+    color: Theme.textSecondary,
+    marginTop: 4,
+    borderTopWidth: 0.5,
+    borderTopColor: Theme.inputBorder,
+    paddingTop: 4,
+  },
+  mapLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+  },
+  mapLinkText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Theme.primary,
+  },
+  mapLinkDropoff: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+  },
+  mapLinkDropoffText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7c3aed',
+  },
+
   // Product location
   productStatusBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 11,
-    borderRadius: Theme.radiusSm,
+    padding: 12,
+    borderRadius: 12,
     backgroundColor: '#eff6ff',
     borderWidth: 1,
     borderColor: '#bfdbfe',
   },
-  productStatusWithDriver: { backgroundColor: '#faf5ff', borderColor: '#e9d5ff' },
-  productStatusDelivered: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+  productStatusWithDriver: {
+    backgroundColor: '#faf5ff',
+    borderColor: '#e9d5ff',
+  },
+  productStatusDelivered: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+  },
   productStatusIcon: {
     width: 30,
     height: 30,
@@ -486,36 +710,203 @@ const st = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#e0f2fe',
   },
-  productStatusLabel: { fontSize: 12, fontWeight: '800', color: Theme.text },
-  productStatusDesc: { fontSize: 10, color: Theme.textSecondary, marginTop: 2, lineHeight: 14 },
+  productStatusLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Theme.text,
+  },
+  productStatusDesc: {
+    fontSize: 10,
+    color: Theme.textSecondary,
+    marginTop: 2,
+    lineHeight: 14,
+  },
+
   // Notice
-  noticeBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#fef3c7', borderRadius: Theme.radiusSm, borderWidth: 1, borderColor: '#fde68a' },
-  noticeText: { fontSize: 12, color: '#92400e', fontWeight: '600' },
+  noticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#fef3c7',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  noticeText: {
+    fontSize: 12,
+    color: '#92400e',
+    fontWeight: '600',
+    flex: 1,
+  },
+
   // Fee
-  feeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#f0fdf4', borderRadius: Theme.radiusSm, borderWidth: 1, borderColor: '#bbf7d0' },
-  feeLabel: { fontSize: 13, fontWeight: '600', color: Theme.text },
-  feeValue: { fontSize: 16, fontWeight: '800', color: '#15803d' },
+  feeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  feeLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  feeSub: {
+    fontSize: 10,
+    color: '#166534',
+    marginTop: 1,
+  },
+  feeValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#15803d',
+  },
+
   // Actions
-  actionRow: { flexDirection: 'row', gap: 10 },
-  rejectBtn: { borderWidth: 2, borderColor: Theme.error, paddingVertical: 10, paddingHorizontal: 16, borderRadius: Theme.radiusSm, alignItems: 'center' },
-  rejectBtnText: { fontSize: 13, fontWeight: '700', color: Theme.error },
-  acceptBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Theme.primary, paddingVertical: 12, borderRadius: Theme.radiusSm },
-  acceptBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  fullActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Theme.primary, paddingVertical: 14, borderRadius: Theme.radiusSm },
-  fullActionText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  completedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10 },
-  completedText: { fontSize: 13, fontWeight: '600', color: Theme.success },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  rejectBtn: {
+    borderWidth: 1.5,
+    borderColor: Theme.error,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Theme.error,
+  },
+  acceptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Theme.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  acceptBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  fullActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Theme.primary,
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
+  fullActionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+  },
+  completedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Theme.success,
+  },
+
   // PIN Modal
-  pinOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  pinCard: { backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', width: '100%', maxWidth: 340 },
-  pinHeader: { backgroundColor: Theme.primary, padding: 28, alignItems: 'center', gap: 12 },
-  pinTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  pinBody: { padding: 24, gap: 16, alignItems: 'center' },
-  pinDesc: { fontSize: 13, color: Theme.textSecondary, textAlign: 'center', lineHeight: 20 },
-  pinInput: { width: '100%', height: 64, backgroundColor: Theme.inputBg, borderRadius: Theme.radiusMd, borderWidth: 2, borderColor: Theme.primary, fontSize: 32, fontWeight: '900', textAlign: 'center', letterSpacing: 12, color: Theme.text },
-  pinBtn: { width: '100%', backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: Theme.radiusMd, alignItems: 'center' },
-  pinBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  pushBtn: { width: '100%', borderWidth: 1.5, borderColor: Theme.primary, paddingVertical: 14, borderRadius: Theme.radiusMd, alignItems: 'center', backgroundColor: '#f0f7ff' },
-  pushBtnText: { fontSize: 13, fontWeight: '700', color: Theme.primary },
-  pinCancel: { fontSize: 14, color: Theme.textMuted, fontWeight: '600', marginTop: 4 },
+  pinOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  pinCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: 340,
+  },
+  pinHeader: {
+    backgroundColor: Theme.primary,
+    padding: 24,
+    alignItems: 'center',
+    gap: 10,
+  },
+  pinTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  pinBody: {
+    padding: 24,
+    gap: 16,
+    alignItems: 'center',
+  },
+  pinDesc: {
+    fontSize: 13,
+    color: Theme.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  pinInput: {
+    width: '100%',
+    height: 64,
+    backgroundColor: Theme.inputBg,
+    borderRadius: Theme.radiusMd,
+    borderWidth: 2,
+    borderColor: Theme.primary,
+    fontSize: 32,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 12,
+    color: Theme.text,
+  },
+  pinBtn: {
+    width: '100%',
+    backgroundColor: Theme.primary,
+    paddingVertical: 15,
+    borderRadius: Theme.radiusMd,
+    alignItems: 'center',
+  },
+  pinBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  pushBtn: {
+    width: '100%',
+    borderWidth: 1.5,
+    borderColor: Theme.primary,
+    paddingVertical: 13,
+    borderRadius: Theme.radiusMd,
+    alignItems: 'center',
+    backgroundColor: '#f0f7ff',
+  },
+  pushBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Theme.primary,
+  },
+  pinCancel: {
+    fontSize: 14,
+    color: Theme.textMuted,
+    fontWeight: '600',
+    marginTop: 4,
+  },
 });
