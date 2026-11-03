@@ -229,12 +229,19 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
                 )}
               </View>
               <Text style={st.locationLabel}>Pickup from: {a.shops?.name || 'Shop'}</Text>
-              <Text style={st.locationSub}>{a.shops?.district}, {a.shops?.region}</Text>
-              {isAccepted && a.shops?.address && <Text style={st.locationDetail}>{a.shops.address}</Text>}
+              {(() => {
+                const s = a.shops;
+                const parts = [s?.address, s?.district, s?.region].filter(
+                  p => Boolean(p && String(p).trim() !== '' && String(p).trim() !== ',')
+                );
+                return parts.length > 0 ? (
+                  <Text style={st.locationSub}>{parts.join(', ')}</Text>
+                ) : null;
+              })()}
               {isAccepted && !delivered && a.shops?.latitude && a.shops?.longitude && (
-                <Pressable style={st.mapLink} onPress={() => openNavigation(a, 'pickup')}>
-                  <FontAwesome name="location-arrow" size={12} color={Theme.primary} />
-                  <Text style={st.mapLinkText}>Navigate to pickup</Text>
+                <Pressable style={st.mapActionBtnPickup} onPress={() => openNavigation(a, 'pickup')}>
+                  <FontAwesome name="location-arrow" size={13} color="#fff" />
+                  <Text style={st.mapActionBtnText}>Navigate to pickup</Text>
                 </Pressable>
               )}
             </View>
@@ -253,17 +260,25 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
               <Text style={st.locationLabel}>
                 Deliver to: {a.orders?.users?.full_name || a.orders?.shipping_address?.full_name || 'Customer'}
               </Text>
-              <Text style={st.locationSub}>{a.orders?.shipping_address?.district}, {a.orders?.shipping_address?.region}</Text>
-              {isAccepted && a.orders?.shipping_address && (
-                <>
-                  <Text style={st.locationDetail}>{a.orders.shipping_address.street || a.orders.shipping_address.address}, {a.orders.shipping_address.ward}</Text>
-                  {!delivered && a.orders.shipping_address.latitude && a.orders.shipping_address.longitude && (
-                    <Pressable style={st.mapLinkDropoff} onPress={() => openNavigation(a, 'dropoff')}>
-                      <FontAwesome name="location-arrow" size={12} color="#7c3aed" />
-                      <Text style={st.mapLinkDropoffText}>Navigate to drop-off</Text>
-                    </Pressable>
-                  )}
-                </>
+              {(() => {
+                const addr = a.orders?.shipping_address;
+                const parts = [
+                  addr?.street || addr?.address,
+                  addr?.ward,
+                  addr?.district,
+                  addr?.region,
+                ].filter(p => Boolean(p && String(p).trim() !== '' && String(p).trim() !== ','));
+                return parts.length > 0 ? (
+                  <Text style={st.locationDetail}>{parts.join(', ')}</Text>
+                ) : addr?.latitude ? (
+                  <Text style={st.locationSub}>GPS: {Number(addr.latitude).toFixed(4)}, {Number(addr.longitude).toFixed(4)}</Text>
+                ) : null;
+              })()}
+              {isAccepted && !delivered && a.orders?.shipping_address?.latitude && a.orders?.shipping_address?.longitude && (
+                <Pressable style={st.mapActionBtnDropoff} onPress={() => openNavigation(a, 'dropoff')}>
+                  <FontAwesome name="location-arrow" size={13} color="#fff" />
+                  <Text style={st.mapActionBtnText}>Navigate to drop-off</Text>
+                </Pressable>
               )}
             </View>
           </View>
@@ -373,10 +388,27 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
         )}
 
         {a.status === 'in_transit' && (
-          <Pressable style={[st.fullActionBtn, { backgroundColor: Theme.success }]} onPress={() => { setSelectedId(a.id); setDeliveryPin(''); setPinModalOpen(true); }} disabled={updatingId === a.id}>
-            <FontAwesome name="check-circle" size={14} color="#fff" />
-            <Text style={st.fullActionText}>Complete Delivery</Text>
-          </Pressable>
+          <View style={{ gap: 8 }}>
+            <Pressable
+              style={[st.fullActionBtn, { backgroundColor: '#7c3aed' }]}
+              onPress={() => openNavigation(a, 'dropoff')}
+            >
+              <FontAwesome name="location-arrow" size={14} color="#fff" />
+              <Text style={st.fullActionText}>Navigate to customer</Text>
+            </Pressable>
+            <Pressable
+              style={{ alignItems: 'center', paddingVertical: 4 }}
+              onPress={() => {
+                setSelectedId(a.id);
+                setDeliveryPin('');
+                setPinModalOpen(true);
+              }}
+            >
+              <Text style={{ fontSize: 11, color: Theme.textSecondary, textDecorationLine: 'underline', fontWeight: '600' }}>
+                Complete Delivery
+              </Text>
+            </Pressable>
+          </View>
         )}
 
         {a.status === 'delivered' && a.delivered_at && (
@@ -681,6 +713,31 @@ const st = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#7c3aed',
+  },
+  mapActionBtnPickup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#16a34a',
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  mapActionBtnDropoff: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#7c3aed',
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  mapActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
   },
 
   // Product location

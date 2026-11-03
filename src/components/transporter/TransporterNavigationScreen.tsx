@@ -1,11 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Linking,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -31,6 +33,7 @@ import {
   NavigationMapFrame,
   type NavigationMapFrameHandle,
 } from '@/src/components/transporter/NavigationMapFrame';
+import { verifyAssignmentPin } from '@/src/services/assignments';
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -155,7 +158,44 @@ export default function TransporterNavigationScreen() {
     mapPayload,
     advanceStatus,
     advancing,
+    progress,
+    refreshAssignment,
   } = navigation;
+
+  const [arrivedManually, setArrivedManually] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [deliveryPin, setDeliveryPin] = useState('');
+  const [verifyingPin, setVerifyingPin] = useState(false);
+
+  const isArrivedAtDropoff = useMemo(() => {
+    if (arrivedManually) return true;
+    if (target === 'dropoff' && status === 'in_transit') {
+      if (progress?.remainingMeters !== undefined && progress.remainingMeters <= 80) return true;
+      if (nextStep?.step.maneuver === 'arrive' && nextStep.distanceToStepMeters <= 50) return true;
+    }
+    return false;
+  }, [arrivedManually, target, status, progress?.remainingMeters, nextStep]);
+
+  const handleVerifyPin = async () => {
+    const targetId = assignmentId || assignment?.id;
+    if (!targetId || deliveryPin.trim().length !== 4) {
+      Alert.alert('Invalid PIN', 'Please enter a 4-digit PIN.');
+      return;
+    }
+    setVerifyingPin(true);
+    try {
+      await verifyAssignmentPin(targetId, deliveryPin.trim(), session?.access_token || '');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Delivery Verified', 'Delivery completed and your payout has been released.');
+      setPinModalOpen(false);
+      setDeliveryPin('');
+      await refreshAssignment();
+    } catch (err: any) {
+      Alert.alert('Verification Failed', err?.message || 'Could not verify PIN. Please try again.');
+    } finally {
+      setVerifyingPin(false);
+    }
+  };
 
   const mapRef = useRef<NavigationMapFrameHandle>(null);
 
@@ -496,12 +536,25 @@ export default function TransporterNavigationScreen() {
         ) : null}
 
         {status === 'in_transit' ? (
-          <View style={styles.completeNote}>
-            <FontAwesome name="info-circle" size={13} color={Theme.primary} />
-            <Text style={styles.completeNoteText}>
-              Finish with the customer PIN in Trips to release your payout.
-            </Text>
-            <Pressable onPress={() => router.back()}>
+          <View style={{ gap: 8 }}>
+            {isArrivedAtDropoff ? (
+              <Pressable
+                style={[styles.stepButton, { backgroundColor: Theme.success }]}
+                onPress={() => setPinModalOpen(true)}
+              >
+                <FontAwesome name="check-circle" size={14} color="#fff" />
+                <Text style={styles.stepButtonText}>Complete Delivery (Enter PIN)</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.completeNote}>
+                <FontAwesome name="info-circle" size={13} color={Theme.primary} />
+                <Text style={styles.completeNoteText}>Heading to customer...</Text>
+                <Pressable onPress={() => setArrivedManually(true)}>
+                  <Text style={styles.completeNoteLink}>Arrived?</Text>
+                </Pressable>
+              </View>
+            )}
+            <Pressable onPress={() => router.back()} style={{ alignSelf: 'center', marginTop: 2 }}>
               <Text style={styles.completeNoteLink}>Open Trips</Text>
             </Pressable>
           </View>
@@ -518,6 +571,54 @@ export default function TransporterNavigationScreen() {
           </Text>
         ) : null}
       </View>
+
+      <Modal visible={pinModalOpen} transparent animationType="fade">
+        <View style={styles.pinOverlay}>
+          <View style={styles.pinCard}>
+            <Text style={styles.pinTitle}>Verify Delivery 📦</Text>
+            <Text style={styles.pinDesc}>
+              Enter the 4-digit Delivery PIN sent to the customer&apos;s phone to complete this delivery.
+            </Text>
+            <TextInput
+              style={styles.pinInput}
+              keyboardType="number-pad"
+              maxLength={4}
+              placeholder="1234"
+              placeholderTextColor="#94a3b8"
+              value={deliveryPin}
+              onChangeText={(t) => setDeliveryPin(t.replace(/\D/g, '').slice(0, 4))}
+              autoFocus
+            />
+            <Pressable
+              style={[
+                styles.stepButton,
+                { backgroundColor: Theme.success, width: '100%', marginTop: 8 },
+                (verifyingPin || deliveryPin.length !== 4) && styles.disabled,
+              ]}
+              onPress={handleVerifyPin}
+              disabled={verifyingPin || deliveryPin.length !== 4}
+            >
+              {verifyingPin ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <FontAwesome name="check-circle" size={14} color="#fff" />
+                  <Text style={styles.stepButtonText}>Verify & Complete</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              style={{ marginTop: 8 }}
+              onPress={() => {
+                setPinModalOpen(false);
+                setDeliveryPin('');
+              }}
+            >
+              <Text style={{ fontSize: 13, color: Theme.textSecondary, fontWeight: '600' }}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -750,4 +851,35 @@ const styles = StyleSheet.create({
   completeNoteText: { flex: 1, fontSize: 11, color: Theme.textSecondary, fontWeight: '600' },
   completeNoteLink: { fontSize: 11, fontWeight: '800', color: Theme.primary },
   footnote: { fontSize: 10, color: Theme.textMuted, lineHeight: 14 },
+
+  pinOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  pinCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 340,
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+  },
+  pinTitle: { fontSize: 18, fontWeight: '800', color: Theme.text },
+  pinDesc: { fontSize: 12, color: Theme.textSecondary, textAlign: 'center' },
+  pinInput: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: 10,
+    textAlign: 'center',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    width: '100%',
+    paddingVertical: 10,
+    marginVertical: 6,
+  },
 });
