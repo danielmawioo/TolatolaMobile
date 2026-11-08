@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { Theme } from '@/constants/Theme';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { useAuth } from '@/src/contexts/AuthContext';
 import { useCart } from '@/src/contexts/CartContext';
 import { useNotifications } from '@/src/contexts/NotificationContext';
 
@@ -40,7 +39,6 @@ const badgeStyles = StyleSheet.create({
 });
 
 export default function TabLayout() {
-  const { session } = useAuth();
   const { itemCount } = useCart();
   const { unreadCount } = useNotifications();
   const theme = useThemeColors();

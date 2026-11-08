@@ -1,4 +1,3 @@
-import React from 'react';
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import * as ReactNative from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';

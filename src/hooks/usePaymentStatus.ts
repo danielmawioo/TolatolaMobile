@@ -69,7 +69,7 @@ export function usePaymentStatus({ orderId, paymentMethod, controlNumber, access
       })
       .catch((err) => logger.warn('[usePaymentStatus] initial order fetch failed', err))
       .finally(() => setLoading(false));
-  }, [orderId]);
+  }, [orderId, accessToken, isCod]);
 
   // Poll payment status — backend actively queries the payment provider for confirmation
   useEffect(() => {
@@ -109,7 +109,7 @@ export function usePaymentStatus({ orderId, paymentMethod, controlNumber, access
     checkStatus();
 
     return () => { cancelled = true; };
-  }, [paymentStatus, orderId, isCod]);
+  }, [paymentStatus, orderId, isCod, accessToken]);
 
   const currentStep = STATUS_MAP[order?.status || 'pending'] ?? 0;
 

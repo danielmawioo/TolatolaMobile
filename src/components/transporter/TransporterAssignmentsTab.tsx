@@ -434,7 +434,7 @@ export function TransporterAssignmentsTab({ transporterId, accessToken }: Props)
               <Text style={st.pinTitle}>Verify Delivery 📦</Text>
             </View>
             <View style={st.pinBody}>
-              <Text style={st.pinDesc}>Enter the 4-digit Delivery PIN sent to the customer's phone to complete this delivery and release your escrow funds.</Text>
+              <Text style={st.pinDesc}>Enter the 4-digit Delivery PIN sent to the customer&apos;s phone to complete this delivery and release your escrow funds.</Text>
               <TextInput
                 style={st.pinInput}
                 value={deliveryPin}

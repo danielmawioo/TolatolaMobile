@@ -60,7 +60,7 @@ export default function TrackOrderScreen() {
             </View>
             <Text style={styles.title}>Track your order</Text>
             <Text style={styles.subtitle}>
-              Enter your tracking code and the phone number or email used for the order. We'll send a one-time code to verify.
+              Enter your tracking code and the phone number or email used for the order. We&apos;ll send a one-time code to verify.
             </Text>
           </View>
 

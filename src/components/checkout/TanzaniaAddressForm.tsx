@@ -17,7 +17,6 @@ export function TanzaniaAddressForm({ value, onChange, onAddressComplete }: Prop
   const [showRegionPicker, setShowRegionPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
 
@@ -37,7 +36,6 @@ export function TanzaniaAddressForm({ value, onChange, onAddressComplete }: Prop
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(async () => {
       const currentRequestId = ++requestIdRef.current;
-      setIsSearching(true);
       try {
         const res = await apiGet<any>(`/maps/autocomplete?input=${encodeURIComponent(text)}`);
         // Only update if this is still the latest request (prevents stale overwrites)
@@ -46,10 +44,6 @@ export function TanzaniaAddressForm({ value, onChange, onAddressComplete }: Prop
         }
       } catch (error) {
         logger.error('Autocomplete error', error);
-      } finally {
-        if (currentRequestId === requestIdRef.current) {
-          setIsSearching(false);
-        }
       }
     }, 400);
   }, []);

@@ -13,7 +13,6 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
-import { gap } from '@/constants/layout';
 import { COPY } from '@/constants/copy';
 import { EmptyState } from '@/components/EmptyState';
 import { ProductCard } from '@/components/ProductCard';
@@ -39,7 +38,7 @@ export default function FavoritesScreen() {
     }
     if (showLoading) setLoading(true);
     try {
-      const res = await apiGet<{ data: Array<{ products: Product }> }>('/profile/favorites', session.access_token);
+      const res = await apiGet<{ data: { products: Product }[] }>('/profile/favorites', session.access_token);
       // Filter out any null/undefined products safely
       const items = (res?.data || [])
         .map(item => item.products)

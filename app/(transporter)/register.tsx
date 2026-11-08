@@ -72,13 +72,6 @@ export default function TransporterRegisterScreen() {
     setUploadingDoc(null);
   };
 
-  const showUploadOptions = (docType: 'id' | 'license') => {
-    Alert.alert('Upload Document', 'Choose how to upload your document', [
-      { text: 'Take Photo', onPress: () => pickImage(docType, true) },
-      { text: 'Choose from Library', onPress: () => pickImage(docType, false) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
 
   const handleSubmit = async () => {
     if (!vehicleRegistration || !licenseNumber || !region || !district || !phone) {
@@ -280,7 +273,7 @@ export default function TransporterRegisterScreen() {
         {/* Driver License Card */}
         <View style={styles.docCard}>
           <Text style={styles.docLabel}>Driver License *</Text>
-          <Text style={styles.docDesc}>Upload a clear photo of your valid driver's license card.</Text>
+          <Text style={styles.docDesc}>Upload a clear photo of your valid driver&apos;s license card.</Text>
           
           {driverLicense ? (
             <View style={styles.docPreview}>

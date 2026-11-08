@@ -2,11 +2,10 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { getRoleRedirectPath } from '@/src/lib/roleRedirect';
 import { Theme } from '@/constants/Theme';
 
 export default function IndexScreen() {
-  const { isAuthenticated, isLoading, session } = useAuth();
+  const { isLoading } = useAuth();
 
   useEffect(() => {
     if (isLoading) return;

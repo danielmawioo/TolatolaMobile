@@ -68,7 +68,7 @@ function makeNotification(overrides: Partial<Notification>): Notification {
 // ends unless the client is torn down explicitly — left unmanaged, those pending
 // timers hold the Jest process open indefinitely instead of just failing/leaking.
 let activeQueryClients: QueryClient[] = [];
-let activeUnmounts: Array<() => void> = [];
+let activeUnmounts: (() => void)[] = [];
 
 function renderWithProviders() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

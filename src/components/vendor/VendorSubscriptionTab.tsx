@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet,
+  View, Text, Pressable, ScrollView, StyleSheet,
   ActivityIndicator, Alert, Modal,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -29,9 +29,7 @@ export function VendorSubscriptionTab({ vendorId, accessToken }: Props) {
   const [statusMsg, setStatusMsg] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => { loadData(); return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, [vendorId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [vendorRes, plansRes] = await Promise.all([
         apiGet<any>(`/vendors/${vendorId}/subscription`, accessToken),
@@ -41,7 +39,12 @@ export function VendorSubscriptionTab({ vendorId, accessToken }: Props) {
       setPlans(plansRes?.plans || []);
     } catch (e) { logger.error('Sub load error', e); }
     setLoading(false);
-  };
+  }, [vendorId, accessToken]);
+
+  useEffect(() => {
+    loadData();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [loadData]);
 
   const pollStatus = (subId: string) => {
     let attempts = 0;
@@ -146,7 +149,7 @@ export function VendorSubscriptionTab({ vendorId, accessToken }: Props) {
                   <View style={st.controlInstr}>
                     <Text style={st.controlInstrTitle}>Instructions</Text>
                     <Text style={st.controlInstrItem}>• Dial *150*03# (CRDB SimBanking)</Text>
-                    <Text style={st.controlInstrItem}>• Select 'Bill Payment'</Text>
+                    <Text style={st.controlInstrItem}>• Select &apos;Bill Payment&apos;</Text>
                     <Text style={st.controlInstrItem}>• Enter the Control Number</Text>
                     <Text style={st.controlInstrItem}>• Follow prompts to complete</Text>
                   </View>

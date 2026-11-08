@@ -37,7 +37,7 @@ export function useGoogleAuth() {
     }
   }, []);
 
-  const signInWithBrowserFallback = async (options?: GoogleAuthOptions): Promise<User | null> => {
+  const signInWithBrowserFallback = useCallback(async (options?: GoogleAuthOptions): Promise<User | null> => {
     logger.info('[GOOGLE_AUTH] Attempting WebBrowser OAuth fallback...');
     if (!SUPABASE_URL) {
       throw new Error('Supabase URL is not configured for WebBrowser authentication');
@@ -65,7 +65,7 @@ export function useGoogleAuth() {
           refreshToken = hashParams.get('refresh_token');
           idToken = hashParams.get('id_token');
         }
-      } catch (e) {
+      } catch {
         const hashIdx = authResult.url.indexOf('#');
         const queryIdx = authResult.url.indexOf('?');
         const paramStr = hashIdx !== -1 
@@ -104,7 +104,7 @@ export function useGoogleAuth() {
     }
 
     throw new Error('Browser authentication did not return a valid session token');
-  };
+  }, [setSession]);
 
   const signInWithGoogle = useCallback(async (options?: GoogleAuthOptions): Promise<User | null> => {
     setLoading(true);
@@ -166,7 +166,7 @@ export function useGoogleAuth() {
     } finally {
       setLoading(false);
     }
-  }, [setSession]);
+  }, [setSession, signInWithBrowserFallback]);
 
   return { signInWithGoogle, loading, error };
 }

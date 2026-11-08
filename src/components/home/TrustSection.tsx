@@ -52,7 +52,7 @@ export function TrustSection({ theme }: TrustSectionProps) {
           Engineered for <Text style={styles.italicPrimary}>Trust</Text>
         </Text>
         <Text style={[styles.trustDesc, { color: theme.textSecondary }]}>
-          We've built a multi-layered security framework to protect both the buyer and the merchant at every step.
+          We&apos;ve built a multi-layered security framework to protect both the buyer and the merchant at every step.
         </Text>
       </View>
 

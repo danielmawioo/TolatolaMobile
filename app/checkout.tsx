@@ -22,14 +22,13 @@ import { CheckoutHeader } from '@/src/components/checkout/CheckoutHeader';
 import { CheckoutBottomBar } from '@/src/components/checkout/CheckoutBottomBar';
 import { useCheckoutSubmit } from '@/src/hooks/useCheckoutSubmit';
 import { useDeliveryLogistics } from '@/src/hooks/useDeliveryLogistics';
-
-// Lazy-load the map picker so it doesn't block checkout page render
-const MapPicker = lazy(() => import('@/src/components/MapPicker'));
-
 import {
   BUYER_PROTECTION_RATE, INITIAL_ADDRESS,
   type AddressData,
 } from '@/src/constants/checkout';
+
+// Lazy-load the map picker so it doesn't block checkout page render
+const MapPicker = lazy(() => import('@/src/components/MapPicker'));
 
 export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
@@ -61,16 +60,12 @@ export default function CheckoutScreen() {
 
   // Map UI state
   const [showMap, setShowMap] = useState(false);
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (items.length === 0) {
       router.replace('/(tabs)/cart');
-      return;
     }
-    // Mark page as ready immediately so UI renders fast
-    setIsReady(true);
-  }, []);
+  }, [items.length]);
 
   const {
     transportMethods, selectedTransportId, setSelectedTransportId,
@@ -140,7 +135,7 @@ export default function CheckoutScreen() {
                   <TextInput style={styles.input} value={guestEmail} onChangeText={setGuestEmail}
                     placeholder="your@email.com" placeholderTextColor={Theme.textMuted}
                     keyboardType="email-address" autoCapitalize="none" />
-                  <Text style={styles.fieldHint}>We'll send your order confirmation here.</Text>
+                  <Text style={styles.fieldHint}>We&apos;ll send your order confirmation here.</Text>
                 </View>
               )}
               <View style={styles.divider} />

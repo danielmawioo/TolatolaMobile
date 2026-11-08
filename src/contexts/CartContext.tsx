@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
-import { apiGet, apiPost, apiDelete } from '@/src/services/api';
+import { apiPost } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
 import type { Product } from '@/src/types';
 

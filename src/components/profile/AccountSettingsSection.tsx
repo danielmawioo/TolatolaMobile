@@ -72,58 +72,60 @@ export function AccountSettingsSection({
         Alert.alert('Disabled', `${biometricType} login has been disabled.`);
       } else {
         // Enable: verify biometrics first, then ask for password to store
-        Alert.prompt
-          ? Alert.prompt(
-              `Enable ${biometricType} Login`,
-              'Enter your current password to enable biometric login.',
-              async (pw: string) => {
-                if (!pw) {
-                  setTogglingBiometric(false);
-                  return;
-                }
-                try {
-                  await saveCredentials(userEmail, pw);
-                  setBiometricEnabled(true);
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  Alert.alert('Enabled', `${biometricType} login is now active!`);
-                } catch {
-                  Alert.alert('Error', 'Failed to enable biometric login.');
-                }
+        if (Alert.prompt) {
+          Alert.prompt(
+            `Enable ${biometricType} Login`,
+            'Enter your current password to enable biometric login.',
+            async (pw: string) => {
+              if (!pw) {
                 setTogglingBiometric(false);
-              },
-              'secure-text',
-              '',
-              'default'
-            )
-          : Alert.alert(
-              `Enable ${biometricType} Login`,
-              'To enable biometric login, enter your current password in the "Current Password" field above, then tap this toggle again.',
-              [
-                {
-                  text: 'OK',
-                  onPress: async () => {
-                    if (passwordData.current) {
-                      try {
-                        await saveCredentials(userEmail, passwordData.current);
-                        setBiometricEnabled(true);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        Alert.alert('Enabled', `${biometricType} login is now active!`);
-                      } catch {
-                        Alert.alert('Error', 'Failed to enable biometric login.');
-                      }
-                    } else {
-                      Alert.alert(
-                        'Password Required',
-                        'Please enter your current password in the "Current Password" field above, then tap this toggle again.'
-                      );
+                return;
+              }
+              try {
+                await saveCredentials(userEmail, pw);
+                setBiometricEnabled(true);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert('Enabled', `${biometricType} login is now active!`);
+              } catch {
+                Alert.alert('Error', 'Failed to enable biometric login.');
+              }
+              setTogglingBiometric(false);
+            },
+            'secure-text',
+            '',
+            'default'
+          );
+        } else {
+          Alert.alert(
+            `Enable ${biometricType} Login`,
+            'To enable biometric login, enter your current password in the "Current Password" field above, then tap this toggle again.',
+            [
+              {
+                text: 'OK',
+                onPress: async () => {
+                  if (passwordData.current) {
+                    try {
+                      await saveCredentials(userEmail, passwordData.current);
+                      setBiometricEnabled(true);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      Alert.alert('Enabled', `${biometricType} login is now active!`);
+                    } catch {
+                      Alert.alert('Error', 'Failed to enable biometric login.');
                     }
-                    setTogglingBiometric(false);
-                  },
+                  } else {
+                    Alert.alert(
+                      'Password Required',
+                      'Please enter your current password in the "Current Password" field above, then tap this toggle again.'
+                    );
+                  }
+                  setTogglingBiometric(false);
                 },
-                { text: 'Cancel', style: 'cancel', onPress: () => setTogglingBiometric(false) },
-              ]
-            );
-        return;
+              },
+              { text: 'Cancel', style: 'cancel', onPress: () => setTogglingBiometric(false) },
+            ]
+          );
+          return;
+        }
       }
     } catch {
       Alert.alert('Error', 'Something went wrong.');

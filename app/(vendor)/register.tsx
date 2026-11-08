@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet,
   ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform,
@@ -77,13 +77,6 @@ export default function VendorRegisterScreen() {
     setUploadingLicense(false);
   };
 
-  const showUploadOptions = () => {
-    Alert.alert('Upload Business License', 'Choose how to upload your valid business license', [
-      { text: 'Take Photo', onPress: () => pickImage(true) },
-      { text: 'Choose from Library', onPress: () => pickImage(false) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
 
   const handleAddressComplete = (fullAddress: string, coords?: { lat: number, lng: number }) => {
     if (coords) {
@@ -274,7 +267,7 @@ export default function VendorRegisterScreen() {
             <Text style={styles.sectionTitle}>Company Representative Details</Text>
             <View style={styles.card}>
               <View style={styles.field}>
-                <Text style={styles.label}>Representative's Full Name *</Text>
+                <Text style={styles.label}>Representative&apos;s Full Name *</Text>
                 <TextInput
                   style={styles.input}
                   value={repFullName}

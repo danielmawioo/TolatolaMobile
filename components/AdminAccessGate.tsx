@@ -36,7 +36,6 @@ export function AdminAccessGate({ children }: Props) {
     }
     const ok = adminMyRoleGranted(q.data ?? null);
     if (__DEV__) {
-      // eslint-disable-next-line no-console
       logger.info('[admin:gate]', { adminRolePresent: ok, raw: q.data });
     }
     setGranted(ok);

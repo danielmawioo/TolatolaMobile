@@ -95,7 +95,7 @@ export function ProductListHeader({
   return (
     <View style={styles.searchResultsHeader}>
       <Text style={[styles.searchResultsText, { color: theme.text }]}>
-        {productsCount} {productsCount === 1 ? 'product' : 'products'} found for "{searchQuery}"
+        {productsCount} {productsCount === 1 ? 'product' : 'products'} found for &quot;{searchQuery}&quot;
       </Text>
       <Pressable onPress={onClearSearch} style={[styles.clearSearchBtn, { backgroundColor: theme.inputBg }]}>
         <Text style={[styles.clearSearchText, { color: theme.textMuted }]}>Clear</Text>

@@ -213,7 +213,7 @@ export function useHomeScreenData({ isAuthenticated, accessToken }: UseHomeScree
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, accessToken, userLocation, fetchLocation, loadCategoriesPromotionsAndProducts]);
+  }, [isAuthenticated, userLocation, fetchLocation, loadCategoriesPromotionsAndProducts]);
 
   const fetchDataSilent = useCallback(async () => {
     try {
@@ -224,7 +224,7 @@ export function useHomeScreenData({ isAuthenticated, accessToken }: UseHomeScree
       captureException(e, { hook: 'useHomeScreenData' });
       setIsOffline(true);
     }
-  }, [isAuthenticated, accessToken, userLocation, loadCategoriesPromotionsAndProducts]);
+  }, [userLocation, loadCategoriesPromotionsAndProducts]);
 
   useEffect(() => {
     fetchData();

@@ -252,7 +252,7 @@ export default function LoginScreen() {
           disabled={isLoading}
         >
           <Text style={styles.signupText}>
-            Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
+            Don&apos;t have an account? <Text style={styles.signupLink}>Sign up</Text>
           </Text>
         </Pressable>
         </ScrollView>

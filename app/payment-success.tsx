@@ -113,7 +113,7 @@ export default function PaymentSuccessScreen() {
             <View style={styles.controlInstructions}>
               <Text style={styles.controlInstructionsTitle}>Instructions</Text>
               <Text style={styles.controlInstructionsItem}>• Dial *150*03# (CRDB SimBanking)</Text>
-              <Text style={styles.controlInstructionsItem}>• Select 'Bill Payment'</Text>
+              <Text style={styles.controlInstructionsItem}>• Select &apos;Bill Payment&apos;</Text>
               <Text style={styles.controlInstructionsItem}>• Enter the Control Number above</Text>
               <Text style={styles.controlInstructionsItem}>• Follow prompts to complete</Text>
             </View>
@@ -240,7 +240,7 @@ export default function PaymentSuccessScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.protectionTitle}>Purchase Shield Active</Text>
-            <Text style={styles.protectionSub}>Your order is protected by TOLA's buyer protection.</Text>
+            <Text style={styles.protectionSub}>Your order is protected by TOLA&apos;s buyer protection.</Text>
           </View>
         </View>
 

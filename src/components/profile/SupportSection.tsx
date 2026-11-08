@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert, Modal } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -23,15 +23,15 @@ export function SupportSection({ accessToken }: Props) {
   const [priority, setPriority] = useState('low');
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => { loadTickets(); }, [accessToken]);
-
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     try {
       const res = await apiGet<any>('/support/tickets', accessToken);
       setTickets(Array.isArray(res) ? res : res?.tickets || []);
     } catch (e) { logger.error('Tickets load error', e); }
     setLoading(false);
-  };
+  }, [accessToken]);
+
+  useEffect(() => { loadTickets(); }, [loadTickets]);
 
   const handleCreate = async () => {
     if (!subject.trim() || !message.trim()) { Alert.alert('Required', 'Please fill in subject and message'); return; }
@@ -79,7 +79,7 @@ export function SupportSection({ accessToken }: Props) {
           <View style={s.modalCard}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>Create Support Ticket</Text>
-              <Text style={s.modalSub}>Describe your issue and we'll connect you with an agent.</Text>
+              <Text style={s.modalSub}>Describe your issue and we&apos;ll connect you with an agent.</Text>
             </View>
             <ScrollView style={s.modalBody} contentContainerStyle={{ gap: 14 }} keyboardShouldPersistTaps="handled">
               <View style={s.field}><Text style={s.label}>Subject</Text>

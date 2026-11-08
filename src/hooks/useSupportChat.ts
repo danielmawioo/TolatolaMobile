@@ -77,7 +77,7 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
   // Inactivity & Session Termination State
   const lastActivityRef = useRef<number>(Date.now());
   const [inactivityPromptActive, setInactivityPromptActive] = useState(false);
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(TERMINATION_COUNTDOWN_SEC);
+  const [secondsRemaining] = useState<number>(TERMINATION_COUNTDOWN_SEC);
 
   const resetActivityTimer = useCallback(() => {
     lastActivityRef.current = Date.now();
@@ -351,7 +351,7 @@ export function useSupportChat({ isAuthenticated, accessToken, initialQuery }: U
       } else {
         throw new Error('No AI response');
       }
-    } catch (err) {
+    } catch {
       const matchResult = matchUserQuery(userMsgText);
       if (matchResult) {
         const botMsg: Message = {

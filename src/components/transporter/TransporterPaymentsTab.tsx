@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator,
 } from 'react-native';
@@ -22,9 +22,7 @@ export function TransporterPaymentsTab({ transporterId, accessToken }: Props) {
   const [pending, setPending] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadData(); }, [transporterId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [paymentsRes, financeRes] = await Promise.all([
         apiGet<any>('/transporters/payments', accessToken).catch(() => ({ payments: [] })),
@@ -35,7 +33,9 @@ export function TransporterPaymentsTab({ transporterId, accessToken }: Props) {
       setPending(financeRes?.pending_balance ?? paymentsRes?.pendingBalance ?? 0);
     } catch (e) { logger.error('Payments load error', e); }
     setLoading(false);
-  };
+  }, [accessToken]);
+
+  useEffect(() => { loadData(); }, [transporterId, loadData]);
 
   if (loading) return <View style={st.center}><ActivityIndicator color={Theme.primary} /></View>;
 

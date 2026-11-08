@@ -9,8 +9,8 @@ export default function NotFoundScreen() {
     <>
       <Stack.Screen options={{ title: 'Oops!' }} />
       <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
-        <Text style={styles.subtitle}>The page you're looking for could not be found.</Text>
+        <Text style={styles.title}>This screen doesn&apos;t exist.</Text>
+        <Text style={styles.subtitle}>The page you&apos;re looking for could not be found.</Text>
         <Link href="/" asChild>
           <Pressable style={({ pressed }) => [styles.linkWrap, pressed && { opacity: 0.9 }]}>
             <Text style={styles.linkText}>Go to home</Text>

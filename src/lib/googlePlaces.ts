@@ -31,11 +31,11 @@ export async function fetchPlacePredictions(
 
   const res = await fetch(`${AUTOCOMPLETE_URL}?${params}`, { signal });
   const data = (await res.json()) as {
-    predictions?: Array<{
+    predictions?: {
       place_id: string;
       description: string;
       structured_formatting?: { main_text: string; secondary_text?: string };
-    }>;
+    }[];
     status: string;
     error_message?: string;
   };

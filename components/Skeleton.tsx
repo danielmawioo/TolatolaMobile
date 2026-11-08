@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Animated } from 'react-native';
 import { Theme } from '@/constants/Theme';
 
 interface SkeletonProps {
@@ -10,7 +10,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ width, height, borderRadius = 4, style }: SkeletonProps) {
-  const opacity = new Animated.Value(0.3);
+  const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -27,7 +27,7 @@ export function Skeleton({ width, height, borderRadius = 4, style }: SkeletonPro
         }),
       ])
     ).start();
-  }, []);
+  }, [opacity]);
 
   return (
     <Animated.View

@@ -9,7 +9,7 @@
  * After a fresh `eas build`, the fallback should no longer be needed.
  */
 
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { uriToBase64 } from './imageUpload';

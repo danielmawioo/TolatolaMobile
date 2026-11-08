@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
@@ -37,9 +37,7 @@ export function VendorWalletTab({ vendorId, accessToken }: Props) {
   const [details, setDetails] = useState('');
   const [showMethodPicker, setShowMethodPicker] = useState(false);
 
-  useEffect(() => { loadData(); }, [vendorId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const res = await apiGet<any>(`/vendors/${vendorId}/wallet`, accessToken);
       setBalance(res.balance || 0);
@@ -47,7 +45,9 @@ export function VendorWalletTab({ vendorId, accessToken }: Props) {
       setPayouts(res.payouts || []);
     } catch (e) { logger.error('Wallet load error', e); }
     setLoading(false);
-  };
+  }, [vendorId, accessToken]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handlePayout = async () => {
     const amt = Number(amount);

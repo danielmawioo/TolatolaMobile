@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet,
-  ActivityIndicator, Alert, Image, Platform,
+  View, Text, TextInput, Pressable, StyleSheet,
+  ActivityIndicator, Alert, Image,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
@@ -33,9 +33,7 @@ export function KycVerificationSection({ accessToken, userId }: Props) {
     id_document_front_url: '', id_document_back_url: '', selfie_url: '',
   });
 
-  useEffect(() => { loadKyc(); }, [accessToken]);
-
-  const loadKyc = async () => {
+  const loadKyc = useCallback(async () => {
     try {
       const res = await apiGet<any>('/profile', accessToken);
       const kycData = res?.kyc || null;
@@ -59,7 +57,9 @@ export function KycVerificationSection({ accessToken, userId }: Props) {
       }
     } catch (e) { logger.error('KYC load error', e); }
     setLoading(false);
-  };
+  }, [accessToken]);
+
+  useEffect(() => { loadKyc(); }, [loadKyc]);
 
   const status = kyc?.kyc_status?.toLowerCase();
   const canEdit = !kyc || status === 'rejected' || status === 'changes_requested';
@@ -90,14 +90,6 @@ export function KycVerificationSection({ accessToken, userId }: Props) {
       Alert.alert('Upload Error', e.message || 'Failed to upload document');
     }
     setUploadingDoc(null);
-  };
-
-  const showDocOptions = (docType: string) => {
-    Alert.alert('Upload Document', 'Choose how to add your document', [
-      { text: 'Take Photo', onPress: () => pickImage(docType, true) },
-      { text: 'Choose from Library', onPress: () => pickImage(docType, false) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
   };
 
   const handleSubmit = async () => {
@@ -149,7 +141,7 @@ export function KycVerificationSection({ accessToken, userId }: Props) {
         <View style={[s.banner, { backgroundColor: '#fefce8', borderColor: '#fde68a' }]}>
           <FontAwesome name="clock-o" size={18} color="#ca8a04" />
           <View style={{ flex: 1 }}><Text style={[s.bannerTitle, { color: '#713f12' }]}>Under Review</Text>
-            <Text style={[s.bannerText, { color: '#a16207' }]}>Your application is being reviewed. We'll notify you soon.</Text>
+            <Text style={[s.bannerText, { color: '#a16207' }]}>Your application is being reviewed. We&apos;ll notify you soon.</Text>
           </View>
         </View>
       );

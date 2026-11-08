@@ -26,6 +26,7 @@ export type ImageUploadResult = {
  */
 export async function prepareImageForUpload(uri: string): Promise<string> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const ImageManipulator = require('expo-image-manipulator');
     const result = await ImageManipulator.manipulateAsync(
       uri,

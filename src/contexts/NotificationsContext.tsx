@@ -59,7 +59,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     enabled: Boolean(token),
   });
 
-  const rawList = notificationsQuery.data ?? [];
+  const rawData = notificationsQuery.data;
+  const rawList = useMemo(() => rawData ?? [], [rawData]);
   const notifications = useMemo(
     () => filterNotificationsForRole(rawList, userRole),
     [rawList, userRole]
@@ -138,9 +139,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       notifications,
       unreadCount,
       notificationsQuery.isPending,
-      notificationsQuery.isFetching,
       unreadQuery.isPending,
-      unreadQuery.isFetching,
       token,
       isRefetching,
       userRole,

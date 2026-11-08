@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet,
   ActivityIndicator, Alert,
@@ -46,9 +46,7 @@ export function TransporterWithdrawalsTab({ transporterId, accessToken, availabl
   const [phone, setPhone] = useState('');
   const [showMethodPicker, setShowMethodPicker] = useState(false);
 
-  useEffect(() => { loadData(); }, [transporterId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [res, financeRes] = await Promise.all([
         apiGet<any>('/transporters/withdrawals', accessToken).catch(() => null),
@@ -62,7 +60,9 @@ export function TransporterWithdrawalsTab({ transporterId, accessToken, availabl
       }
     } catch (e) { logger.error('Withdrawals load error', e); }
     setLoading(false);
-  };
+  }, [accessToken]);
+
+  useEffect(() => { loadData(); }, [transporterId, loadData]);
 
   const handleQuickPercent = (pct: number) => {
     if (balance <= 0) return;

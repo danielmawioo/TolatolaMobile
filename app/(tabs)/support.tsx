@@ -68,7 +68,7 @@ export default function SupportChatScreen() {
             <Image source={{ uri: MOUREEN_AVATAR }} style={s.avatarImage} />
             <View style={s.onlineBadge} />
           </View>
-          <Text style={s.agentGreeting}>Hello, I'm Moureen Tyler</Text>
+          <Text style={s.agentGreeting}>Hello, I&apos;m Moureen Tyler</Text>
           <Text style={s.agentSubtitle}>TOLA Digital Agent</Text>
         </View>
       </View>

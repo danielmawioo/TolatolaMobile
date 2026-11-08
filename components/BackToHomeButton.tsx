@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet, View } from 'react-native';
+import { Pressable, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Theme } from '@/constants/Theme';
@@ -8,7 +8,7 @@ import { scaleByWidth } from '@/constants/layout';
 /**
  * Back to home arrow for auth (and other) screens. Navigates to main app (tabs).
  */
-export function BackToHomeButton() {
+export function BackToHomeButton({ tone = 'default' }: { tone?: 'default' | 'inverted' } = {}) {
   return (
     <Pressable
       style={styles.wrapper}

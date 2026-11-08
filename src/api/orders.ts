@@ -113,14 +113,14 @@ export async function enrichCartItemsForCheckout(
 }
 
 export type CheckoutQuote = {
-  lineItems: Array<{
+  lineItems: {
     product_id: string;
     quantity: number;
     price: number;
     shop_id: string;
     delivery_fee: number;
     delivery_distance_km: number;
-  }>;
+  }[];
   subtotal: number;
   deliveryFee: number;
   insuranceFee: number;
@@ -227,7 +227,7 @@ export function resolveTransportMethodId(
 export async function resolveCartLineItems(
   items: CartItem[],
   accessToken: string | null | undefined
-): Promise<Array<{ product_id: string; quantity: number; price: number; shop_id: string }>> {
+): Promise<{ product_id: string; quantity: number; price: number; shop_id: string }[]> {
   const enriched = await enrichCartItemsForCheckout(items, accessToken);
   return enriched.map(({ product_id, quantity, price, shop_id }) => ({
     product_id,
@@ -259,14 +259,14 @@ export function mapUiPaymentMethodToApi(ui: string): string {
 export async function createOrder(
   accessToken: string,
   payload: {
-    items: Array<{
+    items: {
       product_id: string;
       quantity: number;
       price: number;
       shop_id: string;
       delivery_fee?: number;
       delivery_distance_km?: number;
-    }>;
+    }[];
     shippingAddress: Record<string, unknown>;
     /** Grand total charged (items + delivery + insurance). */
     totalAmount: number;
@@ -329,14 +329,14 @@ function unwrapCreatedOrder(res: unknown): {
  * Guest checkout: tries several backend paths (no Bearer token). If none exist, throws a clear error.
  */
 export async function createGuestOrder(payload: {
-  items: Array<{
+  items: {
     product_id: string;
     quantity: number;
     price: number;
     shop_id: string;
     delivery_fee?: number;
     delivery_distance_km?: number;
-  }>;
+  }[];
   shippingAddress: Record<string, unknown>;
   totalAmount: number;
   paymentMethod: string;

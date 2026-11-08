@@ -82,7 +82,9 @@ export const GOOGLE_PLACES_API_KEY =
   process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ??
   '';
 
-export const isGooglePlacesConfigured = Boolean(GOOGLE_PLACES_API_KEY);
+export function isGooglePlacesConfigured(): boolean {
+  return Boolean(GOOGLE_PLACES_API_KEY);
+}
 
 /**
  * Auth OTP & Verification Paths
@@ -110,7 +112,12 @@ export const GOOGLE_IOS_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ??
   '';
 
-export const isFacebookLoginConfigured = Boolean(FACEBOOK_APP_ID);
-export const isGoogleLoginConfigured = Boolean(
-  GOOGLE_WEB_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID || GOOGLE_IOS_CLIENT_ID
-);
+export function isFacebookLoginConfigured(): boolean {
+  return Boolean(FACEBOOK_APP_ID);
+}
+
+export function isGoogleLoginConfigured(): boolean {
+  return Boolean(
+    GOOGLE_WEB_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID || GOOGLE_IOS_CLIENT_ID
+  );
+}

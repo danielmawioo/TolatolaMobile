@@ -1,4 +1,3 @@
-import React from 'react';
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { AppState, Platform } from 'react-native';
 import { router } from 'expo-router';

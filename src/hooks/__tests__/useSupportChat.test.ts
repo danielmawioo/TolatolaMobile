@@ -206,7 +206,7 @@ describe('useSupportChat', () => {
     // hook; it opens an Alert whose "Choose Photo" button onPress is pickImage.
     const getPhotoOnPress = () => {
       const lastCall = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
-      const buttons = lastCall[2] as Array<{ text: string; onPress?: () => void | Promise<void> }>;
+      const buttons = lastCall[2] as { text: string; onPress?: () => void | Promise<void> }[];
       const photoButton = buttons.find((b) => b.text.includes('Choose Photo'));
       expect(photoButton?.onPress).toBeDefined();
       return photoButton!.onPress!;

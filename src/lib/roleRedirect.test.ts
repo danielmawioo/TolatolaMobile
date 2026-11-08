@@ -96,7 +96,6 @@ function main() {
     '/(tabs)'
   );
 
-  // eslint-disable-next-line no-console
   console.log('roleRedirect tests passed');
 }
 

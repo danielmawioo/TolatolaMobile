@@ -7,7 +7,6 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
-  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,14 +37,9 @@ export default function CategoriesScreen() {
   const [loading, setLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const theme = useThemeColors();
 
-  // 2 columns
-  const numColumns = 2;
   const padding = scaleByWidth(14);
-  const cardGap = gap.sm;
-  const cardWidth = (width - padding * 2 - cardGap * (numColumns - 1)) / numColumns;
 
   async function loadCategories() {
     setLoading(true);

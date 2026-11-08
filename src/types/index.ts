@@ -8,6 +8,7 @@ export interface Product {
   price?: number;
   description?: string;
   image_url?: string | null;
+  primary_image_url?: string | null;
   images?: string[];
   shop_id?: string;
   location?: string;

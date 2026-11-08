@@ -75,6 +75,7 @@ const ROLE_ALIASES: Record<UserType, string[]> = {
   vendor: ['vendor', 'seller', 'merchant'],
   transporter: ['transporter', 'driver', 'courier', 'rider', 'logistics'],
   admin: ['admin', 'staff', 'moderator'],
+  agent: ['agent', 'sales_agent', 'field_agent'],
 };
 
 function roleInAudienceList(role: UserType, data: Record<string, unknown>): boolean {
@@ -180,4 +181,5 @@ export const NOTIFICATION_ROLE_SUBTITLE: Record<UserType, string> = {
   vendor: 'Orders, listings, payouts, and shop activity.',
   transporter: 'Assignments, routes, and logistics updates.',
   admin: 'Operations, moderation, and platform alerts.',
+  agent: 'Clients, commissions, referrals, and agency activity.',
 };

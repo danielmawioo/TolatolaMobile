@@ -18,6 +18,7 @@ let PROVIDER_GOOGLE: any = null;
 
 if (Platform.OS !== 'web') {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const Maps = require('react-native-maps');
     MapView = Maps.default;
     Marker = Maps.Marker;
@@ -61,7 +62,7 @@ export default function MapPicker({
       tension: 50,
       friction: 9,
     }).start();
-  }, [isExpanded]);
+  }, [isExpanded, expandAnim]);
 
   const mapHeight = expandAnim.interpolate({
     inputRange: [0, 1],

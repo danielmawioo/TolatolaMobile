@@ -89,7 +89,6 @@ export default function ValidationSurveyScreen() {
   const [assistedByAgent, setAssistedByAgent] = useState(isAgent);
   const [agentNameInput, setAgentNameInput] = useState(isAgent ? ((session?.user?.full_name as string) || '') : '');
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
   const set = (k: keyof FormData, v: any) => setForm(p => ({ ...p, [k]: v }));
   const toggleCh = (c: string) => set('q6_channels', form.q6_channels.includes(c) ? form.q6_channels.filter(x => x !== c) : [...form.q6_channels, c]);
@@ -128,7 +127,7 @@ export default function ValidationSurveyScreen() {
         survey_date: new Date().toISOString().split('T')[0],
       };
       await apiPost('/validation-survey', payload);
-      setSubmitted(true); setStep(2);
+      setStep(2);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to submit survey.');
     }

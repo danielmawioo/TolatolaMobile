@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiPost, getApiBaseUrl, setOn401Handler } from '@/src/services/api';
+import { apiGet, apiPost, getApiBaseUrl, setOn401Handler } from '@/src/services/api';
 import { logger } from '@/src/lib/logger';
 import { setErrorTrackingUser } from '@/src/lib/errorTracking';
 
@@ -40,6 +40,21 @@ export type Session = {
   expires_at?: number;
   user: User;
 };
+
+export async function hydrateProfileIntoSession(base: Session): Promise<Session> {
+  try {
+    const profile = await apiGet<User>('/profile', base.access_token);
+    if (profile && profile.id) {
+      return {
+        ...base,
+        user: { ...base.user, ...profile },
+      };
+    }
+  } catch (err) {
+    logger.warn('[Auth] Failed to hydrate profile into session:', err);
+  }
+  return base;
+}
 
 type AuthState = {
   session: Session | null;

@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <View style={styles.container}>
           <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.message}>
-            We're sorry. Please try again or go back to home.
+            We&apos;re sorry. Please try again or go back to home.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.button, pressed && { opacity: 0.9 }]}

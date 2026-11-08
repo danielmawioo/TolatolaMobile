@@ -43,7 +43,6 @@ export function VendorOnboardingGate({ children }: Props) {
     const snap = q.data;
 
     if (__DEV__) {
-      // eslint-disable-next-line no-console
       logger.info('[vendor:gate]', snap.screen);
     }
 
@@ -75,7 +74,6 @@ export function VendorOnboardingGate({ children }: Props) {
 
   if (!skipBootstrap && q.isError) {
     if (__DEV__) {
-      // eslint-disable-next-line no-console
       logger.warn('[vendor:gate] bootstrap failed', q.error);
     }
     return <>{children}</>;

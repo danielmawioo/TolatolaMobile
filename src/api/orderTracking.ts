@@ -7,7 +7,7 @@ export type OrderTrackingSnapshot = {
   driver_name?: string;
   driver_phone_masked?: string;
   driver_location?: { lat: number; lng: number } | null;
-  route_points?: Array<{ lat: number; lng: number }>;
+  route_points?: { lat: number; lng: number }[];
 };
 
 function normText(value: unknown): string {

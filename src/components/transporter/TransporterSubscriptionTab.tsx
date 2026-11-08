@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet,
+  View, Text, Pressable, ScrollView, StyleSheet,
   ActivityIndicator, Alert, Modal,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -28,9 +28,7 @@ export function TransporterSubscriptionTab({ transporterId, accessToken }: Props
   const [statusMsg, setStatusMsg] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => { loadData(); return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, [transporterId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [plansRes, transRes] = await Promise.all([
         apiGet<any>('/subscriptions/plans?type=transporter', accessToken),
@@ -40,7 +38,12 @@ export function TransporterSubscriptionTab({ transporterId, accessToken }: Props
       setCurrentSub(transRes?.transporter?.current_subscription || null);
     } catch (e) { logger.error('Sub load error', e); }
     setLoading(false);
-  };
+  }, [accessToken]);
+
+  useEffect(() => {
+    loadData();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [transporterId, loadData]);
 
   const pollStatus = (subId: string) => {
     let attempts = 0;
@@ -141,7 +144,7 @@ export function TransporterSubscriptionTab({ transporterId, accessToken }: Props
                   <Text style={s.controlValue}>{controlNumber}</Text>
                   <View style={s.controlInstr}>
                     <Text style={s.controlInstrItem}>• Dial *150*03# (CRDB SimBanking)</Text>
-                    <Text style={s.controlInstrItem}>• Select 'Bill Payment'</Text>
+                    <Text style={s.controlInstrItem}>• Select &apos;Bill Payment&apos;</Text>
                     <Text style={s.controlInstrItem}>• Enter the Control Number</Text>
                   </View>
                   <Pressable style={s.doneBtn} onPress={() => { setAwaitingPayment(false); setShowModal(false); loadData(); }}>

@@ -87,7 +87,7 @@ export function VendorOrdersTab({ shopId, accessToken, onOrdersLoaded }: Props) 
       onOrdersLoaded?.(list);
     } catch (e) { logger.error('Failed to load orders', e); }
     setLoading(false);
-  }, [shopId, accessToken]);
+  }, [shopId, accessToken, onOrdersLoaded]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -99,7 +99,11 @@ export function VendorOrdersTab({ shopId, accessToken, onOrdersLoaded }: Props) 
 
   const toggleExpand = (id: string) => {
     const s = new Set(expandedIds);
-    s.has(id) ? s.delete(id) : s.add(id);
+    if (s.has(id)) {
+      s.delete(id);
+    } else {
+      s.add(id);
+    }
     setExpandedIds(s);
   };
 

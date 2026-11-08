@@ -171,7 +171,7 @@ export default function TrackVerifyScreen() {
             </Pressable>
             
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Didn't receive the code?</Text>
+              <Text style={styles.footerText}>Didn&apos;t receive the code?</Text>
               <Pressable onPress={() => router.replace('/(guest)/track')}>
                 <Text style={styles.footerLink}>Request again</Text>
               </Pressable>

@@ -33,7 +33,6 @@ export function TransporterOnboardingGate({ children }: Props) {
     const snap = q.data;
 
     if (__DEV__) {
-      // eslint-disable-next-line no-console
       logger.info('[transporter:gate]', snap.screen);
     }
 
@@ -65,7 +64,6 @@ export function TransporterOnboardingGate({ children }: Props) {
 
   if (!skipBootstrap && q.isError) {
     if (__DEV__) {
-      // eslint-disable-next-line no-console
       logger.warn('[transporter:gate] bootstrap failed', q.error);
     }
     return <>{children}</>;

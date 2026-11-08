@@ -1,7 +1,7 @@
 import { apiGet, apiPost } from '@/src/services/api';
 
 /** Mirrors users.user_type for optional API filtering. */
-export type UserTypeForApi = 'customer' | 'vendor' | 'transporter' | 'admin';
+export type UserTypeForApi = 'customer' | 'vendor' | 'transporter' | 'admin' | 'agent';
 
 export type Notification = {
   id: string;

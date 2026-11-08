@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '@/constants/Theme';
@@ -7,7 +7,6 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { apiGet, apiPut } from '@/src/services/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
-import { TextInput } from 'react-native';
 import { TanzaniaAddressForm } from '@/src/components/checkout/TanzaniaAddressForm';
 import { type AddressData, INITIAL_ADDRESS } from '@/src/constants/checkout';
 
@@ -47,7 +46,7 @@ export default function EditShopScreen() {
           village: shop.village || '',
           street: shop.street || '',
         });
-      } catch (error: any) {
+      } catch {
         Alert.alert('Error', 'Failed to fetch shop details');
         router.back();
       } finally {

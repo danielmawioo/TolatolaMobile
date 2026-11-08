@@ -2,12 +2,9 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { VendorProductsTab } from '@/src/components/vendor/VendorProductsTab';
-import { apiDelete } from '@/src/services/api';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/src/services/api');
-
-const mockedApiDelete = apiDelete as jest.Mock;
 
 describe('VendorProductsTab', () => {
   afterEach(() => jest.clearAllMocks());

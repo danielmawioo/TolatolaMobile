@@ -5,7 +5,7 @@ import { Theme } from '@/constants/Theme';
 
 export type TrackingMapProps = {
   driverLocation: { lat: number; lng: number } | null;
-  routePoints?: Array<{ lat: number; lng: number }>;
+  routePoints?: { lat: number; lng: number }[];
   destination?: { lat: number; lng: number } | null;
   height?: number;
 };

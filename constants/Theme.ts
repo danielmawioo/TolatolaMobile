@@ -14,6 +14,7 @@ export const Theme = {
   backgroundTertiary: '#e2e8f0',
   // Text
   text: '#0f172a',
+  textPrimary: '#0f172a',
   textSecondary: '#475569',
   textMuted: '#94a3b8',
   // Links and accents

@@ -27,7 +27,7 @@ export function CheckoutErrorModal({ visible, error, onClose }: Props) {
               <FontAwesome name="exclamation-triangle" size={28} color="#fff" />
             </View>
             <Text style={styles.errModalTitle}>Checkout Error</Text>
-            <Text style={styles.errModalSubtitle}>We couldn't complete your request</Text>
+            <Text style={styles.errModalSubtitle}>We couldn&apos;t complete your request</Text>
           </View>
 
           {/* Body */}

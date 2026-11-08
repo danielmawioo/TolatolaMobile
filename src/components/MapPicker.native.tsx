@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Platform, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Linking, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
@@ -182,7 +182,7 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
   // On native platforms, we can fallback to WebView if native maps fails to load
   // (which happens in custom development clients or Expo Go on some setups)
   // But usually, standard native builds will use MapView.
-  const [nativeMapFailed, setNativeMapFailed] = useState(false);
+  const [nativeMapFailed] = useState(false);
 
   const useNativeMap = !nativeMapFailed;
   const useWebViewMap = nativeMapFailed;
@@ -269,7 +269,7 @@ export default function MapPicker({ latitude, longitude, onLocationSelect, title
               Interactive Map is loading...
             </Text>
             <Text style={styles.placeholderSubtext}>
-              Press "Current GPS" above to fetch your location coordinates automatically, or use the address search to resolve coordinates.
+              Press &quot;Current GPS&quot; above to fetch your location coordinates automatically, or use the address search to resolve coordinates.
             </Text>
           </View>
         )}
