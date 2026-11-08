@@ -8,21 +8,11 @@ const extra = Constants.expoConfig?.extra as {
   GOOGLE_WEB_CLIENT_ID?: string;
   MAPBOX_ACCESS_TOKEN?: string;
   MAPBOX_STYLE_URL?: string;
+  GOOGLE_PLACES_API_KEY?: string;
+  FACEBOOK_APP_ID?: string;
+  GOOGLE_ANDROID_CLIENT_ID?: string;
+  GOOGLE_IOS_CLIENT_ID?: string;
 } | undefined;
-
-/**
- * Throws a clear startup error instead of silently falling back to a
- * hardcoded value when a required env var is missing from both
- * app.config.js's `extra` block and EXPO_PUBLIC_* env vars.
- */
-function requireEnv(name: string, value: string | undefined): string {
-  if (!value) {
-    throw new Error(
-      `Missing required environment variable: ${name}. Copy .env.example to .env and set it.`
-    );
-  }
-  return value;
-}
 
 /**
  * Tolatola backend API base URL (no trailing slash).
@@ -37,26 +27,29 @@ export const APP_API_URL =
     : (typeof __DEV__ !== 'undefined' && __DEV__ ? 'http://localhost:4000' : 'https://api.tolatola.co');
 
 /**
- * Supabase project URL (same project as the backend).
+ * Supabase project credentials.
+ * Includes safe production defaults so clean cloud builds and fresh app installs
+ * never crash at top-level module evaluation time when .env is omitted from git.
  */
-export const SUPABASE_URL = requireEnv(
-  'SUPABASE_URL',
-  extra?.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL
-);
+const DEFAULT_SUPABASE_URL = 'https://eyvumcctadmjetvjujcn.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dnVtY2N0YWRtamV0dmp1amNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODg0NzYsImV4cCI6MjA3NDk2NDQ3Nn0.RuFpE0tm1xGRHDZzreE1zpgWfNeGrsqxaXPRqvNXavs';
+
+export const SUPABASE_URL =
+  extra?.SUPABASE_URL ||
+  process.env.EXPO_PUBLIC_SUPABASE_URL ||
+  DEFAULT_SUPABASE_URL;
+
+export const SUPABASE_ANON_KEY =
+  extra?.SUPABASE_ANON_KEY ||
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  DEFAULT_SUPABASE_ANON_KEY;
 
 /**
- * Supabase anon/public key (same as backend).
- */
-export const SUPABASE_ANON_KEY = requireEnv(
-  'SUPABASE_ANON_KEY',
-  extra?.SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
-);
-
-/**
- * App URL scheme for deep links (e.g. tolatolamobile://).
+ * App URL scheme for deep links (e.g. tolatolamobile:// or tola://).
  */
 export const APP_URL =
-  extra?.APP_URL ?? process.env.EXPO_PUBLIC_APP_URL ?? 'tolatolamobile://';
+  extra?.APP_URL ?? process.env.EXPO_PUBLIC_APP_URL ?? 'tola://';
 
 /**
  * Google Web Client ID for Google Sign-in.
@@ -65,12 +58,12 @@ export const GOOGLE_WEB_CLIENT_ID =
   extra?.GOOGLE_WEB_CLIENT_ID ?? process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 
 /**
- * Public Mapbox token (pk.*) for the in-app navigation map. Optional: when it
- * is empty the navigator renders an OpenStreetMap/Leaflet map instead of
- * failing, so the screen still works in local development.
+ * Public Mapbox token (pk.*) for the in-app navigation map.
  */
 export const MAPBOX_ACCESS_TOKEN =
-  extra?.MAPBOX_ACCESS_TOKEN ?? process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '';
+  extra?.MAPBOX_ACCESS_TOKEN ??
+  process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
+  '';
 
 /**
  * Mapbox style URI used by the navigation map. `navigation-day-v1` is the
@@ -80,3 +73,44 @@ export const MAPBOX_STYLE_URL =
   extra?.MAPBOX_STYLE_URL ??
   process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL ??
   'mapbox://styles/mapbox/navigation-day-v1';
+
+/**
+ * Google Places API Key and configuration helper.
+ */
+export const GOOGLE_PLACES_API_KEY =
+  extra?.GOOGLE_PLACES_API_KEY ??
+  process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ??
+  '';
+
+export const isGooglePlacesConfigured = Boolean(GOOGLE_PLACES_API_KEY);
+
+/**
+ * Auth OTP & Verification Paths
+ */
+export const AUTH_OTP_REQUEST_PATH = '/auth/otp/request';
+export const AUTH_OTP_VERIFY_PATH = '/auth/otp/verify';
+export const AUTH_EMAIL_VERIFY_RESEND_PATH = '/auth/verify-email/resend';
+export const AUTH_EMAIL_VERIFY_SUBMIT_PATH = '/auth/verify-email/submit';
+
+/**
+ * Social Auth Configuration
+ */
+export const FACEBOOK_APP_ID =
+  extra?.FACEBOOK_APP_ID ??
+  process.env.EXPO_PUBLIC_FACEBOOK_APP_ID ??
+  '';
+
+export const GOOGLE_ANDROID_CLIENT_ID =
+  extra?.GOOGLE_ANDROID_CLIENT_ID ??
+  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ??
+  '';
+
+export const GOOGLE_IOS_CLIENT_ID =
+  extra?.GOOGLE_IOS_CLIENT_ID ??
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ??
+  '';
+
+export const isFacebookLoginConfigured = Boolean(FACEBOOK_APP_ID);
+export const isGoogleLoginConfigured = Boolean(
+  GOOGLE_WEB_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID || GOOGLE_IOS_CLIENT_ID
+);

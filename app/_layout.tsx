@@ -28,7 +28,7 @@ export const unstable_settings = {
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -36,18 +36,28 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  // Warn on font loading error instead of throwing a fatal crash
   useEffect(() => {
-    if (error) throw error;
+    if (error) {
+      console.warn('[RootLayout] Font loading warning:', error);
+    }
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+    if (loaded || error) {
+      SplashScreen.hideAsync().catch(() => {});
     }
-  }, [loaded]);
+  }, [loaded, error]);
 
-  if (!loaded) {
+  // Failsafe: hide splash screen within 2.5s even if assets hang
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!loaded && !error) {
     return null;
   }
 
@@ -69,16 +79,16 @@ function RootLayoutNav() {
           <CartProvider>
             <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
               <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(guest)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="(vendor)" />
-              <Stack.Screen name="(transporter)" />
-              <Stack.Screen name="(agent)" />
-              <Stack.Screen name="(admin)" />
-              <Stack.Screen name="payment-success" />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(guest)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="(vendor)" />
+                <Stack.Screen name="(transporter)" />
+                <Stack.Screen name="(agent)" />
+                <Stack.Screen name="(admin)" />
+                <Stack.Screen name="payment-success" />
+                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
               </Stack>
               <FloatingSupportFab />
             </ThemeProvider>

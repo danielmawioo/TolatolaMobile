@@ -15,7 +15,11 @@
       "autoIncrement": true,
       "env": {
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
-        "SENTRY_DISABLE_NATIVE_DEBUG_UPLOAD": "true"
+        "SENTRY_DISABLE_NATIVE_DEBUG_UPLOAD": "true",
+        "APP_API_URL": "https://api.tolatola.co",
+        "SUPABASE_URL": "https://eyvumcctadmjetvjujcn.supabase.co",
+        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dnVtY2N0YWRtamV0dmp1amNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODg0NzYsImV4cCI6MjA3NDk2NDQ3Nn0.RuFpE0tm1xGRHDZzreE1zpgWfNeGrsqxaXPRqvNXavs",
+        "APP_URL": "tola://"
       },
       "android": {
         "credentialsSource": "remote"
